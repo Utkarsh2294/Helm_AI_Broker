@@ -43,13 +43,14 @@ def import_request(db, request: QuoteRequest):
     db.flush()
     save_snapshot(db, case.id, "request", request.model_dump())
     audit(db, case.id, "request_received", "system")
+    transition(db, case, [State.RECEIVED], State.INTAKE_RUNNING, "intake_started", "system")
     result = invoke("intake", request.model_dump())
     save_snapshot(db, case.id, "dnr", result)
     target = State.NEEDS_INFO if result["missing"] else State.FACTFIND_REVIEW
     if result["vulnerability_flags"]:
         target = State.PAUSED_NEEDS_HUMAN
         case.previous_state = State.FACTFIND_REVIEW
-    transition(db, case, [State.RECEIVED], target, "intake_completed", "agent:1")
+    transition(db, case, [State.INTAKE_RUNNING], target, "intake_completed", "agent:1")
     return case
 
 
@@ -60,7 +61,10 @@ def require_broker(user):
 
 def act(db, case_id, action, user, session, body):
     case = get_case(db, case_id)
-    require_broker(user)
+    if action == "sign-off" and user.role == "broker_assistant":
+        pass
+    else:
+        require_broker(user)
     actor = f"broker:{user.id}"
     if action == "pause":
         if case.state in [State.PUBLISHED, State.CLOSED, State.COMPLAINT_FLAGGED, State.PAUSED_NEEDS_HUMAN]:
@@ -100,8 +104,10 @@ def act(db, case_id, action, user, session, body):
         if data.missing or not data.consent_to_share:
             raise DomainError("Fact-find has missing information or consent")
         db.add(Approval(case_id=case.id, gate="G0", user_id=user.id, payload_hash=dnr.body_hash))
-        transition(db, case, [State.FACTFIND_REVIEW], State.AWAIT_BROKER_RELEASE,
+        transition(db, case, [State.FACTFIND_REVIEW], State.RFQ_DRAFTING,
                    "dnr_signed_off", actor, {"dnr_hash": dnr.body_hash})
+        transition(db, case, [State.RFQ_DRAFTING], State.RFQ_RELEASE_CHECK, "rfq_drafted", "system")
+        transition(db, case, [State.RFQ_RELEASE_CHECK], State.AWAIT_BROKER_RELEASE, "release_check_completed", "system")
     elif action == "release":
         if case.state != State.AWAIT_BROKER_RELEASE:
             raise DomainError("Sign off the fact-find first")
@@ -122,11 +128,12 @@ def act(db, case_id, action, user, session, body):
         dnr, ranking = latest(db, case.id, "dnr"), latest(db, case.id, "ranking")
         if body.get("ranking_id") != ranking.body["id"]:
             raise DomainError("The ranking changed; refresh before selecting")
+        transition(db, case, [State.BROKER_REVIEW], State.SUITABILITY_DRAFT, "review_started", actor)
         pack = invoke("review", {"dnr": dnr.body, "ranking": ranking.body, **body})
         save_snapshot(db, case.id, "pack", pack)
         save_snapshot(db, case.id, "selection", {"selected": body["selected"], "survey": body["survey"],
                                                 "ranking_id": ranking.body["id"]})
-        transition(db, case, [State.BROKER_REVIEW], State.AWAIT_APPROVAL, "pack_drafted", "agent:4")
+        transition(db, case, [State.SUITABILITY_DRAFT], State.AWAIT_APPROVAL, "pack_drafted", "agent:4")
         audit(db, case.id, "selection_submitted", actor, {"pack_hash": pack["pack_hash"]})
     elif action == "request-changes":
         transition(db, case, [State.AWAIT_APPROVAL], State.BROKER_REVIEW, "changes_requested", actor)
@@ -155,6 +162,8 @@ def act(db, case_id, action, user, session, body):
 
 
 def process_due_jobs(db):
+    if settings().agents_paused:
+        return
     jobs = db.scalars(select(Job).where(Job.status == "pending", Job.due_at <= utcnow().isoformat())
                       .with_for_update(skip_locked=True)).all()
     for job in jobs:
@@ -175,15 +184,17 @@ def process_due_jobs(db):
             job.status = "needs_human"
             continue
         dnr = latest(db, case.id, "dnr").body
+        transition(db, case, [State.QUOTES_PENDING], State.QUOTES_COLLECTED, "quotes_collected", "agent:2")
+        transition(db, case, [State.QUOTES_COLLECTED], State.RANKING, "ranking_started", "system")
         ranking = invoke("ranking", {"dnr": dnr, "quotes": replies["quotes"], "id": uid(),
                                      "tax_rate": settings().ipt_rate})
         save_snapshot(db, case.id, "ranking", ranking)
         if ranking["needs_human"] or len(ranking["top"]) < 3:
             case.previous_state = State.BROKER_REVIEW
-            transition(db, case, [State.QUOTES_PENDING], State.PAUSED_NEEDS_HUMAN, "ranking_requires_human",
+            transition(db, case, [State.RANKING], State.PAUSED_NEEDS_HUMAN, "ranking_requires_human",
                        "agent:3", {"reason": "quote_validation" if ranking["needs_human"] else "insufficient_quotes"})
         else:
-            transition(db, case, [State.QUOTES_PENDING], State.BROKER_REVIEW, "ranking_completed", "agent:3")
+            transition(db, case, [State.RANKING], State.BROKER_REVIEW, "ranking_completed", "agent:3")
         job.status = "completed"
 
 

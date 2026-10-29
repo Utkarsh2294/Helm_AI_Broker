@@ -1,5 +1,8 @@
 from sqlalchemy import create_engine, event, select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
+from redis import Redis
+import json
+import logging
 from app.agents.review import canonical_hash
 from app.config import settings
 from app.db.models import Activity, Base, Snapshot, stamp
@@ -46,7 +49,25 @@ def audit(db, case_id, event_type, actor, payload=None):
     row = Activity(**body, prev_hash=prev_hash, hash=canonical_hash({"prev_hash": prev_hash, **body}))
     db.add(row)
     db.flush()
+    db.info.setdefault("events_to_publish", []).append({**body, "hash": row.hash})
     return row
+
+
+@event.listens_for(Session, "after_commit")
+def publish_committed_events(db):
+    events = db.info.pop("events_to_publish", [])
+    if events:
+        try:
+            with Redis.from_url(settings().redis_url, socket_connect_timeout=0.2, socket_timeout=0.2) as redis:
+                for item in events:
+                    redis.publish(f"case:{item['case_id']}:events", json.dumps(item))
+        except Exception:
+            logging.getLogger("helm.audit").warning("event_publication_deferred", extra={"count": len(events)})
+
+
+@event.listens_for(Session, "after_rollback")
+def discard_rolled_back_events(db):
+    db.info.pop("events_to_publish", None)
 
 
 def verify_chain(events):
