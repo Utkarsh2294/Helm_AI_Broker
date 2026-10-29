@@ -61,6 +61,7 @@ def import_request(db, request: QuoteRequest):
     save_snapshot(db, case.id, "dnr", result)
     target = State.NEEDS_INFO if result["missing"] else State.FACTFIND_REVIEW
     if result["vulnerability_flags"]:
+        case.priority = "urgent"
         target = State.PAUSED_NEEDS_HUMAN
         case.previous_state = State.FACTFIND_REVIEW
     transition(db, case, [State.INTAKE_RUNNING], target, "intake_completed", "agent:1")
@@ -130,6 +131,12 @@ def act(db, case_id, action, user, session, body):
         if case.state in [State.CLOSED, State.COMPLAINT_FLAGGED]:
             raise DomainError("Complaint already flagged or case closed")
         case.previous_state = case.state
+        from app.db.models import User
+        from app.db.platform import Complaint
+        owner = db.scalar(select(User).where(User.role == "compliance_officer"))
+        if not owner:
+            raise DomainError("Designate a compliance owner before opening a complaint")
+        db.add(Complaint(case_id=case.id, owner_id=owner.id, due_at=utcnow() + timedelta(days=56)))
         transition(db, case, [case.state], State.COMPLAINT_FLAGGED, "complaint_flagged", actor)
     elif action == "assign":
         case.assigned_to = user.id
@@ -325,6 +332,19 @@ def process_due_jobs(db):
             continue
         if job.kind == "publish":
             process_publication(db, case, job)
+            continue
+        if job.kind == "rerank":
+            if case.state != State.BROKER_REVIEW:
+                job.status = "cancelled"
+                continue
+            from app.shadow import rank_with_models
+            transition(db, case, [case.state], State.RANKING, "reranking_started", "system")
+            ranking = rank_with_models(db, {"dnr": latest(db, case.id, "dnr").body, "quotes": latest(db, case.id, "quotes").body["quotes"], "id": uid(), "case_id": case.id, "tax_rate": settings().ipt_rate})
+            save_snapshot(db, case.id, "ranking", ranking)
+            target = State.PAUSED_NEEDS_HUMAN if ranking["needs_human"] or len(ranking["top"]) < 3 else State.BROKER_REVIEW
+            case.previous_state = State.BROKER_REVIEW
+            transition(db, case, [case.state], target, "reranking_completed", "system")
+            job.status = "completed"
             continue
         if case.state != State.QUOTES_PENDING:
             job.status = "cancelled"

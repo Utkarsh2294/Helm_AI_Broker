@@ -1,3 +1,6 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useSessionStore } from './session-store';
+const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1 } } });
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ArrowRight, ShieldCheck, LockKeyhole, LogOut, LayoutDashboard, Workflow, Building2, ChartNoAxesCombined, History, Compass, HelpCircle, X } from 'lucide-react';
@@ -57,14 +60,14 @@ const navigation = [
 ];
 
 function App() {
-  const [user, setUser] = useState(null);
+  const { user, setUser } = useSessionStore();
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState('workspace');
   const [guide, setGuide] = useState(false);
   const [logoutError, setLogoutError] = useState('');
   useEffect(() => { api('/auth/session').then(data => setUser(data.user)).catch(() => {}).finally(() => setLoading(false)); }, []);
   async function logout() {
-    try { await api('/auth/logout', { method: 'POST' }); setUser(null); }
+    try { await api('/auth/logout', { method: 'POST' }); queryClient.clear(); setUser(null); }
     catch (e) { setLogoutError(e.message); }
   }
   if (loading) return <main className="loading-screen" aria-live="polite">Opening your workspace…</main>;
@@ -85,4 +88,4 @@ function App() {
 
 // Workspace is kept separate so the authenticated shell remains small.
 import Workspace from './workspace';
-createRoot(document.getElementById('root')).render(<MotionConfig reducedMotion="user"><App/></MotionConfig>);
+createRoot(document.getElementById('root')).render(<QueryClientProvider client={queryClient}><MotionConfig reducedMotion="user"><App/></MotionConfig></QueryClientProvider>);

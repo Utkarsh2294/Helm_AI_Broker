@@ -1,4 +1,5 @@
 """Relational workflow records; all customer snapshots are encrypted at rest."""
+
 import base64
 import json
 import os
@@ -86,6 +87,7 @@ class LoginSession(Base):
 
 class Case(Base):
     __tablename__ = "cases"
+    priority: Mapped[str] = mapped_column(String(20), default="normal", server_default="normal")
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     core_request_id: Mapped[str] = mapped_column(String(100), unique=True)
     profile: Mapped[dict] = mapped_column(SecretJSON)

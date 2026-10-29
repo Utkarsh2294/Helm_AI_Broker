@@ -400,3 +400,8 @@ from app.insights_api import router as insights_router  # noqa: E402
 app.include_router(insights_router)
 from app.observability import instrument  # noqa: E402
 instrument(app)
+from app.case_queries import router as case_queries_router  # noqa: E402
+app.router.routes = [r for r in app.router.routes if not (getattr(r, "path", "") == "/api/v1/cases" and "GET" in getattr(r, "methods", set()))]
+app.include_router(case_queries_router)
+from app.case_operations import router as case_operations_router  # noqa: E402
+app.include_router(case_operations_router)
