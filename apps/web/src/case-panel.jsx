@@ -1,3 +1,4 @@
+import ReplayScrubber from './components/ReplayScrubber';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { X, ArrowRight, ShieldCheck, Check, Pause, Play, Download, Clock3, FileCheck2, AlertTriangle, ThumbsUp, ThumbsDown, ChevronDown, LockKeyhole, CheckCheck, Pencil, Save, UserCheck } from 'lucide-react';
 import { api, label, money } from './api';
@@ -9,7 +10,8 @@ import RankingTools from './components/RankingTools';
 import ReviewChecklist from './components/ReviewChecklist';
 
 export default function CasePanel({ id, user, onClose }) {
-  const dialog = useRef(null);
+  const dialog = useRef(null), historicalRef = useRef(false);
+  const [historical, setHistorical] = useState(false), [liveCase, setLiveCase] = useState(null);
   const [c, setCase] = useState(null), [tab, setTab] = useState('overview'), [error, setError] = useState('');
   const [busy, setBusy] = useState(false), [selected, setSelected] = useState([]), [thumbs, setThumbs] = useState({});
   const [ack, setAck] = useState([]), [note, setNote] = useState(''), [omittedReason, setOmittedReason] = useState('');
@@ -17,10 +19,10 @@ export default function CasePanel({ id, user, onClose }) {
   const [dnrAck, setDnrAck] = useState(false), [otp, setOtp] = useState(''), [uwRef, setUwRef] = useState('');
   const [password, setPassword] = useState(''), [suitability, setSuitability] = useState('');
   const [editing, setEditing] = useState(false), [budget, setBudget] = useState(''), [reason, setReason] = useState('');
-  const broker = user.role === 'authorised_broker';
+  const broker = user.role === 'authorised_broker' && !historical;
   const liveEvents = useSSE(id, () => refresh());
   const refresh = useCallback(async () => {
-    try { setCase(await api(`/cases/${id}`)); } catch (e) { setError(e.message); }
+    try { if (historicalRef.current) return; const current = await api(`/cases/${id}`); setCase(current); setLiveCase(current); } catch (e) { setError(e.message); }
   }, [id]);
   useEffect(() => { dialog.current.showModal(); refresh(); const timer = setInterval(refresh, 2000); return () => clearInterval(timer); }, [refresh]);
   useEffect(() => { if (c?.pack) setSuitability(c.pack.suitability_final); }, [c?.pack?.pack_hash]);
@@ -73,11 +75,11 @@ export default function CasePanel({ id, user, onClose }) {
   return <dialog ref={dialog} className="case-panel" onCancel={onClose} onClick={e => { if (e.target === dialog.current) onClose(); }} aria-label="Case workspace">
     <div className="panel-inner"><AgentPill state={c?.state} events={liveEvents}/><header className="panel-header"><div><span className="eyebrow">CLIENT WORKSPACE · FICTIONAL DATA</span><h2>{c?.name || 'Opening case…'}</h2>{c && <div className="panel-meta"><Status state={c.state}/><span>{label(c.cover_type)} · {c.postcode}</span></div>}</div><button className="icon-button" aria-label="Close case" onClick={onClose}><X size={21}/></button></header>
       {c && <><div className="case-stages">{['Fact-find', 'Quotations', 'Comparison', 'Approval', 'Delivery'].map((name, i) => <div key={name} className={stage >= i ? 'reached' : ''}><span>{stage > i ? <Check size={12}/> : i + 1}</span><small>{name}</small></div>)}</div>
-        <div className="panel-toolbar"><button className="text-button" onClick={exportEvidence}><Download size={14}/>Evidence</button>{broker && !c.assigned_to && <button className="text-button" disabled={busy} onClick={() => action('assign')}><UserCheck size={14}/>Assign to me</button>}{broker && !['PUBLISHED', 'CLOSED', 'COMPLAINT_FLAGGED'].includes(c.state) && <button className="text-button" disabled={busy} onClick={() => action(c.state === 'PAUSED_NEEDS_HUMAN' ? 'resume' : 'pause')}>{c.state === 'PAUSED_NEEDS_HUMAN' ? <Play size={14}/> : <Pause size={14}/>} {c.state === 'PAUSED_NEEDS_HUMAN' ? 'Resume' : 'Pause'}</button>}</div>
+        <div className="panel-toolbar"><button className="text-button" onClick={exportEvidence}><Download size={14}/>Evidence</button><button className="text-button" onClick={async () => { try { const r = await fetch(`/api/v1/cases/${id}/evidence`, { headers: { Accept: 'application/pdf' } }); if (!r.ok) throw new Error('PDF export failed'); const url = URL.createObjectURL(await r.blob()); const a = document.createElement('a'); a.href = url; a.download = `helm-evidence-${id}.pdf`; a.click(); URL.revokeObjectURL(url); } catch (e) { setError(e.message); } }}>PDF</button>{broker && !c.assigned_to && <button className="text-button" disabled={busy} onClick={() => action('assign')}><UserCheck size={14}/>Assign to me</button>}{broker && !['PUBLISHED', 'CLOSED', 'COMPLAINT_FLAGGED'].includes(c.state) && <button className="text-button" disabled={busy} onClick={() => action(c.state === 'PAUSED_NEEDS_HUMAN' ? 'resume' : 'pause')}>{c.state === 'PAUSED_NEEDS_HUMAN' ? <Play size={14}/> : <Pause size={14}/>} {c.state === 'PAUSED_NEEDS_HUMAN' ? 'Resume' : 'Pause'}</button>}</div>
         <div className="panel-tabs" role="tablist" aria-label="Case views">{[['overview', 'Fact-find'], ['quotes', `Compare${comparison.length ? ` (${comparison.length})` : ''}`], ['pack', 'Recommendation'], ['activity', 'Activity']].map(([key, name]) => <button role="tab" aria-selected={tab === key} aria-controls={`panel-${key}`} id={`tab-${key}`} key={key} className={tab === key ? 'active' : ''} onClick={() => setTab(key)}>{name}</button>)}</div>
       </>}
-      <div className="panel-body">{error && <p role="alert" className="error">{error}</p>}{!c && <p className="muted">Loading case details…</p>}
-        {c && <section role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
+      <div className="panel-body">{liveCase && <ReplayScrubber item={liveCase} onView={v => { historicalRef.current = true; setHistorical(true); setCase(v); }} onPresent={() => { historicalRef.current = false; setHistorical(false); refresh(); }}/>} {historical && !c?.dnr && <p className="notice">The fact-find had not been recorded at this time.</p>}{error && <p role="alert" className="error">{error}</p>}{!c && <p className="muted">Loading case details…</p>}
+        {c?.dnr && <section role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
           {c.state === 'PAUSED_NEEDS_HUMAN' && <div className="notice warning"><AlertTriangle size={18}/><div><strong>Your expertise is needed.</strong><p>{label(c.events.filter(e => e.payload.reason).at(-1)?.payload.reason || 'Review this case before resuming.')}</p>{c.quotes?.partners.some(p => ['clarification', 'referred'].includes(p.state)) && broker && <button className="button small" disabled={busy} onClick={() => action('resolve')}>Resolve fictional partner exception</button>}</div></div>}
           {c.state === 'UW_REFERRAL' && <div className="notice warning"><div><h3>Underwriter confirmation required · G3</h3><label>Fictional underwriter reference<input value={uwRef} onChange={e => setUwRef(e.target.value)}/></label>{broker && <button className="button" disabled={busy || uwRef.length < 3} onClick={() => action('resolve', { underwriter_reference: uwRef })}>Record confirmation and recollect</button>}</div></div>}{c.state === 'COMPLAINT_FLAGGED' && <div className="notice warning"><AlertTriangle size={18}/><div><strong>Complaint hold</strong><p>All agent jobs are blocked. A designated complaint owner must handle this case. Closure is outside this demo.</p></div></div>}
           {tab === 'overview' && <>
