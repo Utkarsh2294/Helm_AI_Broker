@@ -6,12 +6,14 @@ MEDICAL_ROLES = {"authorised_broker", "compliance_officer"}
 def safe_case(data, user, include_medical=False):
     result = copy.deepcopy(data)
     if user.role not in MEDICAL_ROLES:
+
         def hide_links(value):
             if isinstance(value, dict):
                 return {k: "[REDACTED]" if k == "magic_link" else hide_links(v) for k, v in value.items()}
             if isinstance(value, list):
                 return [hide_links(v) for v in value]
             return value
+
         result = hide_links(result)
     if not (include_medical and user.role in MEDICAL_ROLES):
 

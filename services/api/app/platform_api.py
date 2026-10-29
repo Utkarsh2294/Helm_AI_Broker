@@ -52,7 +52,14 @@ def readiness(db=Depends(database)):
     except Exception:
         pass
     ok = all(value == "ok" for value in checks.values())
-    return JSONResponse({"status": "ok" if ok else "degraded", **checks}, status_code=200 if ok else 503)
+    return JSONResponse(
+        {
+            "status": "ok" if ok else "degraded",
+            "db_backend": settings().database_url.split(":", 1)[0],
+            **checks,
+        },
+        status_code=200 if ok else 503,
+    )
 
 
 @router.post("/webhooks/core")

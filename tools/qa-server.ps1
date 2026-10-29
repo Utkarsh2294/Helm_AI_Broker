@@ -25,7 +25,7 @@ $qaDatabase = if ($ReuseDatabase) { (Get-ChildItem -LiteralPath $qaDirectory -Fi
 if (-not $qaDatabase) { throw 'No QA fixture database available' }
 $env:HELM_DATABASE_URL = 'sqlite:///' + $qaDatabase.Replace('\', '/')
 if ($Postgres) {
-    $qaDatabaseName = & $qaPython (Join-Path $qaRoot 'tools\create_qa_database.py')
+    $qaDatabaseName = if ($ReuseDatabase) { & $qaPython (Join-Path $qaRoot 'tools\create_qa_database.py') --latest } else { & $qaPython (Join-Path $qaRoot 'tools\create_qa_database.py') }
     if ($LASTEXITCODE) { throw 'QA PostgreSQL database creation failed' }
     if ($qaDatabaseName -notmatch '^helm_qa_\d+$') { throw 'Unexpected QA database name' }
     $env:HELM_DATABASE_URL = "postgresql+psycopg://helm:helm_local_demo_only@127.0.0.1:55439/$qaDatabaseName"

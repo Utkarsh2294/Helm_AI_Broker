@@ -37,10 +37,22 @@ def permits(source, target, event):
     if event == "complaint_resolved":
         return source == "COMPLAINT_FLAGGED" and target != "COMPLAINT_FLAGGED"
     if event == "dnr_revised":
-        return source in {"NEEDS_INFO", "FACTFIND_REVIEW", "AWAIT_BROKER_RELEASE"} and target in {"NEEDS_INFO", "FACTFIND_REVIEW"}
-    return (source, target) in {("INTAKE_RUNNING", "NEEDS_INFO"), ("INTAKE_RUNNING", "PAUSED_NEEDS_HUMAN"),
-        ("QUOTES_PENDING", "UW_REFERRAL"), ("QUOTES_PENDING", "PAUSED_NEEDS_HUMAN"), ("RANKING", "PAUSED_NEEDS_HUMAN"),
-        ("AWAIT_APPROVAL", "PAUSED_NEEDS_HUMAN"), ("PAUSED_NEEDS_HUMAN", "QUOTES_PENDING"), ("BROKER_REVIEW", "RANKING")}
+        return source in {"NEEDS_INFO", "FACTFIND_REVIEW", "AWAIT_BROKER_RELEASE"} and target in {
+            "NEEDS_INFO",
+            "FACTFIND_REVIEW",
+        }
+    return (source, target) in {
+        ("INTAKE_RUNNING", "NEEDS_INFO"),
+        ("INTAKE_RUNNING", "PAUSED_NEEDS_HUMAN"),
+        ("QUOTES_PENDING", "UW_REFERRAL"),
+        ("QUOTES_PENDING", "PAUSED_NEEDS_HUMAN"),
+        ("RANKING", "PAUSED_NEEDS_HUMAN"),
+        ("AWAIT_APPROVAL", "PAUSED_NEEDS_HUMAN"),
+        ("PAUSED_NEEDS_HUMAN", "QUOTES_PENDING"),
+        ("BROKER_REVIEW", "RANKING"),
+    }
+
+
 HALTS = {
     "H1": "Invalid structured output",
     "H2": "Low confidence in a required field",

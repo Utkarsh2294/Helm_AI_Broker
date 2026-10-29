@@ -19,6 +19,7 @@ async def poll_jobs(ctx):
 
 def run_due_jobs():
     from opentelemetry import trace
+
     with trace.get_tracer("helm.jobs").start_as_current_span("jobs.poll", record_exception=False):
         _run_due_jobs()
 
@@ -46,7 +47,9 @@ class WorkerSettings:
     @staticmethod
     async def on_startup(ctx):
         from app.observability import configure
+
         configure()
+
     redis_settings = RedisSettings.from_dsn(settings().redis_url)
     functions = [poll_jobs, daily_learning, nightly_verify]
     cron_jobs = [

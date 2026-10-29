@@ -8,11 +8,13 @@ from app.config import settings
 from app.db.models import Activity, Base, Snapshot, stamp
 from datetime import datetime, timedelta
 from sqlalchemy import func
+from functools import lru_cache
 
 
 def make_engine(url=None):
     url = url or settings().database_url
-    engine = create_engine(url, connect_args={"check_same_thread": False} if url.startswith("sqlite") else {})
+    pool = {} if url.startswith("sqlite") else {"pool_size": settings().db_pool_size, "max_overflow": settings().db_pool_overflow}
+    engine = create_engine(url, connect_args={"check_same_thread": False} if url.startswith("sqlite") else {}, **pool)
     if url.startswith("sqlite"):
 
         @event.listens_for(engine, "connect")
@@ -58,8 +60,10 @@ def save_snapshot(db, case_id, kind, body):
 def next_case_time(db, case_id):
     # Wall-clock timestamps can repeat on Windows. Preserve ordering across processes/records.
     now = stamp()
-    previous = max(db.scalar(select(func.max(Activity.created_at)).where(Activity.case_id == case_id)) or "",
-                   db.scalar(select(func.max(Snapshot.created_at)).where(Snapshot.case_id == case_id)) or "")
+    previous = max(
+        db.scalar(select(func.max(Activity.created_at)).where(Activity.case_id == case_id)) or "",
+        db.scalar(select(func.max(Snapshot.created_at)).where(Snapshot.case_id == case_id)) or "",
+    )
     if previous and previous >= now:
         return (datetime.fromisoformat(previous) + timedelta(microseconds=1)).isoformat()
     return now
@@ -90,11 +94,9 @@ def publish_committed_events(db):
     events = db.info.pop("events_to_publish", [])
     if events:
         try:
-            with Redis.from_url(
-                settings().redis_url, socket_connect_timeout=0.2, socket_timeout=0.2
-            ) as redis:
-                for item in events:
-                    redis.publish(f"case:{item['case_id']}:events", json.dumps(item))
+            redis = event_client()
+            for item in events:
+                redis.publish(f"case:{item['case_id']}:events", json.dumps(item))
         except Exception:
             logging.getLogger("helm.audit").warning(
                 "event_publication_deferred", extra={"count": len(events)}
@@ -104,6 +106,11 @@ def publish_committed_events(db):
 @event.listens_for(Session, "after_rollback")
 def discard_rolled_back_events(db):
     db.info.pop("events_to_publish", None)
+
+
+@lru_cache(maxsize=1)
+def event_client():
+    return Redis.from_url(settings().redis_url, socket_connect_timeout=0.2, socket_timeout=0.2)
 
 
 def verify_chain(events):

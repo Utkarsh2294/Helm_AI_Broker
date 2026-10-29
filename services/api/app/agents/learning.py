@@ -37,6 +37,7 @@ def metrics(records: list[dict], weights: dict) -> dict:
     agreements, ndcgs = [], []
     for record in records:
         from app.engine.ranking import user_weights
+
         base = record["ranking"].get("base_weights", record["ranking"].get("weights", user_weights([])))
         effective = combine_weights(base, weights) if weights else base
         ordered = sorted(

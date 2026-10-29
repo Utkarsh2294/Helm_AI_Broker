@@ -9,7 +9,17 @@ router = APIRouter(prefix="/api/v1")
 
 
 @router.get("/cases")
-def cases(request: Request, q: str = "", state: str = "", assignee: str = "", priority: str = "", sort: str = "newest", limit: int = Query(0, ge=0, le=200), offset: int = Query(0, ge=0), db=Depends(database)):
+def cases(
+    request: Request,
+    q: str = "",
+    state: str = "",
+    assignee: str = "",
+    priority: str = "",
+    sort: str = "newest",
+    limit: int = Query(0, ge=0, le=200),
+    offset: int = Query(0, ge=0),
+    db=Depends(database),
+):
     user, _ = identity(db, request)
     query = select(Case)
     if state:
@@ -29,15 +39,36 @@ def cases(request: Request, q: str = "", state: str = "", assignee: str = "", pr
     # Profile fields are encrypted. Search/name sort decrypt only inside the authorised API.
     if q or sort == "name":
         rows = db.scalars(query).all()
-        rows = [r for r in rows if not q or q.lower() in f"{r.profile['name']} {r.core_request_id} {r.profile.get('postcode', '')}".lower()]
+        rows = [
+            r
+            for r in rows
+            if not q
+            or q.lower() in f"{r.profile['name']} {r.core_request_id} {r.profile.get('postcode', '')}".lower()
+        ]
         if sort == "name":
             rows.sort(key=lambda r: (r.profile["name"].casefold(), r.id))
         total = len(rows)
-        rows = rows[offset:offset + limit] if limit else rows
+        rows = rows[offset : offset + limit] if limit else rows
     else:
         rows = db.scalars(query.offset(offset).limit(limit) if limit else query).all()
-    items = [{"id": r.id, **r.profile, "state": r.state, "assigned_to": r.assigned_to, "priority": r.priority, "created_at": r.created_at, "version": r.version} for r in rows]
+    items = [
+        {
+            "id": r.id,
+            **r.profile,
+            "state": r.state,
+            "assigned_to": r.assigned_to,
+            "priority": r.priority,
+            "created_at": r.created_at,
+            "version": r.version,
+        }
+        for r in rows
+    ]
     if not limit:
         return items
     summary = dict(db.execute(select(Case.state, func.count()).group_by(Case.state)).all())
-    return {"items": items, "total": total, "summary": summary, "next_offset": offset + len(items) if offset + len(items) < total else None}
+    return {
+        "items": items,
+        "total": total,
+        "summary": summary,
+        "next_offset": offset + len(items) if offset + len(items) < total else None,
+    }

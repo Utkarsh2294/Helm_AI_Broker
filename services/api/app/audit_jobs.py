@@ -12,7 +12,9 @@ def verify_all():
         existing = db.scalar(select(AuditAnchor).where(AuditAnchor.day == day))
         roots, failures = {}, []
         for case in db.scalars(select(Case)):
-            events = db.scalars(select(Activity).where(Activity.case_id == case.id).order_by(Activity.seq)).all()
+            events = db.scalars(
+                select(Activity).where(Activity.case_id == case.id).order_by(Activity.seq)
+            ).all()
             if not verify_chain(events):
                 failures.append(case.id)
             roots[case.id] = events[-1].hash if events else None
@@ -22,10 +24,13 @@ def verify_all():
             db.add(AuditAnchor(day=day, body=body))
             db.commit()
         if failures:
-            logging.getLogger("helm.audit").critical("P1_AUDIT_CHAIN_FAILURE", extra={"failed_case_ids": failures})
+            logging.getLogger("helm.audit").critical(
+                "P1_AUDIT_CHAIN_FAILURE", extra={"failed_case_ids": failures}
+            )
         return body
 
 
 async def nightly_verify(ctx):
     import asyncio
+
     return await asyncio.to_thread(verify_all)

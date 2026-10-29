@@ -37,12 +37,25 @@ def transition(db, case, expected, target, event_type, actor, payload=None):
         db.commit()
         raise DomainError("An agent cannot approve advice", 403)
     from app.case_graph import permits
+
     if not permits(case.state, target, event_type):
         raise DomainError(f"Invalid case transition: {case.state} to {target}")
-    gate = "G0" if target == State.RFQ_DRAFTING else "G1" if target == State.QUOTES_PENDING and case.state == State.AWAIT_BROKER_RELEASE else None
+    gate = (
+        "G0"
+        if target == State.RFQ_DRAFTING
+        else "G1"
+        if target == State.QUOTES_PENDING and case.state == State.AWAIT_BROKER_RELEASE
+        else None
+    )
     if gate:
         snapshot = latest(db, case.id, "dnr")
-        if not snapshot or not db.scalar(select(Approval).where(Approval.case_id == case.id, Approval.gate == gate, Approval.payload_hash == snapshot.body_hash)):
+        if not snapshot or not db.scalar(
+            select(Approval).where(
+                Approval.case_id == case.id,
+                Approval.gate == gate,
+                Approval.payload_hash == snapshot.body_hash,
+            )
+        ):
             raise DomainError(f"{gate} evidence is required for this transition", 403)
     if target == State.PUBLISHED and not db.scalar(select(Publication).where(Publication.case_id == case.id)):
         raise DomainError("Delivery acknowledgement and human approval are required before publication", 403)
@@ -144,6 +157,7 @@ def act(db, case_id, action, user, session, body):
         case.previous_state = case.state
         from app.db.models import User
         from app.db.platform import Complaint
+
         owner = db.scalar(select(User).where(User.role == "compliance_officer"))
         if not owner:
             raise DomainError("Designate a compliance owner before opening a complaint")
@@ -290,8 +304,14 @@ def act(db, case_id, action, user, session, body):
         }:
             raise DomainError("Address every unmet need before approval", 422)
         step_up.consumed = True
-        if db.scalar(select(Approval).where(Approval.case_id == case.id, Approval.gate == "G2", Approval.payload_hash == pack["pack_hash"])):
-            raise DomainError("This version already has an approval. Save a fresh review before signing again")
+        if db.scalar(
+            select(Approval).where(
+                Approval.case_id == case.id, Approval.gate == "G2", Approval.payload_hash == pack["pack_hash"]
+            )
+        ):
+            raise DomainError(
+                "This version already has an approval. Save a fresh review before signing again"
+            )
         approval = Approval(
             case_id=case.id,
             gate="G2",
@@ -351,10 +371,24 @@ def process_due_jobs(db):
                 job.status = "cancelled"
                 continue
             from app.shadow import rank_with_models
+
             transition(db, case, [case.state], State.RANKING, "reranking_started", "system")
-            ranking = rank_with_models(db, {"dnr": latest(db, case.id, "dnr").body, "quotes": latest(db, case.id, "quotes").body["quotes"], "id": uid(), "case_id": case.id, "tax_rate": settings().ipt_rate})
+            ranking = rank_with_models(
+                db,
+                {
+                    "dnr": latest(db, case.id, "dnr").body,
+                    "quotes": latest(db, case.id, "quotes").body["quotes"],
+                    "id": uid(),
+                    "case_id": case.id,
+                    "tax_rate": settings().ipt_rate,
+                },
+            )
             save_snapshot(db, case.id, "ranking", ranking)
-            target = State.PAUSED_NEEDS_HUMAN if ranking["needs_human"] or len(ranking["top"]) < 3 else State.BROKER_REVIEW
+            target = (
+                State.PAUSED_NEEDS_HUMAN
+                if ranking["needs_human"] or len(ranking["top"]) < 3
+                else State.BROKER_REVIEW
+            )
             case.previous_state = State.BROKER_REVIEW
             transition(db, case, [case.state], target, "reranking_completed", "system")
             job.status = "completed"
@@ -421,7 +455,11 @@ def process_due_jobs(db):
 def learning_run(db):
     records = []
     consumed = set()
-    for proposal in db.scalars(select(ModelProposal).where(ModelProposal.status.in_(["proposed", "no_improvement", "shadow_mode", "promoted"]))):
+    for proposal in db.scalars(
+        select(ModelProposal).where(
+            ModelProposal.status.in_(["proposed", "no_improvement", "shadow_mode", "promoted"])
+        )
+    ):
         consumed.update(proposal.body.get("selection_ids", []))
     # Keep the latest preference per case so repeated draft edits do not multiply the evidence.
     selections = {}
@@ -442,9 +480,16 @@ def learning_run(db):
                 {"id": selection.id, "case_id": selection.case_id, "ranking": ranking.body, **selection.body}
             )
     from app.governance import champion
+
     current = champion(db)
-    result = invoke("learning", {"records": records, "champion": current.weights if current.version != "user-v1" else None,
-                                  "min_comparisons": settings().min_new_comparisons})
+    result = invoke(
+        "learning",
+        {
+            "records": records,
+            "champion": current.weights if current.version != "user-v1" else None,
+            "min_comparisons": settings().min_new_comparisons,
+        },
+    )
     result["champion_version"] = current.version
     result["selection_ids"] = [record["id"] for record in records]
     proposal = ModelProposal(body=result, status=result["status"])
@@ -470,7 +515,9 @@ def detail(db, case):
         {k: getattr(row, k) for k in ("seq", "actor", "type", "payload", "created_at", "hash")}
         for row in db.scalars(select(Activity).where(Activity.case_id == case.id).order_by(Activity.seq))
     ]
-    data["delivery_pending"] = bool(db.scalar(select(Job).where(Job.case_id == case.id, Job.kind == "publish", Job.status == "pending")))
+    data["delivery_pending"] = bool(
+        db.scalar(select(Job).where(Job.case_id == case.id, Job.kind == "publish", Job.status == "pending"))
+    )
     return data
 
 

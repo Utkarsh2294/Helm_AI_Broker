@@ -60,6 +60,8 @@ async def measure(base_url, output, fixture_cases):
             return (time.perf_counter() - start) * 1000
 
         list_times = await asyncio.gather(*(timed_get("/api/v1/cases?limit=50") for _ in range(50)))
+        cold_list_times = list_times
+        list_times = await asyncio.gather(*(timed_get("/api/v1/cases?limit=50") for _ in range(50)))
         insight_times = [await timed_get("/api/v1/insights") for _ in range(10)]
         ready, readers_ready, sent = asyncio.Event(), 0, None
         connection_times = []
@@ -111,6 +113,7 @@ async def measure(base_url, output, fixture_cases):
                 raise RuntimeError(response.text)
             return (time.perf_counter() - start) * 1000
 
+        await asyncio.gather(*(timed_get('/api/v1/health') for _ in range(20)))
         enqueue_times = await asyncio.gather(*(enqueue(case) for case in rank_cases))
         result = {
             "measured_at": datetime.now(timezone.utc).isoformat(),
@@ -118,6 +121,8 @@ async def measure(base_url, output, fixture_cases):
             "environment": f"Local Windows, {(await client.get('/api/v1/health')).json().get('db_backend', 'database')}, Redis DB 1; not a production capacity claim",
             "case_count": (await client.get("/api/v1/insights")).json()["cases"],
             "case_list_50_concurrent": summary(list_times),
+            "case_list_50_concurrent_cold": summary(cold_list_times),
+            "measurement_notes": "Case-list steady-state follows one cold batch; both are retained. Ranking HTTP connections are warmed with health requests before timing new queue operations.",
             "insights": summary(insight_times),
             "sse_50_connections": summary(connection_times),
             "sse_event_delivery": summary(delivery_times),

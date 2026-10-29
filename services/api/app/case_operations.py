@@ -19,7 +19,9 @@ def enqueue_ranking(case_id: str, request: Request, db=Depends(database)):
     case = service.get_case(db, case_id)
     if case.state != State.BROKER_REVIEW:
         raise DomainError("Only a comparison awaiting broker review can be ranked again")
-    existing = db.scalar(select(Job).where(Job.case_id == case_id, Job.kind == "rerank", Job.status == "pending"))
+    existing = db.scalar(
+        select(Job).where(Job.case_id == case_id, Job.kind == "rerank", Job.status == "pending")
+    )
     if not existing:
         existing = Job(case_id=case_id, kind="rerank", due_at=utcnow().isoformat(), body={})
         db.add(existing)
@@ -41,6 +43,16 @@ def resolve_complaint(case_id: str, body: ComplaintResolution, request: Request,
         raise DomainError("No open complaint")
     if user.role != "compliance_officer" or complaint.owner_id != user.id:
         raise DomainError("Only the designated compliance owner can close this complaint", 403)
-    complaint.status, complaint.resolution = "closed", {"text": body.resolution, "by": user.id, "at": utcnow().isoformat()}
-    service.transition(db, case, [State.COMPLAINT_FLAGGED], case.previous_state, "complaint_resolved", f"compliance:{user.id}")
+    complaint.status, complaint.resolution = (
+        "closed",
+        {"text": body.resolution, "by": user.id, "at": utcnow().isoformat()},
+    )
+    service.transition(
+        db,
+        case,
+        [State.COMPLAINT_FLAGGED],
+        case.previous_state,
+        "complaint_resolved",
+        f"compliance:{user.id}",
+    )
     return {"state": case.state, "complaint_status": "closed"}

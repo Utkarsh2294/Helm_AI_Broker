@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     rp_id: str = "localhost"
     auth_rate_limit: int = 5
     shadow_case_minimum: int = 20
+    db_pool_size: int = 20
+    db_pool_overflow: int = 20
     otlp_endpoint: str = ""
     database_url: str = f"sqlite:///{(ROOT / '.runtime/broker.db').as_posix()}"
     redis_url: str = "redis://127.0.0.1:56389/0"
@@ -49,11 +51,14 @@ class Settings(BaseSettings):
     @property
     def trusted_origins(self):
         from urllib.parse import urlsplit, urlunsplit
+
         origin = urlsplit(self.allowed_origin)
         values = [self.allowed_origin]
         if self.clock_mode == "demo" and origin.hostname in ("localhost", "127.0.0.1"):
             host = "localhost" if origin.hostname == "127.0.0.1" else "127.0.0.1"
-            values.append(urlunsplit((origin.scheme, f"{host}:{origin.port}" if origin.port else host, "", "", "")))
+            values.append(
+                urlunsplit((origin.scheme, f"{host}:{origin.port}" if origin.port else host, "", "", ""))
+            )
         return values
 
     @property

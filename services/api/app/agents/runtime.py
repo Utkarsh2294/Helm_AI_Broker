@@ -69,7 +69,9 @@ def execute_step(kind, payload):
             payload.get("suitability"),
         )
     if kind == "learning":
-        return propose_improvement(payload["records"], payload.get("champion"), payload.get("min_comparisons", 30))
+        return propose_improvement(
+            payload["records"], payload.get("champion"), payload.get("min_comparisons", 30)
+        )
     raise ValueError("Unknown agent")
 
 

@@ -1,4 +1,5 @@
 """Request headers and metadata-only records for denied human gates."""
+
 from app.auth import digest
 from app.db.models import Case, LoginSession
 from app.db.store import audit
@@ -14,6 +15,11 @@ def denied_gate(session_factory, request, status):
         if not db.get(Case, case_id):
             return
         session = db.get(LoginSession, digest(request.cookies.get("helm_session", "")))
-        audit(db, case_id, "GATE_VIOLATION", f"broker:{session.user_id}" if session else "anonymous",
-              {"action": request.url.path.rsplit("/", 1)[-1], "status": status})
+        audit(
+            db,
+            case_id,
+            "GATE_VIOLATION",
+            f"broker:{session.user_id}" if session else "anonymous",
+            {"action": request.url.path.rsplit("/", 1)[-1], "status": status},
+        )
         db.commit()

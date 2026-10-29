@@ -65,6 +65,7 @@ async def request_boundary(request, call_next):
         request._body = b"".join(chunks)
     response = await call_next(request)
     from app.security import CSP
+
     response.headers["Content-Security-Policy"] = CSP
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
@@ -79,6 +80,7 @@ async def request_boundary(request, call_next):
 @app.exception_handler(DomainError)
 async def domain_error(request, error):
     from app.security import denied_gate
+
     await asyncio.to_thread(denied_gate, SessionLocal, request, error.status)
     return JSONResponse(
         {
@@ -268,6 +270,7 @@ def edit_dnr(case_id: str, body: EditDNR, request: Request, db=Depends(database)
 
 
 from app.case_operations import router as case_operations_router  # noqa: E402
+
 app.include_router(case_operations_router)
 
 
@@ -325,10 +328,15 @@ def export_evidence(case_id: str, request: Request, db=Depends(database)):
     user, _ = identity(db, request)
     case = service.get_case(db, case_id)
     from app.evidence import generate, pdf_bytes
+
     result = generate(db, case, user, request.query_params.get("include_medical") == "true")
     audit(db, case_id, "evidence_exported", f"user:{user.id}")
     if "application/pdf" in request.headers.get("accept", ""):
-        return Response(pdf_bytes(result), media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="helm-evidence-{case_id}.pdf"'})
+        return Response(
+            pdf_bytes(result),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="helm-evidence-{case_id}.pdf"'},
+        )
     return result
 
 
@@ -402,9 +410,16 @@ from app.governance_api import router as governance_router  # noqa: E402
 
 app.include_router(governance_router)
 from app.insights_api import router as insights_router  # noqa: E402
+
 app.include_router(insights_router)
 from app.observability import instrument  # noqa: E402
+
 instrument(app)
 from app.case_queries import router as case_queries_router  # noqa: E402
-app.router.routes = [r for r in app.router.routes if not (getattr(r, "path", "") == "/api/v1/cases" and "GET" in getattr(r, "methods", set()))]
+
+app.router.routes = [
+    r
+    for r in app.router.routes
+    if not (getattr(r, "path", "") == "/api/v1/cases" and "GET" in getattr(r, "methods", set()))
+]
 app.include_router(case_queries_router)

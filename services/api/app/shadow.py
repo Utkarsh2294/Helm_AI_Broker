@@ -7,7 +7,11 @@ from app.governance import champion
 
 def rank_with_models(db, payload):
     current = champion(db)
-    result = run_agent("ranking", {**payload, "learned": current.weights if current.version != "user-v1" else None}, settings().agent_runtime)
+    result = run_agent(
+        "ranking",
+        {**payload, "learned": current.weights if current.version != "user-v1" else None},
+        settings().agent_runtime,
+    )
     result["weights_version"] = current.version
     challenger = db.scalar(select(EngineModel).where(EngineModel.status == "challenger"))
     if challenger and not db.scalar(
@@ -15,7 +19,11 @@ def rank_with_models(db, payload):
             ShadowEvaluation.model_id == challenger.id, ShadowEvaluation.case_id == payload["case_id"]
         )
     ):
-        hidden = run_agent("ranking", {**payload, "id": payload["id"] + "-shadow", "learned": challenger.weights}, settings().agent_runtime)
+        hidden = run_agent(
+            "ranking",
+            {**payload, "id": payload["id"] + "-shadow", "learned": challenger.weights},
+            settings().agent_runtime,
+        )
         db.add(
             ShadowEvaluation(
                 model_id=challenger.id,
