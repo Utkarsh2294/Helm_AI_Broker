@@ -69,7 +69,7 @@ function App() {
   const [logoutError, setLogoutError] = useState('');
   useEffect(() => { api('/auth/session').then(data => setUser(data.user)).catch(() => {}).finally(() => setLoading(false)); }, []);
   async function logout() {
-    try { await api('/auth/logout', { method: 'POST' }); queryClient.clear(); setUser(null); }
+    try { await api('/auth/logout', { method: 'POST' }); queryClient.clear(); setPage('workspace'); setUser(null); }
     catch (e) { setLogoutError(e.message); }
   }
   if (loading) return <main className="loading-screen" aria-live="polite">Opening your workspace…</main>;

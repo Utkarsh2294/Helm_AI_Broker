@@ -1,7 +1,7 @@
 """Fourteen-section evidence exports and historical snapshots from immutable records."""
 import io
 import json
-from datetime import datetime, timezone
+from datetime import timezone
 from xml.sax.saxutils import escape
 from sqlalchemy import select
 from app.agents.review import canonical_hash
@@ -11,12 +11,12 @@ from app.db.store import verify_chain
 from app.schemas import DomainError
 
 CONTROLS = {
-    "C1": "Latest signed fact-find", "C2": "Minimised partner release", "C3": "Three selected recommendations",
-    "C4": "Suitability statement", "C5": "Versioned IPIDs", "C6": "Cancellation notice",
+    "C1": "DNR sign-off before RFQ", "C2": "Suitability checklist", "C3": "Personalised explanations",
+    "C4": "Record keeping", "C5": "Versioned IPIDs", "C6": "Cancellation notice",
     "C7": "Premium and IPT arithmetic", "C8": "Remuneration disclosure", "C9": "Terms of business",
-    "C10": "Search basis", "C11": "Vulnerability review", "C12": "Unmet needs acknowledgement",
-    "C13": "Medical information firewall", "C14": "Grounded explanations", "C15": "Commission-blind ranking",
-    "C16": "Survey feedback", "C17": "Fresh human approval", "C18": "Immutable audit evidence",
+    "C10": "Search basis", "C11": "Consumer Duty and readable explanations", "C12": "Vulnerability routing",
+    "C13": "Complaint handling", "C14": "Special-category information firewall", "C15": "LLM provider transfer controls",
+    "C16": "No client money", "C17": "FCA adviser authorisation", "C18": "Immutable audit evidence",
 }
 
 
@@ -48,7 +48,11 @@ def generate(db, case, user, include_medical=False):
 
 
 def control_evidence(control, pack, last, approvals, events):
-    mapping = {"C1": "dnr", "C2": "rfq", "C3": "pack", "C4": "pack", "C5": "pack", "C6": "pack", "C7": "pack", "C8": "pack", "C9": "pack", "C10": "pack", "C11": "dnr", "C12": "pack", "C13": "rfq", "C14": "ranking", "C15": "ranking", "C16": "selection"}
+    mapping = {"C1": "dnr", "C2": "pack", "C3": "pack", "C4": "dnr", "C5": "pack", "C6": "pack", "C7": "pack", "C8": "pack", "C9": "pack", "C10": "pack", "C11": "ranking", "C12": "dnr", "C14": "dnr"}
+    if control == "C13":
+        return {"recorded": any(e.type == "complaint_flagged" for e in events), "reference": "audit_chain", "applicability": "if_complaint_received"}
+    if control in ("C15", "C16"):
+        return {"recorded": False, "reference": "deployment_control_review", "status": "release_review_required"}
     if control == "C17":
         return {"recorded": any(a.gate == "G2" for a in approvals), "reference": "approvals"}
     if control == "C18":

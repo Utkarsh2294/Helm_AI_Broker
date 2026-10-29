@@ -113,7 +113,11 @@ def verify(body: Ceremony, request: Request, response: Response, db=Depends(data
         if current_user.id != user.id or current.id != step_session_id:
             raise DomainError("Step-up is bound to a different session", 403)
         current.step_up_at = utcnow().isoformat()
-        return {"ok": True, "expires_in": 300, "step_up_token": mfa.challenge(db, user.id, "step-up", {"session_id": current.id})}
+        return {
+            "ok": True,
+            "expires_in": 300,
+            "step_up_token": mfa.challenge(db, user.id, "step-up", {"session_id": current.id}),
+        }
     return sessions.issue(db, user, request, response)
 
 
@@ -127,14 +131,23 @@ def step_up(body: StepUp, request: Request, db=Depends(database)):
     elif not verify_password(body.password, user.password_hash):
         raise DomainError("Verify with your password or enrolled authenticator", 401)
     session.step_up_at = utcnow().isoformat()
-    return {"ok": True, "expires_in": 300, "step_up_token": mfa.challenge(db, user.id, "step-up", {"session_id": session.id})}
+    return {
+        "ok": True,
+        "expires_in": 300,
+        "step_up_token": mfa.challenge(db, user.id, "step-up", {"session_id": session.id}),
+    }
 
 
 @router.get("/session")
 def session(request: Request, db=Depends(database)):
     user, row = identity(db, request)
     totp = db.get(TOTPSecret, user.id)
-    return {"user": public_user(user), "csrf": row.csrf, "session_id": row.id, "totp_enabled": bool(totp and totp.enabled)}
+    return {
+        "user": public_user(user),
+        "csrf": row.csrf,
+        "session_id": row.id,
+        "totp_enabled": bool(totp and totp.enabled),
+    }
 
 
 @router.post("/refresh")
@@ -166,10 +179,21 @@ def logout(request: Request, response: Response, db=Depends(database)):
 @router.get("/devices")
 def devices(request: Request, db=Depends(database)):
     user, current = identity(db, request)
-    rows = db.execute(select(SessionDevice, LoginSession).join(LoginSession, SessionDevice.session_id == LoginSession.id)
-                      .where(SessionDevice.user_id == user.id)).all()
-    return [{"id": device.session_id, "ip": device.ip, "user_agent": device.user_agent,
-             "last_seen_at": device.last_seen_at, "current": device.session_id == current.id} for device, _ in rows]
+    rows = db.execute(
+        select(SessionDevice, LoginSession)
+        .join(LoginSession, SessionDevice.session_id == LoginSession.id)
+        .where(SessionDevice.user_id == user.id)
+    ).all()
+    return [
+        {
+            "id": device.session_id,
+            "ip": device.ip,
+            "user_agent": device.user_agent,
+            "last_seen_at": device.last_seen_at,
+            "current": device.session_id == current.id,
+        }
+        for device, _ in rows
+    ]
 
 
 @router.delete("/devices/{session_id}")

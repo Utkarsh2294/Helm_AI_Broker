@@ -53,7 +53,7 @@ async def request_boundary(request, call_next):
     if request.method not in ("GET", "HEAD", "OPTIONS"):
         origin = request.headers.get("origin")
         # Browser requests require the configured same-origin proxy. CLI/worker requests use cookies+CSRF.
-        if origin and origin != settings().allowed_origin:
+        if origin and origin not in settings().trusted_origins:
             return JSONResponse({"detail": "Unapproved request origin"}, status_code=403)
     if request.method not in ("GET", "HEAD", "OPTIONS"):
         chunks, length = [], 0
@@ -302,6 +302,7 @@ def edit_suitability(case_id: str, body: SuitabilityEdit, request: Request, db=D
     previous = latest(db, case_id, "pack").body
     revised = {k: v for k, v in previous.items() if k != "pack_hash"}
     revised["suitability_final"] = body.text.strip()
+    revised["review_saved_at"] = utcnow().isoformat()
     revised["dnr_sections_confirmed"] = body.dnr_sections_confirmed
     revised["unmet_needs_addressed"] = body.unmet_needs_addressed
     import difflib
@@ -365,7 +366,7 @@ async def stream(case_id: str, request: Request, after: int = 0, db=Depends(data
 def models(request: Request, db=Depends(database)):
     identity(db, request)
     return [
-        {"id": m.id, "created_at": m.created_at, **m.body}
+        {"id": m.id, "created_at": m.created_at, **m.body, "status": m.status}
         for m in db.scalars(select(ModelProposal).order_by(ModelProposal.created_at.desc())).all()
     ]
 

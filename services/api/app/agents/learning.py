@@ -1,4 +1,5 @@
 """A5: bounded Bradley–Terry proposals with case-level holdout; never activates weights."""
+
 import math
 from app.engine.ranking import aggregate, combine_weights
 from app.schemas import CRITERIA
@@ -21,16 +22,24 @@ def preference_pairs(records: list[dict]) -> tuple[list[dict], list[str]]:
             for other in rows:
                 if other == preferred or other in selected[:i]:
                     continue
-                pairs.append({"case_id": record["case_id"], "preferred": rows[preferred]["utilities"],
-                              "other": rows[other]["utilities"], "weight": 0.5 if other in selected else 1.0})
+                pairs.append(
+                    {
+                        "case_id": record["case_id"],
+                        "preferred": rows[preferred]["utilities"],
+                        "other": rows[other]["utilities"],
+                        "weight": 0.5 if other in selected else 1.0,
+                    }
+                )
     return pairs, disputed
 
 
 def metrics(records: list[dict], weights: dict) -> dict:
     agreements, ndcgs = [], []
     for record in records:
-        ordered = sorted(record["ranking"]["top"],
-                         key=lambda row: (-aggregate(row["utilities"], weights)[0], row["plan"]["id"]))
+        ordered = sorted(
+            record["ranking"]["top"],
+            key=lambda row: (-aggregate(row["utilities"], weights)[0], row["plan"]["id"]),
+        )
         predicted = [r["plan"]["id"] for r in ordered[:3]]
         selected = record["selected"]
         agreements.append(len(set(predicted) & set(selected)) / 3)
@@ -38,16 +47,23 @@ def metrics(records: list[dict], weights: dict) -> dict:
         dcg = sum((2 ** relevance.get(p, 0) - 1) / math.log2(i + 2) for i, p in enumerate(predicted))
         ideal = sum((2 ** (3 - i) - 1) / math.log2(i + 2) for i in range(3))
         ndcgs.append(dcg / ideal)
-    return {"top3_agreement": sum(agreements) / len(agreements) if agreements else 0,
-            "ndcg3": sum(ndcgs) / len(ndcgs) if ndcgs else 0, "cases": len(records)}
+    return {
+        "top3_agreement": sum(agreements) / len(agreements) if agreements else 0,
+        "ndcg3": sum(ndcgs) / len(ndcgs) if ndcgs else 0,
+        "cases": len(records),
+    }
 
 
 def propose_improvement(records: list[dict], champion: dict | None = None, min_comparisons=30) -> dict:
     champion = champion or dict.fromkeys(CRITERIA, 1 / len(CRITERIA))
     pairs, disputed = preference_pairs(records)
     case_ids = sorted({p["case_id"] for p in pairs})
-    base = {"comparison_count": len(pairs), "disputed": disputed,
-            "activation": "requires_compliance_and_lead_broker_then_shadow", "auto_applied": False}
+    base = {
+        "comparison_count": len(pairs),
+        "disputed": disputed,
+        "activation": "requires_compliance_and_lead_broker_then_shadow",
+        "auto_applied": False,
+    }
     if len(pairs) < min_comparisons or len(case_ids) < 3:
         return {**base, "status": "insufficient_evidence", "weights": champion}
     holdout = set(case_ids[::5])
@@ -57,10 +73,16 @@ def propose_improvement(records: list[dict], champion: dict | None = None, min_c
     evaluation = [r for r in records if r["case_id"] in holdout and r["id"] not in disputed]
     old, new = metrics(evaluation, champion), metrics(evaluation, proposed)
     improved = new["ndcg3"] > old["ndcg3"] + 1e-12 and new["top3_agreement"] >= old["top3_agreement"]
-    return {**base, "status": "proposed" if improved else "no_improvement", "weights": proposed,
-            "fit": {"iterations": fit["iterations"], "evidence_factor": fit["evidence_factor"]},
-            "training_comparisons": len(training), "holdout_case_ids": sorted(holdout),
-            "champion_metrics": old, "challenger_metrics": new,
-            "eligible_for_shadow": improved,
-            "report": "Weights are a proposal only. Review disputed examples before any model change. "
-                      "Synthetic demo feedback does not establish real-world ranking quality."}
+    return {
+        **base,
+        "status": "proposed" if improved else "no_improvement",
+        "weights": proposed,
+        "fit": {"iterations": fit["iterations"], "evidence_factor": fit["evidence_factor"]},
+        "training_comparisons": len(training),
+        "holdout_case_ids": sorted(holdout),
+        "champion_metrics": old,
+        "challenger_metrics": new,
+        "eligible_for_shadow": improved,
+        "report": "Weights are a proposal only. Review disputed examples before any model change. "
+        "Synthetic demo feedback does not establish real-world ranking quality.",
+    }

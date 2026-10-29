@@ -1,6 +1,5 @@
 """Local parsing only. Scanned pages require OCR capability or human review."""
-import io
-import shutil
+
 from app.schemas import DomainError
 
 
@@ -9,6 +8,7 @@ def extract_document(raw: bytes, mime: str):
         raise DomainError("Document exceeds the 10 MB limit", 413)
     if mime == "application/pdf":
         import pymupdf
+
         try:
             with pymupdf.open(stream=raw, filetype="pdf") as document:
                 if len(document) > 50:

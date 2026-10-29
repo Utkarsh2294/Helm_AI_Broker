@@ -13,7 +13,9 @@ class Settings(BaseSettings):
     mode: Literal["demo"] = "demo"
     clock_mode: Literal["demo", "live"] = "demo"
     partner_mode: Literal["simulator", "core"] = "simulator"
-    secret_key: str = Field(default="local-demo-only-change-before-live-64-characters-helm-broker-portal", min_length=32)
+    secret_key: str = Field(
+        default="local-demo-only-change-before-live-64-characters-helm-broker-portal", min_length=32
+    )
     core_api_url: str = "http://127.0.0.1:8011"
     core_webhook_secret: str = "demo-webhook-secret-change-before-live"
     core_client_id: str = "helm-broker-demo"
@@ -30,7 +32,7 @@ class Settings(BaseSettings):
     min_new_comparisons: int = 30
     demo_clock_multiplier: int = 2700
     agents_paused: bool = False
-    rp_id: str = "127.0.0.1"
+    rp_id: str = "localhost"
     auth_rate_limit: int = 5
     shadow_case_minimum: int = 20
     otlp_endpoint: str = ""
@@ -45,12 +47,24 @@ class Settings(BaseSettings):
     agent_runtime: Literal["python", "crewai"] = "python"
 
     @property
+    def trusted_origins(self):
+        from urllib.parse import urlsplit, urlunsplit
+        origin = urlsplit(self.allowed_origin)
+        values = [self.allowed_origin]
+        if self.clock_mode == "demo" and origin.hostname in ("localhost", "127.0.0.1"):
+            host = "localhost" if origin.hostname == "127.0.0.1" else "127.0.0.1"
+            values.append(urlunsplit((origin.scheme, f"{host}:{origin.port}" if origin.port else host, "", "", "")))
+        return values
+
+    @property
     def ipt_standard_rate(self) -> Decimal:
         return Decimal(self.ipt_rate)
 
     @model_validator(mode="after")
     def check_live_configuration(self):
-        if self.clock_mode == "live" and ("demo" in self.secret_key or not self.encryption_key or not self.cookie_secure):
+        if self.clock_mode == "live" and (
+            "demo" in self.secret_key or not self.encryption_key or not self.cookie_secure
+        ):
             raise ValueError("Live mode requires non-demo secrets, field encryption and secure cookies")
         if not 0 <= Decimal(self.ipt_rate) <= 1:
             raise ValueError("Invalid IPT rate")

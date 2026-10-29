@@ -25,6 +25,7 @@ dependencies = [
   "pymupdf>=1.25,<2",
   "opentelemetry-instrumentation-fastapi>=0.60b0",
   "opentelemetry-sdk>=1.39,<2",
+  "opentelemetry-exporter-otlp-proto-http>=1.39,<2",
 ]
 
 [project.optional-dependencies]

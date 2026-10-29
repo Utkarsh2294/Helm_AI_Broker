@@ -1,4 +1,5 @@
 """Commission diagnostics are separate from suitability scoring."""
+
 import math
 from statistics import mean
 
@@ -20,9 +21,14 @@ def commission_deviation_check(rows, selected_ids, threshold=2.0):
     commission_ranks = ranks([-value for value in commission])
     left_mean, right_mean = mean(engine_ranks), mean(commission_ranks)
     numerator = sum((a - left_mean) * (b - right_mean) for a, b in zip(engine_ranks, commission_ranks))
-    denominator = math.sqrt(sum((a - left_mean) ** 2 for a in engine_ranks) * sum((b - right_mean) ** 2 for b in commission_ranks))
+    denominator = math.sqrt(
+        sum((a - left_mean) ** 2 for a in engine_ranks) * sum((b - right_mean) ** 2 for b in commission_ranks)
+    )
     chosen = [r["plan"]["commissionPct"] for r in rows if r["plan"]["id"] in selected_ids]
-    delta = mean(chosen) - mean(commission[:min(3, len(rows))])
-    return {"flag": "commission_deviation" if delta > threshold else None, "deviation_pct": delta,
-            "spearman_rho": numerator / denominator if denominator else 0,
-            "requires_audit": delta > threshold}
+    delta = mean(chosen) - mean(commission[: min(3, len(rows))])
+    return {
+        "flag": "commission_deviation" if delta > threshold else None,
+        "deviation_pct": delta,
+        "spearman_rho": numerator / denominator if denominator else 0,
+        "requires_audit": delta > threshold,
+    }

@@ -28,6 +28,7 @@ def transition(db, case, expected, target, event_type, actor, payload=None):
     if case.state not in expected:
         raise DomainError(f"Action unavailable while case is {case.state}")
     if actor.startswith("agent:") and target in (
+        State.RFQ_DRAFTING,
         State.PUBLISHED,
         State.AWAIT_BROKER_RELEASE,
         State.QUOTES_PENDING,
@@ -35,6 +36,16 @@ def transition(db, case, expected, target, event_type, actor, payload=None):
         audit(db, case.id, "GATE_VIOLATION", actor)
         db.commit()
         raise DomainError("An agent cannot approve advice", 403)
+    from app.case_graph import permits
+    if not permits(case.state, target, event_type):
+        raise DomainError(f"Invalid case transition: {case.state} to {target}")
+    gate = "G0" if target == State.RFQ_DRAFTING else "G1" if target == State.QUOTES_PENDING and case.state == State.AWAIT_BROKER_RELEASE else None
+    if gate:
+        snapshot = latest(db, case.id, "dnr")
+        if not snapshot or not db.scalar(select(Approval).where(Approval.case_id == case.id, Approval.gate == gate, Approval.payload_hash == snapshot.body_hash)):
+            raise DomainError(f"{gate} evidence is required for this transition", 403)
+    if target == State.PUBLISHED and not db.scalar(select(Publication).where(Publication.case_id == case.id)):
+        raise DomainError("Delivery acknowledgement and human approval are required before publication", 403)
     before = case.state
     case.state = target
     audit(db, case.id, event_type, actor, {"from": before, "to": target, **(payload or {})})
@@ -279,6 +290,8 @@ def act(db, case_id, action, user, session, body):
         }:
             raise DomainError("Address every unmet need before approval", 422)
         step_up.consumed = True
+        if db.scalar(select(Approval).where(Approval.case_id == case.id, Approval.gate == "G2", Approval.payload_hash == pack["pack_hash"])):
+            raise DomainError("This version already has an approval. Save a fresh review before signing again")
         approval = Approval(
             case_id=case.id,
             gate="G2",
@@ -453,6 +466,7 @@ def detail(db, case):
         {k: getattr(row, k) for k in ("seq", "actor", "type", "payload", "created_at", "hash")}
         for row in db.scalars(select(Activity).where(Activity.case_id == case.id).order_by(Activity.seq))
     ]
+    data["delivery_pending"] = bool(db.scalar(select(Job).where(Job.case_id == case.id, Job.kind == "publish", Job.status == "pending")))
     return data
 
 

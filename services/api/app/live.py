@@ -1,4 +1,5 @@
 """SQL replay and Redis notifications; event payloads contain no medical statements."""
+
 import asyncio
 import json
 import time
@@ -17,22 +18,43 @@ router = APIRouter(prefix="/api/v1/cases")
 
 
 def event_dict(row):
-    return {"seq": row.seq, "case_id": row.case_id, "created_at": row.created_at, "ts": row.created_at,
-            "actor": row.actor, "actor_type": row.actor.split(":")[0], "type": row.type,
-            "payload": row.payload, "hash": row.hash, "ui_message": row.type.replace("_", " ").capitalize()}
+    return {
+        "seq": row.seq,
+        "case_id": row.case_id,
+        "created_at": row.created_at,
+        "ts": row.created_at,
+        "actor": row.actor,
+        "actor_type": row.actor.split(":")[0],
+        "type": row.type,
+        "payload": row.payload,
+        "hash": row.hash,
+        "ui_message": row.type.replace("_", " ").capitalize(),
+    }
 
 
 def fetch_events(case_id, cursor, request):
     with SessionLocal() as db:
         identity(db, request)
-        return [event_dict(e) for e in db.scalars(select(Activity).where(Activity.case_id == case_id, Activity.seq > cursor).order_by(Activity.seq))]
+        return [
+            event_dict(e)
+            for e in db.scalars(
+                select(Activity)
+                .where(Activity.case_id == case_id, Activity.seq > cursor)
+                .order_by(Activity.seq)
+            )
+        ]
 
 
 @router.get("/{case_id}/events")
 def events(case_id: str, request: Request, after: int = 0, db=Depends(database)):
     identity(db, request)
     get_case(db, case_id)
-    return [event_dict(e) for e in db.scalars(select(Activity).where(Activity.case_id == case_id, Activity.seq > after).order_by(Activity.seq))]
+    return [
+        event_dict(e)
+        for e in db.scalars(
+            select(Activity).where(Activity.case_id == case_id, Activity.seq > after).order_by(Activity.seq)
+        )
+    ]
 
 
 @router.get("/{case_id}/stream")
@@ -59,7 +81,9 @@ def stream(case_id: str, request: Request, after: int = 0, db=Depends(database))
                 yield f"id: {cursor}\ndata: {json.dumps(event)}\n\n"
             while time.monotonic() - started < 60 and not await request.is_disconnected():
                 now = time.monotonic()
-                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=0.1) if pubsub else None
+                message = (
+                    await pubsub.get_message(ignore_subscribe_messages=True, timeout=0.1) if pubsub else None
+                )
                 if message or now - last_check > (5 if pubsub else 0.1):
                     last_check = now
                     try:
@@ -78,4 +102,9 @@ def stream(case_id: str, request: Request, after: int = 0, db=Depends(database))
                 await pubsub.aclose()
             if client:
                 await client.aclose()
-    return StreamingResponse(generate(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )

@@ -17,7 +17,15 @@ TOPICS = {
 
 def seed_knowledge(db):
     for topic, answer in TOPICS.items():
-        for i, template in enumerate(["What should we confirm about {}?", "Which evidence is needed for {}?", "How should a broker review {}?", "What should a family ask about {}?", "What should be recorded when comparing {}?"]):
+        for i, template in enumerate(
+            [
+                "What should we confirm about {}?",
+                "Which evidence is needed for {}?",
+                "How should a broker review {}?",
+                "What should a family ask about {}?",
+                "What should be recorded when comparing {}?",
+            ]
+        ):
             key = f"pmi:{topic.replace(' ', '-')}:v1:{i}"
             if not db.get(KnowledgeEntry, key):
                 db.add(KnowledgeEntry(id=key, category=topic, question=template.format(topic), answer=answer))
@@ -28,5 +36,7 @@ def search_knowledge(db, query, limit=5):
     statement = select(KnowledgeEntry)
     if words:
         statement = statement.where(or_(*[KnowledgeEntry.question.ilike(f"%{word}%") for word in words]))
-    return [{"id": row.id, "question": row.question, "answer": row.answer, "category": row.category}
-            for row in db.scalars(statement.order_by(KnowledgeEntry.id).limit(limit))]
+    return [
+        {"id": row.id, "question": row.question, "answer": row.answer, "category": row.category}
+        for row in db.scalars(statement.order_by(KnowledgeEntry.id).limit(limit))
+    ]

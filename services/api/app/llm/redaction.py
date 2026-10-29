@@ -38,10 +38,16 @@ class RedactionService:
             if identifier:
                 text = text.replace(identifier, substitute("IDENTIFIER", identifier))
         for kind, pattern in PATTERNS.items():
-            text = re.sub(pattern, lambda match: substitute(kind, match.group()), text,
-                          flags=re.IGNORECASE if kind in ("POSTCODE", "ADDRESS") else 0)
+            text = re.sub(
+                pattern,
+                lambda match: substitute(kind, match.group()),
+                text,
+                flags=re.IGNORECASE if kind in ("POSTCODE", "ADDRESS") else 0,
+            )
         nonce = os.urandom(12)
-        encrypted = nonce + AESGCM(encryption_key()).encrypt(nonce, json.dumps(mapping).encode(), case_id.encode())
+        encrypted = nonce + AESGCM(encryption_key()).encrypt(
+            nonce, json.dumps(mapping).encode(), case_id.encode()
+        )
         self.redis.setex(f"helm:redaction:{case_id}", 3600, base64.urlsafe_b64encode(encrypted))
         return text, mapping
 

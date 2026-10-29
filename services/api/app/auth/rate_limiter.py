@@ -18,8 +18,9 @@ def check_limit(request, scope="auth", limit=None, window=900):
     redis.call('ZADD',KEYS[1],ARGV[3],ARGV[4]); redis.call('EXPIRE',KEYS[1],ARGV[5]); return 1"""
     try:
         with redis_client() as redis:
-            allowed = redis.eval(script, 1, f"helm:{scope}:{ip}", now - window, maximum, now,
-                                 secrets.token_hex(8), window)
+            allowed = redis.eval(
+                script, 1, f"helm:{scope}:{ip}", now - window, maximum, now, secrets.token_hex(8), window
+            )
     except Exception:
         raise DomainError("Authentication rate limiter unavailable; retry shortly", 503)
     if not allowed:

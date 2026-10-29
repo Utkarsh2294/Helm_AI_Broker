@@ -3,8 +3,7 @@ from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 
 
-def instrument(app):
-    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+def configure():
     from app.config import settings
     provider = TracerProvider()
     if settings().otlp_endpoint:
@@ -12,4 +11,10 @@ def instrument(app):
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
         provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=settings().otlp_endpoint)))
     trace.set_tracer_provider(provider)
+    return provider
+
+
+def instrument(app):
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    provider = configure()
     FastAPIInstrumentor.instrument_app(app, tracer_provider=provider)

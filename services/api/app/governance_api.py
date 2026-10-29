@@ -13,9 +13,24 @@ router = APIRouter(prefix="/api/v1")
 @router.get("/governance")
 def dashboard(request: Request, db=Depends(database)):
     identity(db, request)
-    return {"models": [{"id": m.id, "version": m.version, "status": m.status, "proposal_id": m.proposal_id,
-                         "metrics": governance.shadow_metrics(db, m)} for m in db.scalars(select(EngineModel))],
-            "events": [{"action": e.action, "created_at": e.created_at, **e.body} for e in db.scalars(select(GovernanceEvent).order_by(GovernanceEvent.created_at.desc()).limit(100))]}
+    return {
+        "models": [
+            {
+                "id": m.id,
+                "version": m.version,
+                "status": m.status,
+                "proposal_id": m.proposal_id,
+                "metrics": governance.shadow_metrics(db, m),
+            }
+            for m in db.scalars(select(EngineModel))
+        ],
+        "events": [
+            {"action": e.action, "created_at": e.created_at, **e.body}
+            for e in db.scalars(
+                select(GovernanceEvent).order_by(GovernanceEvent.created_at.desc()).limit(100)
+            )
+        ],
+    }
 
 
 @router.post("/mcr/{proposal_id}/{action}")
@@ -37,8 +52,10 @@ def rollback(model_id: str, request: Request, db=Depends(database)):
 @router.get("/edge-cases")
 def notebook(request: Request, db=Depends(database)):
     identity(db, request)
-    return [{"id": row.id, "case_id": row.case_id, "status": row.status, "created_at": row.created_at, **row.body}
-            for row in db.scalars(select(EdgeCase).order_by(EdgeCase.created_at.desc()))]
+    return [
+        {"id": row.id, "case_id": row.case_id, "status": row.status, "created_at": row.created_at, **row.body}
+        for row in db.scalars(select(EdgeCase).order_by(EdgeCase.created_at.desc()))
+    ]
 
 
 class NotebookReview(Model):
@@ -65,8 +82,10 @@ class PlaybookDraft(Model):
 @router.get("/playbooks")
 def playbooks(request: Request, db=Depends(database)):
     identity(db, request)
-    return [{"id": p.id, "scope": p.scope, "version": p.version, "approved_by": p.approved_by, **p.body}
-            for p in db.scalars(select(Playbook).order_by(Playbook.scope, Playbook.version.desc()))]
+    return [
+        {"id": p.id, "scope": p.scope, "version": p.version, "approved_by": p.approved_by, **p.body}
+        for p in db.scalars(select(Playbook).order_by(Playbook.scope, Playbook.version.desc()))
+    ]
 
 
 @router.post("/playbooks")

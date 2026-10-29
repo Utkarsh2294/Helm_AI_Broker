@@ -1,4 +1,5 @@
 """Bradley–Terry MAP fit with Armijo line search and evidence shrinkage."""
+
 import math
 from app.schemas import CRITERIA
 
@@ -11,6 +12,7 @@ def softmax(logits):
 def fit_bradley_terry(pairs, prior, max_iter=200, tolerance=1e-6):
     log_prior = {c: math.log(prior[c]) for c in CRITERIA}
     logits = dict(log_prior)
+
     def objective(values):
         w = softmax(values)
         likelihood = 0
@@ -18,6 +20,7 @@ def fit_bradley_terry(pairs, prior, max_iter=200, tolerance=1e-6):
             z = 8 * sum(w[c] * (pair["preferred"][c] - pair["other"][c]) for c in CRITERIA)
             likelihood -= pair["weight"] * math.log1p(math.exp(-max(-700, min(700, z))))
         return likelihood - 0.5 * sum((values[c] - log_prior[c]) ** 2 for c in CRITERIA)
+
     iterations = 0
     for iterations in range(max_iter):
         w = softmax(logits)
@@ -42,5 +45,8 @@ def fit_bradley_terry(pairs, prior, max_iter=200, tolerance=1e-6):
         logits = candidate
     fitted = softmax(logits)
     shrinkage = len(pairs) / (len(pairs) + 50)
-    return {"weights": {c: shrinkage * fitted[c] + (1 - shrinkage) * prior[c] for c in CRITERIA},
-            "iterations": iterations + 1, "evidence_factor": shrinkage}
+    return {
+        "weights": {c: shrinkage * fitted[c] + (1 - shrinkage) * prior[c] for c in CRITERIA},
+        "iterations": iterations + 1,
+        "evidence_factor": shrinkage,
+    }

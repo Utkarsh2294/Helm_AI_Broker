@@ -1,4 +1,5 @@
 """G5: independent approvals, invisible shadow scores and explicit promotion/rollback."""
+
 import math
 from sqlalchemy import select
 from app.config import settings
@@ -38,7 +39,9 @@ def approval(db, proposal_id, stage, user):
         raise DomainError("Model change request not found", 404)
     if not proposal.body.get("eligible_for_shadow"):
         raise DomainError("Held-out results must improve before G5 approval")
-    rows = db.scalars(select(ModelApproval).where(ModelApproval.proposal_id == proposal_id, ModelApproval.stage == stage)).all()
+    rows = db.scalars(
+        select(ModelApproval).where(ModelApproval.proposal_id == proposal_id, ModelApproval.stage == stage)
+    ).all()
     if any(r.user_id == user.id or r.role == role for r in rows):
         raise DomainError("This role already approved; a second independent person is required", 403)
     if role == "lead_broker" and not any(r.role == "compliance_officer" for r in rows):
@@ -54,15 +57,21 @@ def approve_shadow(db, proposal_id, user):
         champion(db)
         if db.scalar(select(EngineModel).where(EngineModel.status == "challenger")):
             raise DomainError("Finish the existing shadow evaluation before starting another")
-        db.add(EngineModel(version=f"mcr-{proposal.id}", weights=proposal.body["weights"],
-                           status="challenger", proposal_id=proposal.id))
+        db.add(
+            EngineModel(
+                version=f"mcr-{proposal.id}",
+                weights=proposal.body["weights"],
+                status="challenger",
+                proposal_id=proposal.id,
+            )
+        )
         proposal.status = "shadow_mode"
     return {"status": proposal.status, "roles": sorted(roles)}
 
 
 def ndcg(order, selected):
     relevance = {pid: 3 - i for i, pid in enumerate(selected)}
-    ideal = sum((2 ** r - 1) / math.log2(i + 2) for i, r in enumerate((3, 2, 1)))
+    ideal = sum((2**r - 1) / math.log2(i + 2) for i, r in enumerate((3, 2, 1)))
     return sum((2 ** relevance.get(pid, 0) - 1) / math.log2(i + 2) for i, pid in enumerate(order[:3])) / ideal
 
 
@@ -74,13 +83,20 @@ def shadow_metrics(db, model):
         if choice and choice.body["ranking_id"] == row.body["ranking_id"]:
             selected = choice.body["selected"]
             values.append((ndcg(row.body["champion"], selected), ndcg(row.body["challenger"], selected)))
-    return {"distinct_cases": len(rows), "labelled_cases": len(values),
-            "champion_ndcg3": sum(v[0] for v in values) / len(values) if values else None,
-            "challenger_ndcg3": sum(v[1] for v in values) / len(values) if values else None}
+    return {
+        "distinct_cases": len(rows),
+        "labelled_cases": len(values),
+        "champion_ndcg3": sum(v[0] for v in values) / len(values) if values else None,
+        "challenger_ndcg3": sum(v[1] for v in values) / len(values) if values else None,
+    }
 
 
 def promote(db, proposal_id, user):
-    model = db.scalar(select(EngineModel).where(EngineModel.proposal_id == proposal_id, EngineModel.status == "challenger").with_for_update())
+    model = db.scalar(
+        select(EngineModel)
+        .where(EngineModel.proposal_id == proposal_id, EngineModel.status == "challenger")
+        .with_for_update()
+    )
     if not model:
         raise DomainError("No challenger is in shadow mode")
     metrics = shadow_metrics(db, model)

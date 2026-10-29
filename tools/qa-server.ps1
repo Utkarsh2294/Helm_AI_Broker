@@ -10,13 +10,18 @@ if ($Stop) {
         $qaPid = [int](Get-Content -LiteralPath $qaPidFile)
         $qaProcess = Get-CimInstance Win32_Process -Filter "ProcessId=$qaPid"
         $qaNeedle = if ($qaName -eq 'api') { '--port 8012' } else { '--port 5182' }
-        if ($qaProcess -and $qaProcess.CommandLine.Contains($qaNeedle)) { Stop-Process -Id $qaPid }
+        if ($qaProcess -and $qaProcess.CommandLine.Contains($qaNeedle)) {
+            foreach ($qaChild in (Get-CimInstance Win32_Process -Filter "ParentProcessId=$qaPid")) {
+                if ($qaChild.CommandLine -and $qaChild.CommandLine.Contains($qaNeedle)) { Stop-Process -Id $qaChild.ProcessId }
+            }
+            Stop-Process -Id $qaPid -ErrorAction SilentlyContinue
+        }
         Remove-Item -LiteralPath $qaPidFile
     }
     exit
 }
 $qaPython = Join-Path $env:LOCALAPPDATA 'HelmBroker\venv\Scripts\python.exe'
-$env:HELM_DATABASE_URL = 'sqlite:///' + (Join-Path $qaDirectory 'browser.db').Replace('\', '/')
+$env:HELM_DATABASE_URL = 'sqlite:///' + (Join-Path $qaDirectory ('browser-' + (Get-Date -Format 'yyyyMMddHHmmssfff') + '.db')).Replace('\', '/')
 $env:HELM_REDIS_URL = 'redis://127.0.0.1:56389/1'
 $env:HELM_ALLOWED_ORIGIN = 'http://127.0.0.1:5182'
 # QA only: shared login traffic deliberately exceeds the live five-attempt policy.

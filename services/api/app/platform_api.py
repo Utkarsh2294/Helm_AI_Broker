@@ -1,4 +1,5 @@
 """Infrastructure routes shared by the prototype phases."""
+
 import json
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
@@ -33,6 +34,7 @@ def copilot(case_id: str, body: CopilotQuestion, request: Request, db=Depends(da
     if not ranking or ranking.body["id"] != body.ranking_id:
         raise DomainError("Ranking changed; refresh before asking")
     from app.copilot import answer_question
+
     return answer_question(ranking.body, body.question)
 
 
@@ -58,7 +60,9 @@ async def receive_webhook(request: Request, db=Depends(database)):
     raw = await request.body()
     if len(raw) > 1_000_000:
         raise DomainError("Webhook too large", 413)
-    verify_signature(raw, request.headers.get("X-Helm-Timestamp", ""), request.headers.get("X-Helm-Signature", ""))
+    verify_signature(
+        raw, request.headers.get("X-Helm-Timestamp", ""), request.headers.get("X-Helm-Signature", "")
+    )
     try:
         event = json.loads(raw)
         event_id, event_type = str(event["id"]), str(event["type"])

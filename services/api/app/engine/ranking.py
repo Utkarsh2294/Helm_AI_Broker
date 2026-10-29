@@ -1,4 +1,5 @@
 """Fixed-anchor utilities: adding a quote cannot change another quote's score."""
+
 import hashlib
 import math
 import random
@@ -23,8 +24,7 @@ def user_weights(priorities: list[str]) -> dict[str, float]:
         return dict.fromkeys(CRITERIA, 1 / len(CRITERIA))
     mass = 1 if m == len(CRITERIA) else 0.85
     weights = dict.fromkeys(CRITERIA, (1 - mass) / max(1, len(CRITERIA) - m))
-    weights.update({c: mass * sum(1 / k for k in range(i + 1, m + 1)) / m
-                    for i, c in enumerate(priorities)})
+    weights.update({c: mass * sum(1 / k for k in range(i + 1, m + 1)) / m for i, c in enumerate(priorities)})
     return weights
 
 
@@ -55,21 +55,27 @@ def utilities(p: Plan, n: Needs) -> dict[str, float]:
     budget = 1 / (1 + math.exp(exponent))
     reference = clamp((n.reference_high_pence - teco) / (n.reference_high_pence - n.reference_low_pence))
     importance = sum(v.importance for v in n.coverage.values())
-    coverage = sum(v.importance * clamp(p.coverage.get(k, 0) / max(v.level, 1))
-                   for k, v in n.coverage.items()) / importance if importance else 0.5
+    coverage = (
+        sum(v.importance * clamp(p.coverage.get(k, 0) / max(v.level, 1)) for k, v in n.coverage.items())
+        / importance
+        if importance
+        else 0.5
+    )
     stats = p.insurerStats
     upheld = (stats.n * stats.upheldRate + 30 * 0.25) / (stats.n + 30)
     return {
         "affordability": 0.5 * budget + 0.5 * reference,
         "coverage": coverage,
         "network": 0.6 * clamp(p.hospitalListLevel / n.hospital_level) + 0.4 * p.preferredHospitalShare,
-        "underwriting": 0.7 * (1 - clamp(sum(p.exclusionSeverities) / 10)) +
-                        0.3 * (1 if p.underwritingType == n.preferred_underwriting else 0.5),
+        "underwriting": 0.7 * (1 - clamp(sum(p.exclusionSeverities) / 10))
+        + 0.3 * (1 if p.underwritingType == n.preferred_underwriting else 0.5),
         "insurer_quality": 0.5 * (1 - upheld) + 0.3 * stats.finStrength + 0.2 * stats.slaScore,
-        "process_ease": clamp(1 - 0.6 * p.docsUnavailable / max(p.docsRequired, 1) -
-                              0.4 * min(p.turnaroundDays / 14, 1)),
-        "terms_clarity": clamp(0.5 * p.ipidCompleteness + 0.3 * p.plainLanguage +
-                               0.2 * (1 - min(p.exclusionsCount / 20, 1))),
+        "process_ease": clamp(
+            1 - 0.6 * p.docsUnavailable / max(p.docsRequired, 1) - 0.4 * min(p.turnaroundDays / 14, 1)
+        ),
+        "terms_clarity": clamp(
+            0.5 * p.ipidCompleteness + 0.3 * p.plainLanguage + 0.2 * (1 - min(p.exclusionsCount / 20, 1))
+        ),
     }
 
 
@@ -91,8 +97,11 @@ def gate(p: Plan, n: Needs, rate: Decimal) -> tuple[str | None, list[str]]:
         reasons.append(p.status)
     if n.hard_budget_cap is not None and p.annualPremiumPence > n.hard_budget_cap:
         reasons.append("hard_budget_exceeded")
-    reasons.extend(f"must_have_missing:{k}" for k, v in n.coverage.items()
-                   if v.must_have and p.coverage.get(k, 0) < v.level)
+    reasons.extend(
+        f"must_have_missing:{k}"
+        for k, v in n.coverage.items()
+        if v.must_have and p.coverage.get(k, 0) < v.level
+    )
     if p.underwritingType not in n.allowed_underwriting:
         reasons.append("underwriting_not_allowed")
     return ("excluded", reasons) if reasons else (None, [])
@@ -109,14 +118,17 @@ def diversify(rows):
     return chosen
 
 
-def rank_plans(plans: list[Plan], needs: Needs, ranking_id: str, learned=None,
-               tax_rate=Decimal("0.12"), draws=1000) -> dict:
+def rank_plans(
+    plans: list[Plan], needs: Needs, ranking_id: str, learned=None, tax_rate=Decimal("0.12"), draws=1000
+) -> dict:
     weights = combine_weights(user_weights(needs.priorities), learned)
     rows, excluded, human = [], [], []
     for p in sorted(plans, key=lambda p: p.id):
         disposition, reasons = gate(p, needs, tax_rate)
         if disposition:
-            (human if disposition == "human" else excluded).append({"plan": p.model_dump(), "reasons": reasons})
+            (human if disposition == "human" else excluded).append(
+                {"plan": p.model_dump(), "reasons": reasons}
+            )
             continue
         u = utilities(p, needs)
         score, fit, balance = aggregate(u, weights)
@@ -129,9 +141,17 @@ def rank_plans(plans: list[Plan], needs: Needs, ranking_id: str, learned=None,
             blockers.append("slow_turnaround")
         if p.fcaStatus != "authorised":
             blockers.append("fca_status_unverified")
-        rows.append({"plan": p.model_dump(), "score": score, "fit": fit, "balance": balance,
-                     "utilities": u, "points": {c: 100 * weights[c] * u[c] for c in CRITERIA},
-                     "blockers": blockers})
+        rows.append(
+            {
+                "plan": p.model_dump(),
+                "score": score,
+                "fit": fit,
+                "balance": balance,
+                "utilities": u,
+                "points": {c: 100 * weights[c] * u[c] for c in CRITERIA},
+                "blockers": blockers,
+            }
+        )
     rows.sort(key=lambda r: (-r["score"], r["plan"]["id"]))
     top = diversify(rows)
     rng = random.Random(int.from_bytes(hashlib.sha256(ranking_id.encode()).digest()[:8]))
@@ -151,10 +171,14 @@ def rank_plans(plans: list[Plan], needs: Needs, ranking_id: str, learned=None,
     for row in rows:
         s = samples[row["plan"]["id"]]
         scores = sorted(s["scores"])
-        row["stability"] = {"pTop1": s["first"] / max(draws, 1), "pTop5": s["top5"] / max(draws, 1),
-                            "meanRank": sum(s["ranks"]) / max(draws, 1),
-                            "scoreInterval": [scores[int(draws * 0.025)], scores[min(draws - 1, int(draws * 0.975))]]
-                            if scores else [row["score"], row["score"]]}
+        row["stability"] = {
+            "pTop1": s["first"] / max(draws, 1),
+            "pTop5": s["top5"] / max(draws, 1),
+            "meanRank": sum(s["ranks"]) / max(draws, 1),
+            "scoreInterval": [scores[int(draws * 0.025)], scores[min(draws - 1, int(draws * 0.975))]]
+            if scores
+            else [row["score"], row["score"]],
+        }
     tied = len(top) >= 2 and (top[0]["score"] - top[1]["score"] < 1 or top[0]["stability"]["pTop1"] < 0.65)
     flip = None
     if len(top) >= 2:
@@ -165,7 +189,10 @@ def rank_plans(plans: list[Plan], needs: Needs, ranking_id: str, learned=None,
                     if source == target or weights[source] < amount:
                         continue
                     changed = {**weights, source: weights[source] - amount, target: weights[target] + amount}
-                    if aggregate(top[1]["utilities"], changed)[0] > aggregate(top[0]["utilities"], changed)[0]:
+                    if (
+                        aggregate(top[1]["utilities"], changed)[0]
+                        > aggregate(top[0]["utilities"], changed)[0]
+                    ):
                         flip = {"from": source, "to": target, "amount": amount}
                         break
                 if flip:
@@ -174,10 +201,21 @@ def rank_plans(plans: list[Plan], needs: Needs, ranking_id: str, learned=None,
                 break
     for i, row in enumerate(top):
         row["rank"] = 1 if tied and i < 2 else i + 1
-        row["explanation"] = (f"Fit {row['fit']:.1f}/100; balance {row['balance']:.1f}/100; "
-                              f"overall {row['score']:.1f}/100. " +
-                              ("Effectively tied with the other leading plan. " if tied and i < 2 else "") +
-                              "Terms remain subject to insurer underwriting and broker review.")
-    return {"engine_version": ENGINE_VERSION, "weights_version": "user-v1" if not learned else "approved-model",
-            "weights": weights, "top": top, "all": rows, "excluded": excluded,
-            "needs_human": human, "joint_first": tied, "flip": flip, "draws": draws}
+        row["explanation"] = (
+            f"Fit {row['fit']:.1f}/100; balance {row['balance']:.1f}/100; "
+            f"overall {row['score']:.1f}/100. "
+            + ("Effectively tied with the other leading plan. " if tied and i < 2 else "")
+            + "Terms remain subject to insurer underwriting and broker review."
+        )
+    return {
+        "engine_version": ENGINE_VERSION,
+        "weights_version": "user-v1" if not learned else "approved-model",
+        "weights": weights,
+        "top": top,
+        "all": rows,
+        "excluded": excluded,
+        "needs_human": human,
+        "joint_first": tied,
+        "flip": flip,
+        "draws": draws,
+    }

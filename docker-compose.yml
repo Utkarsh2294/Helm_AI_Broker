@@ -49,6 +49,9 @@ services:
       HELM_DATABASE_URL: postgresql+psycopg://helm:${POSTGRES_PASSWORD:-helm_local_demo_only}@postgres/helm_broker
       HELM_ENCRYPTION_KEY: ${HELM_ENCRYPTION_KEY:-}
       HELM_REDIS_URL: redis://redis:6379/0
+      HELM_CORE_API_URL: http://mock-core:8011
+      HELM_CORE_DELIVERY_ENABLED: "true"
+      HELM_AGENT_RUNTIME: crewai
     command: ["python", "-m", "arq", "app.worker.WorkerSettings"]
     volumes: ["broker_keys:/app/.runtime"]
     depends_on:

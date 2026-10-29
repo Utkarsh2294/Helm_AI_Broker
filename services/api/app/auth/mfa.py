@@ -12,14 +12,26 @@ from app.schemas import DomainError
 
 def challenge(db, user_id, purpose, body=None):
     raw = secrets.token_urlsafe(32)
-    db.add(AuthChallenge(id=digest(raw), user_id=user_id, purpose=purpose, body=body or {},
-                        expires_at=(utcnow() + timedelta(minutes=5)).isoformat()))
+    db.add(
+        AuthChallenge(
+            id=digest(raw),
+            user_id=user_id,
+            purpose=purpose,
+            body=body or {},
+            expires_at=(utcnow() + timedelta(minutes=5)).isoformat(),
+        )
+    )
     return raw
 
 
 def load_challenge(db, raw, purpose):
     row = db.scalar(select(AuthChallenge).where(AuthChallenge.id == digest(raw)).with_for_update())
-    if not row or row.consumed or row.purpose != purpose or datetime.fromisoformat(row.expires_at) <= utcnow():
+    if (
+        not row
+        or row.consumed
+        or row.purpose != purpose
+        or datetime.fromisoformat(row.expires_at) <= utcnow()
+    ):
         raise DomainError("Expired or used authentication challenge", 401)
     return row
 
@@ -47,12 +59,17 @@ def setup_totp(db, user):
         previous.body = {"secret": secret}
     else:
         db.add(TOTPSecret(user_id=user.id, body={"secret": secret}))
-    return {"secret": secret, "uri": pyotp.TOTP(secret).provisioning_uri(user.email, issuer_name="Helm Broker")}
+    return {
+        "secret": secret,
+        "uri": pyotp.TOTP(secret).provisioning_uri(user.email, issuer_name="Helm Broker"),
+    }
 
 
 def enable_totp(db, user_id, code):
     record = verify_totp(db, user_id, code)
-    codes = ["".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8)) for _ in range(10)]
+    codes = [
+        "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8)) for _ in range(10)
+    ]
     record.enabled = True
     record.body = {**record.body, "recovery": [{"hash": hasher.hash(c), "used": False} for c in codes]}
     return codes

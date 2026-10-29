@@ -26,9 +26,17 @@ class CoreAPIClient:
 
     async def request(self, method, path, body=None, key=None):
         config = settings()
-        async with httpx.AsyncClient(base_url=config.core_api_url, timeout=15, transport=self.transport) as client:
-            response = await client.post("/oauth/token", json={"client_id": config.core_client_id,
-                "client_secret": config.core_client_secret, "grant_type": "client_credentials"})
+        async with httpx.AsyncClient(
+            base_url=config.core_api_url, timeout=15, transport=self.transport
+        ) as client:
+            response = await client.post(
+                "/oauth/token",
+                json={
+                    "client_id": config.core_client_id,
+                    "client_secret": config.core_client_secret,
+                    "grant_type": "client_credentials",
+                },
+            )
             response.raise_for_status()
             headers = {"Authorization": f"Bearer {response.json()['access_token']}"}
             if key:
@@ -41,8 +49,12 @@ class CoreAPIClient:
         return await self.request("GET", f"/v1/quote-requests/{request_id}")
 
     async def publish(self, case_id, approval_id, pack):
-        return await self.request("POST", "/v1/recommendations", {"case_id": case_id,
-            "approval_id": approval_id, "pack": pack}, key=f"publish:{case_id}:{pack['pack_hash']}")
+        return await self.request(
+            "POST",
+            "/v1/recommendations",
+            {"case_id": case_id, "approval_id": approval_id, "pack": pack},
+            key=f"publish:{case_id}:{pack['pack_hash']}",
+        )
 
 
 def encode_event(event):

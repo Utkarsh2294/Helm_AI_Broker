@@ -12,15 +12,32 @@ def issue(db, user, request, response, family_id=None):
     row, access = new_session(db, user)
     row.expires_at = (utcnow() + timedelta(minutes=15)).isoformat()
     refresh = secrets.token_urlsafe(32)
-    db.add(RefreshToken(id=digest(refresh), family_id=family_id or uid(), user_id=user.id,
-        session_id=row.id, password_hash=hasher.hash(refresh),
-        expires_at=(utcnow() + timedelta(hours=settings().session_hours)).isoformat()))
-    db.add(SessionDevice(session_id=row.id, user_id=user.id, ip=request.client.host if request.client else "unknown",
-                         user_agent=request.headers.get("user-agent", "unknown")[:300]))
+    db.add(
+        RefreshToken(
+            id=digest(refresh),
+            family_id=family_id or uid(),
+            user_id=user.id,
+            session_id=row.id,
+            password_hash=hasher.hash(refresh),
+            expires_at=(utcnow() + timedelta(hours=settings().session_hours)).isoformat(),
+        )
+    )
+    db.add(
+        SessionDevice(
+            session_id=row.id,
+            user_id=user.id,
+            ip=request.client.host if request.client else "unknown",
+            user_agent=request.headers.get("user-agent", "unknown")[:300],
+        )
+    )
     options = {"secure": settings().cookie_secure, "samesite": "strict", "path": "/"}
     response.set_cookie("helm_session", access, httponly=True, max_age=900, **options)
-    response.set_cookie("helm_refresh", refresh, httponly=True, max_age=settings().session_hours * 3600, **options)
-    response.set_cookie("helm_csrf", row.csrf, httponly=False, max_age=settings().session_hours * 3600, **options)
+    response.set_cookie(
+        "helm_refresh", refresh, httponly=True, max_age=settings().session_hours * 3600, **options
+    )
+    response.set_cookie(
+        "helm_csrf", row.csrf, httponly=False, max_age=settings().session_hours * 3600, **options
+    )
     return {"user": public_user(user), "csrf": row.csrf, "session_id": row.id}
 
 

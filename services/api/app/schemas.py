@@ -1,4 +1,5 @@
 """Validated boundaries shared by agents, the API and persisted snapshots."""
+
 from enum import StrEnum
 from typing import Annotated, Literal
 
@@ -6,8 +7,15 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 Pence = Annotated[int, Field(ge=0, strict=True)]
 Unit = Annotated[float, Field(ge=0, le=1)]
-CRITERIA = ("affordability", "coverage", "network", "underwriting", "insurer_quality",
-            "process_ease", "terms_clarity")
+CRITERIA = (
+    "affordability",
+    "coverage",
+    "network",
+    "underwriting",
+    "insurer_quality",
+    "process_ease",
+    "terms_clarity",
+)
 
 
 class Model(BaseModel):

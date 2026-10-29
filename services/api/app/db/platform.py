@@ -1,6 +1,17 @@
 """Authentication, integration and governance records used by the complete prototype."""
+
 from datetime import datetime
-from sqlalchemy import JSON, CheckConstraint, DateTime, ForeignKey, String, Text, UniqueConstraint, Uuid, Index
+from sqlalchemy import (
+    JSON,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+    Index,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.models import Base, SecretJSON, stamp, uid
@@ -95,8 +106,13 @@ class ModelApproval(Base):
     at: Mapped[str] = mapped_column(String(40), default=stamp)
 
 
-Index("engine_one_champion", EngineModel.status, unique=True,
-      postgresql_where=EngineModel.status == "champion", sqlite_where=EngineModel.status == "champion")
+Index(
+    "engine_one_champion",
+    EngineModel.status,
+    unique=True,
+    postgresql_where=EngineModel.status == "champion",
+    sqlite_where=EngineModel.status == "champion",
+)
 
 
 class GovernanceEvent(Base):
