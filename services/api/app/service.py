@@ -144,6 +144,10 @@ def act(db, case_id, action, user, session, body):
         save_snapshot(db, case.id, "pack", pack)
         save_snapshot(db, case.id, "selection", {"selected": body["selected"], "survey": body["survey"],
                                                 "ranking_id": ranking.body["id"]})
+        if any(value == "down" for value in body["survey"]["thumbs"].values()):
+            from app.db.platform import EdgeCase
+            db.add(EdgeCase(case_id=case.id, selection_id=latest(db, case.id, "selection").id,
+                            body={"ranking_id": ranking.body["id"], "survey": body["survey"], "summary": "Disputed ranking feedback requires human review"}))
         transition(db, case, [State.SUITABILITY_DRAFT], State.AWAIT_APPROVAL, "pack_drafted", "agent:4")
         audit(db, case.id, "selection_submitted", actor, {"pack_hash": pack["pack_hash"]})
     elif action == "request-changes":
@@ -223,8 +227,9 @@ def process_due_jobs(db):
         dnr = latest(db, case.id, "dnr").body
         transition(db, case, [State.QUOTES_PENDING], State.QUOTES_COLLECTED, "quotes_collected", "agent:2")
         transition(db, case, [State.QUOTES_COLLECTED], State.RANKING, "ranking_started", "system")
-        ranking = invoke("ranking", {"dnr": dnr, "quotes": replies["quotes"], "id": uid(),
-                                     "tax_rate": settings().ipt_rate})
+        from app.shadow import rank_with_models
+        ranking = rank_with_models(db, {"dnr": dnr, "quotes": replies["quotes"], "id": uid(),
+                                       "case_id": case.id, "tax_rate": settings().ipt_rate})
         save_snapshot(db, case.id, "ranking", ranking)
         if ranking["needs_human"] or len(ranking["top"]) < 3:
             case.previous_state = State.BROKER_REVIEW

@@ -6,7 +6,7 @@ from app.auth import authenticate, identity, public_user, verify_password
 from app.auth import mfa, passkeys, sessions
 from app.auth.rate_limiter import check_limit
 from app.db.models import LoginSession, User, utcnow
-from app.db.platform import SessionDevice, TOTPSecret
+from app.db.platform import SessionDevice, TOTPSecret, RefreshToken
 from app.main import database
 from app.schemas import Model, DomainError
 
@@ -150,9 +150,13 @@ def refresh(request: Request, response: Response, db=Depends(database)):
 def logout(request: Request, response: Response, db=Depends(database)):
     user, current = identity(db, request)
     if request.url.path.endswith("logout-all"):
+        for token in db.scalars(select(RefreshToken).where(RefreshToken.user_id == user.id)):
+            token.revoked = True
         for session in db.scalars(select(LoginSession).where(LoginSession.user_id == user.id)):
             db.delete(session)
     else:
+        for token in db.scalars(select(RefreshToken).where(RefreshToken.session_id == current.id)):
+            token.revoked = True
         db.delete(current)
     for name in ("helm_session", "helm_refresh", "helm_csrf"):
         response.delete_cookie(name, path="/")
@@ -175,4 +179,6 @@ def revoke_device(session_id: str, request: Request, db=Depends(database)):
     if not row or row.user_id != user.id:
         raise DomainError("Device not found", 404)
     db.delete(row)
+    for token in db.scalars(select(RefreshToken).where(RefreshToken.session_id == row.id)):
+        token.revoked = True
     return {"ok": True}

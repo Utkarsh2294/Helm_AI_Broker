@@ -304,3 +304,5 @@ app.include_router(auth_router)
 from app.live import router as live_router  # noqa: E402
 app.router.routes = [route for route in app.router.routes if not getattr(route, "path", "").endswith("/stream")]
 app.include_router(live_router)
+from app.governance_api import router as governance_router  # noqa: E402
+app.include_router(governance_router)

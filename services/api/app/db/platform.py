@@ -1,6 +1,6 @@
 """Authentication, integration and governance records used by the complete prototype."""
 from datetime import datetime
-from sqlalchemy import JSON, CheckConstraint, DateTime, ForeignKey, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import JSON, CheckConstraint, DateTime, ForeignKey, String, Text, UniqueConstraint, Uuid, Index
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.models import Base, SecretJSON, stamp, uid
@@ -93,6 +93,19 @@ class ModelApproval(Base):
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
     role: Mapped[str] = mapped_column(String(30))
     at: Mapped[str] = mapped_column(String(40), default=stamp)
+
+
+Index("engine_one_champion", EngineModel.status, unique=True,
+      postgresql_where=EngineModel.status == "champion", sqlite_where=EngineModel.status == "champion")
+
+
+class GovernanceEvent(Base):
+    __tablename__ = "governance_events"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    actor: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    action: Mapped[str] = mapped_column(String(60))
+    body: Mapped[dict] = mapped_column(Json)
+    created_at: Mapped[str] = mapped_column(String(40), default=stamp)
 
 
 class ShadowEvaluation(Base):
