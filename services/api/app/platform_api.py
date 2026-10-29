@@ -1,0 +1,61 @@
+"""Infrastructure routes shared by the prototype phases."""
+import json
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import JSONResponse
+from redis import Redis
+from sqlalchemy import select, text
+from app.config import settings
+from app.core_client.client import verify_signature
+from app.db.models import Case
+from app.db.platform import InboxEvent
+from app.db.store import audit
+from app.main import database
+from app.schemas import DomainError, QuoteRequest
+from app import service
+
+router = APIRouter(prefix="/api/v1")
+
+
+@router.get("/health")
+def readiness(db=Depends(database)):
+    checks = {"db": "error", "redis": "error"}
+    try:
+        db.execute(text("SELECT 1"))
+        checks["db"] = "ok"
+    except Exception:
+        db.rollback()
+    try:
+        with Redis.from_url(settings().redis_url, socket_connect_timeout=1, socket_timeout=1) as redis:
+            checks["redis"] = "ok" if redis.ping() else "error"
+    except Exception:
+        pass
+    ok = all(value == "ok" for value in checks.values())
+    return JSONResponse({"status": "ok" if ok else "degraded", **checks}, status_code=200 if ok else 503)
+
+
+@router.post("/webhooks/core")
+async def receive_webhook(request: Request, db=Depends(database)):
+    raw = await request.body()
+    if len(raw) > 1_000_000:
+        raise DomainError("Webhook too large", 413)
+    verify_signature(raw, request.headers.get("X-Helm-Timestamp", ""), request.headers.get("X-Helm-Signature", ""))
+    try:
+        event = json.loads(raw)
+        event_id, event_type = str(event["id"]), str(event["type"])
+        if len(event_id) > 100:
+            raise ValueError("id too long")
+    except (ValueError, KeyError, TypeError):
+        raise DomainError("Invalid event envelope", 422)
+    if db.get(InboxEvent, event_id):
+        return {"received": True, "duplicate": True}
+    if event_type == "quote_request.submitted":
+        case = service.import_request(db, QuoteRequest.model_validate(event["request"]))
+    elif event_type.startswith("recommendation."):
+        case = db.scalar(select(Case).where(Case.id == event.get("case_id")))
+        if not case:
+            raise DomainError("Case not found", 404)
+        audit(db, case.id, event_type, "consumer", {"outcome": event_type.rsplit(".", 1)[-1]})
+    else:
+        raise DomainError("Unsupported webhook event", 422)
+    db.add(InboxEvent(id=event_id, event_type=event_type, body=event))
+    return {"received": True, "case_id": case.id}

@@ -280,3 +280,7 @@ def evaluate(request: Request, db=Depends(database)):
     if user.role not in ("authorised_broker", "compliance_officer"):
         raise DomainError("Only advisers and compliance may run an evaluation", 403)
     return service.learning_run(db)
+
+
+from app.platform_api import router as platform_router  # noqa: E402
+app.include_router(platform_router)
