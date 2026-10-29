@@ -55,7 +55,21 @@ async def request_boundary(request, call_next):
         # Browser requests require the configured same-origin proxy. CLI/worker requests use cookies+CSRF.
         if origin and origin != settings().allowed_origin:
             return JSONResponse({"detail": "Unapproved request origin"}, status_code=403)
+    if request.method not in ("GET", "HEAD", "OPTIONS"):
+        chunks, length = [], 0
+        async for chunk in request.stream():
+            length += len(chunk)
+            if length > 2_000_000:
+                return JSONResponse({"detail": "Request body too large"}, status_code=413)
+            chunks.append(chunk)
+        request._body = b"".join(chunks)
     response = await call_next(request)
+    from app.security import CSP
+    response.headers["Content-Security-Policy"] = CSP
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    if settings().cookie_secure:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "same-origin"
     response.headers["Cache-Control"] = "no-store"
@@ -64,6 +78,8 @@ async def request_boundary(request, call_next):
 
 @app.exception_handler(DomainError)
 async def domain_error(request, error):
+    from app.security import denied_gate
+    await asyncio.to_thread(denied_gate, SessionLocal, request, error.status)
     return JSONResponse(
         {
             "type": "about:blank",
