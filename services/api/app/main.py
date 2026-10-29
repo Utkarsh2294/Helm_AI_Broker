@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import StaleDataError
 
 from app.auth import authenticate, identity, new_session, public_user, verify_password
+from app.agents.review import canonical_hash
 from app.agents.quotation import PARTNERS, Scenario
 from app.agents.runtime import AGENTS
 from app.config import settings
@@ -91,6 +92,10 @@ class Action(Model):
 class EditDNR(Model):
     dnr: DNR
     reason: str = Field(min_length=3, max_length=500)
+
+
+class SuitabilityEdit(Model):
+    text: str = Field(min_length=20, max_length=20000)
 
 
 # shortcut: per-process login throttle for a local demo; replace with shared Redis limits before live use.
@@ -202,6 +207,22 @@ def case_action(case_id: str, action: Literal["sign-off", "release", "selection"
     if action == "selection" and body.survey is None:
         raise DomainError("Selection requires the short survey", 422)
     return service.act(db, case_id, action, user, session, body.model_dump())
+
+
+@app.put("/api/v1/cases/{case_id}/suitability")
+def edit_suitability(case_id: str, body: SuitabilityEdit, request: Request, db=Depends(database)):
+    user, _ = identity(db, request)
+    service.require_broker(user)
+    case = service.get_case(db, case_id)
+    if case.state != State.AWAIT_APPROVAL:
+        raise DomainError("Only a draft awaiting approval can be edited")
+    previous = latest(db, case_id, "pack").body
+    revised = {k: v for k, v in previous.items() if k != "pack_hash"}
+    revised["suitability_final"] = body.text.strip()
+    revised["pack_hash"] = canonical_hash(revised)
+    save_snapshot(db, case_id, "pack", revised)
+    audit(db, case_id, "suitability_edited", f"broker:{user.id}", {"pack_hash": revised["pack_hash"]})
+    return service.detail(db, case)
 
 
 @app.get("/api/v1/cases/{case_id}/evidence")
