@@ -8,7 +8,7 @@ export default function useSSE(caseId, onEvent) {
     const seen = new Set(); setEvents([]);
     function append(items) {
       const fresh = items.filter(event => { if (seen.has(event.seq)) return false; seen.add(event.seq); cursor = Math.max(cursor, event.seq); return true; });
-      if (fresh.length) { setEvents(previous => [...previous, ...fresh]); fresh.forEach(event => onEvent?.(event)); }
+      if (fresh.length) { setEvents(previous => [...previous, ...fresh]); onEvent?.(fresh.at(-1)); }
     }
     function connect() {
       if (stopped) return;

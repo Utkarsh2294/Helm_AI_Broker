@@ -3,6 +3,7 @@ import { ArrowRight, ArrowUpRight, Search, SlidersHorizontal, Plus, Users, Clipb
 import { api, label } from './api';
 import CasePanel from './case-panel';
 import CommandPalette from './components/CommandPalette';
+import QuickLook from './components/QuickLook';
 
 const icons = [FileSearch, Send, ChartNoAxesCombined, BookOpenCheck, BrainCircuit];
 const names = ['Research & fact-find', 'Partner quotations', 'Policy ranking', 'Review & compliance', 'Learning & insights'];
@@ -19,6 +20,7 @@ export default function Workspace({ page, user, setPage }) {
   const [query, setQuery] = useState(''), [filter, setFilter] = useState(''), [selected, setSelected] = useState(null);
   const [creating, setCreating] = useState(false), [partners, setPartners] = useState([]), [models, setModels] = useState([]);
   const [evaluating, setEvaluating] = useState(false), [auditCases, setAuditCases] = useState([]);
+  const [quick, setQuick] = useState(null);
   const refresh = useCallback(async () => {
     try { setCases(await api('/cases')); setError(''); } catch (e) { setError(e.message); }
     finally { setLoading(false); }
@@ -71,6 +73,7 @@ export default function Workspace({ page, user, setPage }) {
     {page === 'learning' && <><div className="learning-summary"><BrainCircuit size={32} strokeWidth={1.2}/><div><h2>Learn carefully. Improve deliberately.</h2><p>At least 30 comparisons across three cases are needed. Disputed selections go to human review. Changes require compliance and lead-broker approval, then shadow evaluation.</p></div></div>{!models.length ? <div className="empty-state surface"><ChartNoAxesCombined size={32}/><h2>Good learning starts with evidence.</h2><p>Review cases and share feedback, then run an evaluation.</p></div> : <div className="model-list">{models.map(m => <article className="surface model-report" key={m.id}><div className="section-header"><h3>{m.status === 'proposed' ? 'Model change proposal' : 'More feedback needed'}</h3><span className="subtle-badge">{new Date(m.created_at).toLocaleDateString('en-GB')}</span></div><p className="muted">{m.comparison_count} comparisons · {m.disputed.length} disputed selections · No weights automatically applied</p><div className="weight-bars">{Object.entries(m.weights).map(([name, w]) => <div key={name}><span>{label(name)}</span><div className="bar-track"><div style={{ width: `${w * 100}%` }}/></div><strong>{(w * 100).toFixed(1)}%</strong></div>)}</div>{m.champion_metrics && <p className="muted">Held-out NDCG@3: {m.champion_metrics.ndcg3.toFixed(3)} → {m.challenger_metrics.ndcg3.toFixed(3)}</p>}<p className="footnote"><ShieldCheck size={14}/> Activation is intentionally unavailable in this demo.</p></article>)}</div>}</>}
     {page === 'audit' && <section className="surface"><div className="section-header"><h3>Case activity</h3><button className="text-button" onClick={() => Promise.all(cases.map(c => api(`/cases/${c.id}`))).then(setAuditCases).catch(e => setError(e.message))}><RefreshCw size={14}/>Refresh</button></div>{auditCases.flatMap(c => c.events.map(e => ({ ...e, case: c }))).sort((a, b) => b.created_at.localeCompare(a.created_at)).map(e => <button className="audit-row" key={`${e.case.id}-${e.seq}`} onClick={() => setSelected(e.case.id)}><span className="audit-marker"><CheckCheck size={15}/></span><div><strong>{label(e.type)}</strong><span>{e.case.name} · {e.actor.startsWith('agent') ? label(e.actor.replace(':', ' ')) : e.actor.startsWith('broker') ? 'Broker' : 'System'}</span></div><time>{new Date(e.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</time><ChevronRight size={15}/></button>)}{!auditCases.length && <div className="empty-state"><History size={25}/><p>Loading activity…</p></div>}</section>}
     <CommandPalette cases={cases} onCase={setSelected} onPage={setPage}/>
+    {quick && <QuickLook item={quick} onClose={() => setQuick(null)} onOpen={id => { setQuick(null); setSelected(id); }}/>}<button className="sr-only" onClick={() => cases[0] && setQuick(cases[0])} onKeyDown={e => { if (e.key === ' ') { e.preventDefault(); cases[0] && setQuick(cases[0]); } }}>Quick look first case</button>
     {selected && <CasePanel id={selected} user={user} onClose={() => { setSelected(null); refresh(); }}/>}<span className="sr-only" aria-live="polite">{creating ? 'Creating a demo request' : ''}</span>
   </>;
 }
