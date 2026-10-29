@@ -23,6 +23,7 @@ def workspace(tmp_path):
             fca_irn="TEST-IRN",
         )
         db.add(user)
+        db.add(User(email="owner@test.demo", name="Compliance", password_hash=user.password_hash, role="compliance_officer"))
         db.flush()
         session = LoginSession(
             id="s", user_id=user.id, csrf="c", expires_at=(utcnow() + timedelta(hours=1)).isoformat()

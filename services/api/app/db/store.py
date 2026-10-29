@@ -6,16 +6,20 @@ import logging
 from app.agents.review import canonical_hash
 from app.config import settings
 from app.db.models import Activity, Base, Snapshot, stamp
+from datetime import datetime, timedelta
+from sqlalchemy import func
 
 
 def make_engine(url=None):
     url = url or settings().database_url
     engine = create_engine(url, connect_args={"check_same_thread": False} if url.startswith("sqlite") else {})
     if url.startswith("sqlite"):
+
         @event.listens_for(engine, "connect")
         def pragmas(connection, _):
             connection.execute("PRAGMA foreign_keys=ON")
             connection.execute("PRAGMA busy_timeout=10000")
+
     return engine
 
 
@@ -28,23 +32,51 @@ def create_tables():
 
 
 def latest(db, case_id, kind):
-    return db.scalar(select(Snapshot).where(Snapshot.case_id == case_id, Snapshot.kind == kind)
-                     .order_by(Snapshot.version.desc()).limit(1))
+    return db.scalar(
+        select(Snapshot)
+        .where(Snapshot.case_id == case_id, Snapshot.kind == kind)
+        .order_by(Snapshot.version.desc())
+        .limit(1)
+    )
 
 
 def save_snapshot(db, case_id, kind, body):
     previous = latest(db, case_id, kind)
-    snapshot = Snapshot(case_id=case_id, kind=kind, version=previous.version + 1 if previous else 1,
-                        body=body, body_hash=canonical_hash(body))
+    snapshot = Snapshot(
+        case_id=case_id,
+        kind=kind,
+        version=previous.version + 1 if previous else 1,
+        body=body,
+        body_hash=canonical_hash(body),
+        created_at=next_case_time(db, case_id),
+    )
     db.add(snapshot)
     db.flush()
     return snapshot
 
 
+def next_case_time(db, case_id):
+    # Wall-clock timestamps can repeat on Windows. Preserve ordering across processes/records.
+    now = stamp()
+    previous = max(db.scalar(select(func.max(Activity.created_at)).where(Activity.case_id == case_id)) or "",
+                   db.scalar(select(func.max(Snapshot.created_at)).where(Snapshot.case_id == case_id)) or "")
+    if previous and previous >= now:
+        return (datetime.fromisoformat(previous) + timedelta(microseconds=1)).isoformat()
+    return now
+
+
 def audit(db, case_id, event_type, actor, payload=None):
-    previous = db.scalar(select(Activity).where(Activity.case_id == case_id).order_by(Activity.seq.desc()).limit(1))
-    body = {"case_id": case_id, "seq": previous.seq + 1 if previous else 1,
-            "actor": actor, "type": event_type, "payload": payload or {}, "created_at": stamp()}
+    previous = db.scalar(
+        select(Activity).where(Activity.case_id == case_id).order_by(Activity.seq.desc()).limit(1)
+    )
+    body = {
+        "case_id": case_id,
+        "seq": previous.seq + 1 if previous else 1,
+        "actor": actor,
+        "type": event_type,
+        "payload": payload or {},
+        "created_at": next_case_time(db, case_id),
+    }
     prev_hash = previous.hash if previous else "0" * 64
     row = Activity(**body, prev_hash=prev_hash, hash=canonical_hash({"prev_hash": prev_hash, **body}))
     db.add(row)
@@ -58,11 +90,15 @@ def publish_committed_events(db):
     events = db.info.pop("events_to_publish", [])
     if events:
         try:
-            with Redis.from_url(settings().redis_url, socket_connect_timeout=0.2, socket_timeout=0.2) as redis:
+            with Redis.from_url(
+                settings().redis_url, socket_connect_timeout=0.2, socket_timeout=0.2
+            ) as redis:
                 for item in events:
                     redis.publish(f"case:{item['case_id']}:events", json.dumps(item))
         except Exception:
-            logging.getLogger("helm.audit").warning("event_publication_deferred", extra={"count": len(events)})
+            logging.getLogger("helm.audit").warning(
+                "event_publication_deferred", extra={"count": len(events)}
+            )
 
 
 @event.listens_for(Session, "after_rollback")
@@ -74,7 +110,11 @@ def verify_chain(events):
     previous = "0" * 64
     for i, row in enumerate(events, 1):
         body = {k: getattr(row, k) for k in ("case_id", "seq", "actor", "type", "payload", "created_at")}
-        if row.seq != i or row.prev_hash != previous or row.hash != canonical_hash({"prev_hash": previous, **body}):
+        if (
+            row.seq != i
+            or row.prev_hash != previous
+            or row.hash != canonical_hash({"prev_hash": previous, **body})
+        ):
             return False
         previous = row.hash
     return True
