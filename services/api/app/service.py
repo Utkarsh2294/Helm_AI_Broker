@@ -1,5 +1,6 @@
 """Transactional control plane. Agents cannot approve, publish or mutate state."""
 from datetime import datetime, timedelta
+import asyncio
 from sqlalchemy import select
 
 from app.agents.quotation import build_rfq
@@ -120,7 +121,9 @@ def act(db, case_id, action, user, session, body):
         db.add(Approval(case_id=case.id, gate="G1", user_id=user.id, payload_hash=snapshot.body_hash))
         save_snapshot(db, case.id, "rfq", rfq.model_dump(mode="json"))
         db.add(Job(case_id=case.id, kind="collect_quotes", due_at=(utcnow() + timedelta(
-            seconds=settings().demo_delay_seconds)).isoformat(), body={"scenario": body.get("scenario", "happy")}))
+            seconds=settings().demo_delay_seconds if settings().clock_mode == "demo" else 21600)).isoformat(), body={"scenario": body.get("scenario", "happy")}))
+        for number in (1, 2):
+            db.add(Job(case_id=case.id, kind="chase", due_at=(utcnow() + timedelta(seconds=number * (2 if settings().clock_mode == "demo" else 7200))).isoformat(), body={"chase_number": number}))
         transition(db, case, [State.AWAIT_BROKER_RELEASE], State.QUOTES_PENDING, "rfq_released", actor)
     elif action == "selection":
         if case.state != State.BROKER_REVIEW:
@@ -173,14 +176,20 @@ def process_due_jobs(db):
         if case.state != State.QUOTES_PENDING:
             job.status = "cancelled"
             continue
+        if job.kind == "chase":
+            audit(db, case.id, "partner_chase", "agent:2", {"chase_number": job.body["chase_number"]})
+            job.status = "completed"
+            continue
         rfq = latest(db, case.id, "rfq").body
-        replies = invoke("quotation", {"rfq": rfq, **job.body, "tax_rate": settings().ipt_rate})
+        from app.partners import PartnerGateway
+        from app.agents.quotation import RFQ
+        replies = asyncio.run(PartnerGateway().collect(RFQ.model_validate(rfq), job.body["scenario"]))
         save_snapshot(db, case.id, "quotes", replies)
         special = [p for p in replies["partners"] if p["state"] in ("clarification", "referred")]
         if special:
             case.previous_state = State.QUOTES_PENDING
-            transition(db, case, [State.QUOTES_PENDING], State.PAUSED_NEEDS_HUMAN, "partner_requires_human",
-                       "agent:2", {"reason": special[0]["state"]})
+            transition(db, case, [State.QUOTES_PENDING], State.UW_REFERRAL if special[0]["state"] == "referred" else State.PAUSED_NEEDS_HUMAN, "partner_requires_human",
+                       "agent:2", {"reason": "G3" if special[0]["state"] == "referred" else "H5"})
             job.status = "needs_human"
             continue
         dnr = latest(db, case.id, "dnr").body
@@ -192,7 +201,7 @@ def process_due_jobs(db):
         if ranking["needs_human"] or len(ranking["top"]) < 3:
             case.previous_state = State.BROKER_REVIEW
             transition(db, case, [State.RANKING], State.PAUSED_NEEDS_HUMAN, "ranking_requires_human",
-                       "agent:3", {"reason": "quote_validation" if ranking["needs_human"] else "insufficient_quotes"})
+                       "agent:3", {"reason": "H3" if ranking["needs_human"] else "insufficient_quotes"})
         else:
             transition(db, case, [State.RANKING], State.BROKER_REVIEW, "ranking_completed", "agent:3")
         job.status = "completed"

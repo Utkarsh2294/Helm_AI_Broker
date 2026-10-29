@@ -11,7 +11,7 @@ import jwt
 from app.agents.quotation import PARTNERS, RFQ, simulate_responses, premium_with_tax
 from app.config import settings
 from app.core_client.client import encode_event, sign
-from app.db.models import stamp, utcnow
+from app.db.models import utcnow
 from app.schemas import CoverageNeed, Needs, QuoteRequest
 
 app = FastAPI(title="Helm fictional Core", version="1.0.0")
@@ -25,18 +25,8 @@ rfqs, recommendations, idempotency, magic_tokens = {}, {}, {}, {}
 
 def catalogue():
     rfq = RFQ(request_id="catalogue", dnr_version=1, deadline=utcnow(), partners=[p["id"] for p in PARTNERS], body={})
-    base, _ = simulate_responses(rfq)
-    plans = []
-    for plan in base:
-        for variant in range(3):
-            copy = plan.model_copy(deep=True)
-            copy.id += f"-{variant}"
-            copy.name += f" {['Standard', 'Select', 'Complete'][variant]}"
-            copy.basePremiumPence += variant * 6500
-            copy.annualPremiumPence = premium_with_tax(copy.basePremiumPence, settings().ipt_standard_rate)
-            copy.excessPence = [0, 25000, 50000][variant]
-            plans.append(copy.model_dump())
-    return plans
+    base, _ = simulate_responses(rfq, tax_rate=settings().ipt_standard_rate)
+    return [plan.model_dump() for plan in base]
 
 
 def problem(message, status=400):

@@ -9,7 +9,7 @@ Scenario = Literal["happy", "decline", "late", "arithmetic", "medical", "duplica
 PARTNERS = [
     {"id": key, "name": name, "fca_status": "authorised", "toba_status": "active", "fictional": True}
     for key, name in [("northgate", "Northgate Health"), ("cedar", "Cedar Mutual"),
-                      ("vale", "Vale Assurance"), ("haven", "Haven Medical"), ("alder", "Alder Health")]
+                      ("vale", "ClearPath Insurance"), ("haven", "MediFirst UK"), ("alder", "PremiumCare")]
 ]
 
 
@@ -60,16 +60,17 @@ def simulate_responses(rfq: RFQ, scenario: Scenario = "happy",
                       "injection_blocked": scenario == "injection" and i == 4})
         if state != "quoted":
             continue
-        for j in range(2):
-            base = 78000 + i * 13500 + j * 16000
-            plan_id = f"{partner['id']}-{'plus' if j else 'essential'}"
+        for j in range(6):
+            tier = ["Essential", "Plus", "Select", "Flex", "Complete", "Premier"][j]
+            base = 70000 + i * 12000 + j * 7000
+            plan_id = f"{partner['id']}-{tier.lower()}"
             plans.append(Plan(
-                id=plan_id, insurerId=partner["id"], name=f"{partner['name']} {'Plus' if j else 'Essential'}",
+                id=plan_id, insurerId=partner["id"], name=f"{partner['name']} {tier}",
                 basePremiumPence=base,
                 annualPremiumPence=premium_with_tax(base, tax_rate) + (1000 if scenario == "arithmetic" and i == 0 else 0),
-                coverage={"cancer": 3, "mental": 2 + j, "outpatient": 2 + j},
-                excessPence=25000 if j == 0 else 10000, hospitalListLevel=2 + j,
-                preferredHospitalShare=0.65 + j * 0.25, docsRequired=5 if i == 3 else 3,
+                coverage={"cancer": 3, "mental": 2 + j % 2, "outpatient": 2 + j % 2},
+                excessPence=[0,10000,25000,50000,100000,25000][j], hospitalListLevel=2 + j % 2,
+                preferredHospitalShare=0.65 + (j % 2) * 0.25, docsRequired=5 if i == 3 else 3,
                 docsUnavailable=3 if i == 3 else 0, turnaroundDays=2 + i,
                 commissionPct=10 + i * 3, ipidUrl=f"https://example.test/ipid/{plan_id}",
                 provenance={"basePremiumPence": f"demo:{rfq.request_id}:{plan_id}#premium",

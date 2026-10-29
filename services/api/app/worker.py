@@ -8,9 +8,14 @@ from sqlalchemy import select
 from app.db.models import ModelProposal, utcnow
 from app.db.store import SessionLocal
 from app.service import learning_run, process_due_jobs
+import asyncio
 
 
 async def poll_jobs(ctx):
+    await asyncio.to_thread(run_due_jobs)
+
+
+def run_due_jobs():
     with SessionLocal() as db:
         process_due_jobs(db)
         db.commit()
