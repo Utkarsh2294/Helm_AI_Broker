@@ -25,13 +25,18 @@ def login(client, email="broker@helm.demo"):
 
 def test_auth_csrf_origin_and_logout(client):
     assert client.get("/api/v1/cases").status_code == 401
+
+
     assert client.post("/api/v1/auth/password", json={"password": "wrong"}).status_code == 401
     headers = login(client)
     cases = client.get("/api/v1/cases").json()
     case_id = cases[0]["id"]
     endpoint = f"/api/v1/cases/{case_id}/sign-off"
     assert client.post(endpoint, json={}).status_code == 403
-    assert client.post(endpoint, json={}, headers={**headers, "Origin": "https://attacker.example"}).status_code == 403
+    assert (
+        client.post(endpoint, json={}, headers={**headers, "Origin": "https://attacker.example"}).status_code
+        == 403
+    )
     assert client.post(endpoint, json={"actor": "broker:pretend"}, headers=headers).status_code == 422
     assert client.post(endpoint, json={"dnr_acknowledged": True}, headers=headers).status_code == 200
     assert client.post("/api/v1/auth/logout", headers=headers).status_code == 200
@@ -50,3 +55,11 @@ def test_assistant_cannot_cross_gate_and_import_is_idempotent(client):
     assert first.status_code == second.status_code == 200
     assert first.json()["id"] == second.json()["id"]
     assert len(first.json()["events"]) == len(second.json()["events"])
+
+
+def test_specific_ranking_route_precedes_generic_case_actions(client):
+    headers = login(client)
+    case_id = client.get('/api/v1/cases').json()[0]['id']
+    response = client.post(f'/api/v1/cases/{case_id}/ranking', json={}, headers=headers)
+    assert response.status_code == 409
+    assert 'awaiting broker review' in response.json()['detail']

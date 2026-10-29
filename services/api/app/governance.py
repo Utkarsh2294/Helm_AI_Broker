@@ -39,6 +39,8 @@ def approval(db, proposal_id, stage, user):
         raise DomainError("Model change request not found", 404)
     if not proposal.body.get("eligible_for_shadow"):
         raise DomainError("Held-out results must improve before G5 approval")
+    if proposal.body.get("champion_version", champion(db).version) != champion(db).version:
+        raise DomainError("Champion changed; rerun evaluation before G5 approval")
     rows = db.scalars(
         select(ModelApproval).where(ModelApproval.proposal_id == proposal_id, ModelApproval.stage == stage)
     ).all()

@@ -56,6 +56,7 @@ def execute_step(kind, payload):
             DNR.model_validate(payload["dnr"]),
             [Plan.model_validate(p) for p in payload["quotes"]],
             payload["id"],
+            learned=payload.get("learned"),
             tax_rate=Decimal(payload.get("tax_rate", "0.12")),
         )
     if kind == "review":
@@ -68,7 +69,7 @@ def execute_step(kind, payload):
             payload.get("suitability"),
         )
     if kind == "learning":
-        return propose_improvement(payload["records"])
+        return propose_improvement(payload["records"], payload.get("champion"), payload.get("min_comparisons", 30))
     raise ValueError("Unknown agent")
 
 

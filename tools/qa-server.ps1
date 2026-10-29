@@ -1,4 +1,4 @@
-param([switch]$Stop)
+param([switch]$Stop, [switch]$ReuseDatabase)
 $ErrorActionPreference = 'Stop'
 $qaRoot = Split-Path -Parent $PSScriptRoot
 $qaDirectory = Join-Path $qaRoot '.runtime\qa'
@@ -21,7 +21,9 @@ if ($Stop) {
     exit
 }
 $qaPython = Join-Path $env:LOCALAPPDATA 'HelmBroker\venv\Scripts\python.exe'
-$env:HELM_DATABASE_URL = 'sqlite:///' + (Join-Path $qaDirectory ('browser-' + (Get-Date -Format 'yyyyMMddHHmmssfff') + '.db')).Replace('\', '/')
+$qaDatabase = if ($ReuseDatabase) { (Get-ChildItem -LiteralPath $qaDirectory -Filter 'browser-*.db' | Sort-Object Name -Descending | Select-Object -First 1).FullName } else { Join-Path $qaDirectory ('browser-' + (Get-Date -Format 'yyyyMMddHHmmssfff') + '.db') }
+if (-not $qaDatabase) { throw 'No QA fixture database available' }
+$env:HELM_DATABASE_URL = 'sqlite:///' + $qaDatabase.Replace('\', '/')
 $env:HELM_REDIS_URL = 'redis://127.0.0.1:56389/1'
 $env:HELM_ALLOWED_ORIGIN = 'http://127.0.0.1:5182'
 # QA only: shared login traffic deliberately exceeds the live five-attempt policy.

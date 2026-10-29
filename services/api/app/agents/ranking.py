@@ -4,6 +4,7 @@ import hashlib
 import json
 from decimal import Decimal
 from app.engine.ranking import rank_plans
+from app.engine.ranking import user_weights
 from app.schemas import DNR, Plan
 from app.agents.guards import consumer_draft, grounded
 
@@ -13,6 +14,7 @@ def rank_quotes(
 ) -> dict:
     inputs = {"dnr": dnr.model_dump(), "quotes": [q.model_dump() for q in sorted(quotes, key=lambda q: q.id)]}
     result = rank_plans(quotes, dnr.needs, ranking_id, learned, tax_rate)
+    result["base_weights"] = user_weights(dnr.needs.priorities)
     for row in result["top"]:
         row["consumer_draft"] = consumer_draft(row["plan"])
         row["explanation_grounded"] = grounded(row["explanation"], row)

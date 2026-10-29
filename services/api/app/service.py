@@ -421,7 +421,7 @@ def process_due_jobs(db):
 def learning_run(db):
     records = []
     consumed = set()
-    for proposal in db.scalars(select(ModelProposal).where(ModelProposal.status == "proposed")):
+    for proposal in db.scalars(select(ModelProposal).where(ModelProposal.status.in_(["proposed", "no_improvement", "shadow_mode", "promoted"]))):
         consumed.update(proposal.body.get("selection_ids", []))
     # Keep the latest preference per case so repeated draft edits do not multiply the evidence.
     selections = {}
@@ -441,7 +441,11 @@ def learning_run(db):
             records.append(
                 {"id": selection.id, "case_id": selection.case_id, "ranking": ranking.body, **selection.body}
             )
-    result = invoke("learning", {"records": records})
+    from app.governance import champion
+    current = champion(db)
+    result = invoke("learning", {"records": records, "champion": current.weights if current.version != "user-v1" else None,
+                                  "min_comparisons": settings().min_new_comparisons})
+    result["champion_version"] = current.version
     result["selection_ids"] = [record["id"] for record in records]
     proposal = ModelProposal(body=result, status=result["status"])
     db.add(proposal)

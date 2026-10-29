@@ -267,6 +267,10 @@ def edit_dnr(case_id: str, body: EditDNR, request: Request, db=Depends(database)
     return safe_case(service.detail(db, case), user)
 
 
+from app.case_operations import router as case_operations_router  # noqa: E402
+app.include_router(case_operations_router)
+
+
 @app.post("/api/v1/cases/{case_id}/{action}")
 def case_action(
     case_id: str,
@@ -404,6 +408,3 @@ instrument(app)
 from app.case_queries import router as case_queries_router  # noqa: E402
 app.router.routes = [r for r in app.router.routes if not (getattr(r, "path", "") == "/api/v1/cases" and "GET" in getattr(r, "methods", set()))]
 app.include_router(case_queries_router)
-from app.case_operations import router as case_operations_router  # noqa: E402
-app.include_router(case_operations_router)
-app.router.routes.sort(key=lambda r: 0 if getattr(r, "path", "") == "/api/v1/cases/{case_id}/ranking" else 1)

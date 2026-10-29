@@ -36,9 +36,12 @@ def preference_pairs(records: list[dict]) -> tuple[list[dict], list[str]]:
 def metrics(records: list[dict], weights: dict) -> dict:
     agreements, ndcgs = [], []
     for record in records:
+        from app.engine.ranking import user_weights
+        base = record["ranking"].get("base_weights", record["ranking"].get("weights", user_weights([])))
+        effective = combine_weights(base, weights) if weights else base
         ordered = sorted(
             record["ranking"]["top"],
-            key=lambda row: (-aggregate(row["utilities"], weights)[0], row["plan"]["id"]),
+            key=lambda row: (-aggregate(row["utilities"], effective)[0], row["plan"]["id"]),
         )
         predicted = [r["plan"]["id"] for r in ordered[:3]]
         selected = record["selected"]
@@ -55,6 +58,7 @@ def metrics(records: list[dict], weights: dict) -> dict:
 
 
 def propose_improvement(records: list[dict], champion: dict | None = None, min_comparisons=30) -> dict:
+    active = champion
     champion = champion or dict.fromkeys(CRITERIA, 1 / len(CRITERIA))
     pairs, disputed = preference_pairs(records)
     case_ids = sorted({p["case_id"] for p in pairs})
@@ -71,7 +75,7 @@ def propose_improvement(records: list[dict], champion: dict | None = None, min_c
     fit = fit_bradley_terry(training, champion)
     proposed = combine_weights(champion, fit["weights"])
     evaluation = [r for r in records if r["case_id"] in holdout and r["id"] not in disputed]
-    old, new = metrics(evaluation, champion), metrics(evaluation, proposed)
+    old, new = metrics(evaluation, active), metrics(evaluation, proposed)
     improved = new["ndcg3"] > old["ndcg3"] + 1e-12 and new["top3_agreement"] >= old["top3_agreement"]
     return {
         **base,

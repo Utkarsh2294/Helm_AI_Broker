@@ -23,15 +23,16 @@ async def measure(base_url, output, fixture_cases):
         auth.raise_for_status()
         client.headers['X-CSRF-Token'] = auth.json()['csrf']
         existing = (await client.get('/api/v1/cases')).json()
+        run_id = str(time.time_ns())
         semaphore = asyncio.Semaphore(8)
-        async def create(number):
+        async def create(number, unique=False):
             async with semaphore:
-                response = await client.post('/api/v1/demo/requests', json={"id": f"perf-{number}", "name": f"Fictional performance {number:04d}", "needs": {"coverage": {"cancer": {"level": 3, "must_have": True}}}})
+                response = await client.post('/api/v1/demo/requests', json={"id": f"perf-{number}-{run_id}" if unique else f"perf-{number}", "name": f"Fictional performance {number:04d}", "needs": {"coverage": {"cancer": {"level": 3, "must_have": True}}}})
                 response.raise_for_status()
                 return response.json()
         needed = max(0, fixture_cases - len(existing))
         await asyncio.gather(*(create(i) for i in range(needed)))
-        first = await create(100000)
+        first = await create(100000, True)
         case_id = first['id']
         async def timed_get(path):
             start = time.perf_counter()
@@ -61,7 +62,7 @@ async def measure(base_url, output, fixture_cases):
         assigned = await client.post(f'/api/v1/cases/{case_id}/assign', json={})
         assigned.raise_for_status()
         delivery_times = await asyncio.wait_for(asyncio.gather(*tasks), 45)
-        rank_cases = await asyncio.gather(*(create(200000 + i) for i in range(20)))
+        rank_cases = await asyncio.gather(*(create(200000 + i, True) for i in range(20)))
         for case in rank_cases:
             response = await client.post(f"/api/v1/cases/{case['id']}/sign-off", json={"dnr_acknowledged": True})
             response.raise_for_status()
