@@ -1,4 +1,4 @@
-"""Local demo authentication. Approval step-up is independent of the agent runtime."""
+"""Session authentication shared by the broker API and MFA routes."""
 import hashlib
 import secrets
 from datetime import datetime, timedelta
