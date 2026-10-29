@@ -3,6 +3,7 @@
 import base64
 import json
 import os
+from functools import lru_cache
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -27,7 +28,9 @@ def stamp():
     return utcnow().isoformat()
 
 
+@lru_cache(maxsize=1)
 def encryption_key():
+    # Configuration is process-scoped; rotation requires coordinated worker restart.
     key = settings().encryption_key
     if key:
         return base64.urlsafe_b64decode(key)

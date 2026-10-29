@@ -40,4 +40,9 @@ try {
     $qaApi.Id | Set-Content "$qaDirectory\api.pid"
     $qaWeb.Id | Set-Content "$qaDirectory\web.pid"
 } finally { Pop-Location }
+for ($qaAttempt = 0; $qaAttempt -lt 30; $qaAttempt++) {
+    try { $null = Invoke-RestMethod 'http://127.0.0.1:8012/health' -TimeoutSec 2; break }
+    catch { Start-Sleep -Seconds 1 }
+}
+if ($qaAttempt -eq 30) { throw 'QA API did not become ready' }
 Write-Output 'Isolated QA: http://127.0.0.1:5182 (SQLite fixture database and Redis DB 1)'

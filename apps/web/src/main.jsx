@@ -1,10 +1,11 @@
+import PasskeyOrigin, { passkeysAvailable } from './components/PasskeyOrigin';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useSessionStore } from './session-store';
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1 } } });
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ArrowRight, ShieldCheck, LockKeyhole, LogOut, LayoutDashboard, Workflow, Building2, ChartNoAxesCombined, History, Compass, HelpCircle, X } from 'lucide-react';
-import { api } from './api';
+import { api, label } from './api';
 import './styles.css';
 import './design/tokens.css';
 import './design/semantic.css';
@@ -44,7 +45,7 @@ function Login({ onLogin }) {
     </div><footer><ShieldCheck size={16}/> A dedicated workspace for trusted advice.</footer>
   </section><section className="login-form-wrap"><div className="login-form"><span className="pill"><span className="status-dot"/> BROKER WORKSPACE</span>
     <h2>Welcome back.</h2><p className="muted">Your next great recommendation starts here.</p>
-    <motion.form variants={staggerChildren} initial="initial" animate="animate" onSubmit={submit}><motion.div variants={slideUp}><button type="button" className="button full" disabled={busy} onClick={async () => { setBusy(true); setError(''); try { const options = await api('/auth/passkey/options', { method: 'POST', body: {} }); const credential = await startAuthentication({ optionsJSON: options.options }); onLogin((await api('/auth/passkey/verify', { method: 'POST', body: { challenge_id: options.challenge_id, credential } })).user); } catch (e) { setError(e.name === 'NotAllowedError' ? 'Passkey sign-in was cancelled.' : e.message); } finally { setBusy(false); } }}><Fingerprint size={17}/>Continue with passkey</button></motion.div><label>Email address<input type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} required/></label>
+    <motion.form variants={staggerChildren} initial="initial" animate="animate" onSubmit={submit}><motion.div variants={slideUp}><button type="button" className="button full" disabled={busy || !passkeysAvailable()} onClick={async () => { setBusy(true); setError(''); try { const options = await api('/auth/passkey/options', { method: 'POST', body: {} }); const credential = await startAuthentication({ optionsJSON: options.options }); onLogin((await api('/auth/passkey/verify', { method: 'POST', body: { challenge_id: options.challenge_id, credential } })).user); } catch (e) { setError(e.name === 'NotAllowedError' ? 'Passkey sign-in was cancelled.' : e.message); } finally { setBusy(false); } }}><Fingerprint size={17}/>Continue with passkey</button><PasskeyOrigin/></motion.div><label>Email address<input type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} required/></label>
       <label>Password<input type="password" autoComplete="current-password" placeholder="Enter your password" value={password} onChange={e => setPassword(e.target.value)} required/></label>
       {challengeId && <label>{recovery ? 'Recovery code' : 'Authenticator code'}<input inputMode={recovery ? 'text' : 'numeric'} autoComplete="one-time-code" pattern={recovery ? '[A-Z0-9]{8,16}' : '[0-9]{6}'} value={code} onChange={e => setCode(e.target.value)} required autoFocus/></label>}
       {challengeId && <button type="button" className="text-button" onClick={() => { setRecovery(!recovery); setCode(''); }}>{recovery ? 'Use authenticator' : 'Use a recovery code'}</button>}{error && <p role="alert" className="error">{error}</p>}
@@ -79,7 +80,7 @@ function App() {
       <p className="nav-caption">YOUR WORKSPACE</p><nav aria-label="Main navigation">{navigation.map(([key, title, Icon]) => <button key={key} className={`nav-item ${page === key ? 'active' : ''}`} aria-current={page === key ? 'page' : undefined} onClick={() => setPage(key)}><Icon size={18}/>{title}{key === 'agents' && <span className="nav-count">5</span>}</button>)}</nav>
       <div className="sidebar-bottom"><div className="human-note"><ShieldCheck size={21}/><strong>Powered by intelligence.<br/>Guided by you.</strong><p>Every recommendation ends with a human decision.</p></div>
         <button className="nav-item" onClick={() => setGuide(true)}><HelpCircle size={18}/>Demo guide</button>
-        <div className="user-row"><span className="user-avatar">{user.name.split(' ').map(n => n[0]).join('')}</span><div>{user.name}<small>Authorised broker</small></div><button className="icon-button" aria-label="Sign out" title="Sign out" onClick={logout}><LogOut size={17}/></button></div>
+        <div className="user-row"><span className="user-avatar">{user.name.split(' ').map(n => n[0]).join('')}</span><div>{user.name}<small>{label(user.role)}</small></div><button className="icon-button" aria-label="Sign out" title="Sign out" onClick={logout}><LogOut size={17}/></button></div>
       </div>
     </aside><div className="main-wrap"><header className="topbar"><span>Helm advisory <span className="divider">/</span> <strong>{navigation.find(n => n[0] === page)[1]}</strong></span><div className="topbar-actions"><ThemeToggle/><span className="demo-badge"><span className="status-dot"/> Demo environment</span></div></header>
       {logoutError && <p role="alert" className="error">{logoutError}</p>}

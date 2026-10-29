@@ -3,6 +3,7 @@
 import asyncio
 import json
 import time
+from types import SimpleNamespace
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from redis.asyncio import Redis
@@ -18,6 +19,8 @@ router = APIRouter(prefix="/api/v1/cases")
 
 
 def event_dict(row):
+    if isinstance(row, dict):
+        row = SimpleNamespace(**row)
     return {
         "seq": row.seq,
         "case_id": row.case_id,
@@ -79,12 +82,28 @@ def stream(case_id: str, request: Request, after: int = 0, db=Depends(database))
             for event in await asyncio.to_thread(fetch_events, case_id, cursor, request):
                 cursor = event["seq"]
                 yield f"id: {cursor}\ndata: {json.dumps(event)}\n\n"
+            last_check = time.monotonic()
             while time.monotonic() - started < 60 and not await request.is_disconnected():
                 now = time.monotonic()
                 message = (
                     await pubsub.get_message(ignore_subscribe_messages=True, timeout=0.1) if pubsub else None
                 )
-                if message or now - last_check > (5 if pubsub else 0.1):
+                gap = False
+                if message:
+                    try:
+                        committed = json.loads(message["data"])
+                        if committed["case_id"] != case_id:
+                            continue
+                        sequence = int(committed["seq"])
+                        if sequence == cursor + 1:
+                            event = event_dict(committed)
+                            cursor = sequence
+                            yield f"id: {cursor}\ndata: {json.dumps(event)}\n\n"
+                        elif sequence > cursor:
+                            gap = True
+                    except (ValueError, TypeError, KeyError):
+                        gap = True
+                if gap or now - last_check > (5 if pubsub else 0.1):
                     last_check = now
                     try:
                         rows = await asyncio.to_thread(fetch_events, case_id, cursor, request)
