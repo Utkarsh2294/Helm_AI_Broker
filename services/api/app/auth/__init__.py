@@ -1,4 +1,5 @@
 """Session authentication shared by the broker API and MFA routes."""
+
 import hashlib
 import secrets
 from datetime import datetime, timedelta
@@ -38,8 +39,12 @@ DUMMY_HASH = hasher.hash(secrets.token_urlsafe(24))
 
 def new_session(db, user):
     token = secrets.token_urlsafe(32)
-    row = LoginSession(id=digest(token), user_id=user.id, csrf=secrets.token_urlsafe(32),
-                       expires_at=(utcnow() + timedelta(hours=settings().session_hours)).isoformat())
+    row = LoginSession(
+        id=digest(token),
+        user_id=user.id,
+        csrf=secrets.token_urlsafe(32),
+        expires_at=(utcnow() + timedelta(hours=settings().session_hours)).isoformat(),
+    )
     db.add(row)
     return row, token
 
@@ -58,5 +63,12 @@ def identity(db, request: Request):
 
 
 def public_user(user):
-    return {"id": user.id, "name": user.name, "email": user.email,
-            "role": user.role, "can_approve": user.can_approve}
+    return {
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "role": user.role,
+        "can_approve": user.can_approve,
+        "is_lead_broker": user.is_lead_broker,
+        "fca_irn": user.fca_irn,
+    }
