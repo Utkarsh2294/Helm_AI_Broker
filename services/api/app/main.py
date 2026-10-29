@@ -284,3 +284,6 @@ def evaluate(request: Request, db=Depends(database)):
 
 from app.platform_api import router as platform_router  # noqa: E402
 app.include_router(platform_router)
+from app.auth.router import router as auth_router  # noqa: E402
+app.router.routes = [route for route in app.router.routes if not getattr(route, "path", "").startswith("/api/v1/auth/")]
+app.include_router(auth_router)
