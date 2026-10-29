@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { X, ArrowRight, ShieldCheck, Check, Pause, Play, Download, Clock3, FileCheck2, AlertTriangle, ThumbsUp, ThumbsDown, ChevronDown, LockKeyhole, CheckCheck, Pencil, Save, UserCheck } from 'lucide-react';
 import { api, label, money } from './api';
 import { Status } from './workspace';
+import useSSE from './hooks/useSSE';
+import AgentPill from './components/AgentPill';
 
 export default function CasePanel({ id, user, onClose }) {
   const dialog = useRef(null);
@@ -12,6 +14,7 @@ export default function CasePanel({ id, user, onClose }) {
   const [password, setPassword] = useState(''), [suitability, setSuitability] = useState('');
   const [editing, setEditing] = useState(false), [budget, setBudget] = useState(''), [reason, setReason] = useState('');
   const broker = user.role === 'authorised_broker';
+  const liveEvents = useSSE(id, () => refresh());
   const refresh = useCallback(async () => {
     try { setCase(await api(`/cases/${id}`)); } catch (e) { setError(e.message); }
   }, [id]);
@@ -64,7 +67,7 @@ export default function CasePanel({ id, user, onClose }) {
   const comparison = c?.ranking?.top || [];
   const stage = !c ? 0 : ['FACTFIND_REVIEW', 'NEEDS_INFO'].includes(c.state) ? 0 : ['AWAIT_BROKER_RELEASE', 'QUOTES_PENDING'].includes(c.state) ? 1 : c.state === 'BROKER_REVIEW' ? 2 : c.state === 'AWAIT_APPROVAL' ? 3 : c.state === 'PUBLISHED' ? 4 : -1;
   return <dialog ref={dialog} className="case-panel" onCancel={onClose} onClick={e => { if (e.target === dialog.current) onClose(); }} aria-label="Case workspace">
-    <div className="panel-inner"><header className="panel-header"><div><span className="eyebrow">CLIENT WORKSPACE · FICTIONAL DATA</span><h2>{c?.name || 'Opening case…'}</h2>{c && <div className="panel-meta"><Status state={c.state}/><span>{label(c.cover_type)} · {c.postcode}</span></div>}</div><button className="icon-button" aria-label="Close case" onClick={onClose}><X size={21}/></button></header>
+    <div className="panel-inner"><AgentPill state={c?.state} events={liveEvents}/><header className="panel-header"><div><span className="eyebrow">CLIENT WORKSPACE · FICTIONAL DATA</span><h2>{c?.name || 'Opening case…'}</h2>{c && <div className="panel-meta"><Status state={c.state}/><span>{label(c.cover_type)} · {c.postcode}</span></div>}</div><button className="icon-button" aria-label="Close case" onClick={onClose}><X size={21}/></button></header>
       {c && <><div className="case-stages">{['Fact-find', 'Quotations', 'Comparison', 'Approval', 'Delivery'].map((name, i) => <div key={name} className={stage >= i ? 'reached' : ''}><span>{stage > i ? <Check size={12}/> : i + 1}</span><small>{name}</small></div>)}</div>
         <div className="panel-toolbar"><button className="text-button" onClick={exportEvidence}><Download size={14}/>Evidence</button>{broker && !c.assigned_to && <button className="text-button" disabled={busy} onClick={() => action('assign')}><UserCheck size={14}/>Assign to me</button>}{broker && !['PUBLISHED', 'CLOSED', 'COMPLAINT_FLAGGED'].includes(c.state) && <button className="text-button" disabled={busy} onClick={() => action(c.state === 'PAUSED_NEEDS_HUMAN' ? 'resume' : 'pause')}>{c.state === 'PAUSED_NEEDS_HUMAN' ? <Play size={14}/> : <Pause size={14}/>} {c.state === 'PAUSED_NEEDS_HUMAN' ? 'Resume' : 'Pause'}</button>}</div>
         <div className="panel-tabs" role="tablist" aria-label="Case views">{[['overview', 'Fact-find'], ['quotes', `Compare${comparison.length ? ` (${comparison.length})` : ''}`], ['pack', 'Recommendation'], ['activity', 'Activity']].map(([key, name]) => <button role="tab" aria-selected={tab === key} aria-controls={`panel-${key}`} id={`tab-${key}`} key={key} className={tab === key ? 'active' : ''} onClick={() => setTab(key)}>{name}</button>)}</div>
