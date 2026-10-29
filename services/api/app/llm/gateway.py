@@ -20,6 +20,14 @@ class LLMGateway:
         if not self.completion and (not config.llm_enabled or config.llm_region not in ("uk", "eu")):
             raise DomainError("Live model calls require an enabled, region-approved gateway", 503)
         redactor = RedactionService(self.redis)
+        from app.db.store import latest
+        from app.db.models import Case
+        dnr = latest(self.db, case_id, "dnr")
+        if dnr:
+            medical_texts = tuple(medical_texts) + tuple(dnr.body.get("medical_items", []))
+        case = self.db.get(Case, case_id)
+        if case:
+            identifiers = tuple(identifiers) + (case.profile.get("name", ""),)
         # Redact every message, including templates; caller-provided medical canaries never leave.
         clean = []
         for message in messages:

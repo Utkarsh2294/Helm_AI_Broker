@@ -38,7 +38,7 @@ def build_rfq(dnr: DNR, *, signed_off: bool, medical_released: bool = False,
         "cover_type": dnr.facts["cover_type"].value,
     }
     if dnr.medical_items:
-        body["medical_items"] = list(dnr.medical_items)
+        body["medical_items"] = [{"category": "unspecified", "needs_clinical_underwriting": True} for _ in dnr.medical_items]
     return RFQ(request_id=dnr.request_id, dnr_version=dnr.version,
                deadline=(now or datetime.now(timezone.utc)) + timedelta(hours=6),
                partners=[p["id"] for p in PARTNERS

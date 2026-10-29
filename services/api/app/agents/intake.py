@@ -1,5 +1,6 @@
 """A1: grounded fact-find and needs research; no inferred medical conclusions."""
 from app.schemas import DNR, Fact, QuoteRequest
+from app.compliance.medical_firewall import screen_vulnerability
 
 KNOWLEDGE = {
     "family": "Confirm children's cover, outpatient needs and preferred local hospitals.",
@@ -25,7 +26,7 @@ def research_request(request: QuoteRequest) -> DNR:
         missing.append("desired_coverage")
     return DNR(
         request_id=request.id, needs=request.needs.model_copy(deep=True), facts=facts,
-        medical_items=list(request.medical_items), vulnerability_flags=request.vulnerability_flags,
+        medical_items=list(request.medical_items), vulnerability_flags=sorted(set(request.vulnerability_flags + screen_vulnerability(" ".join(request.medical_items)))),
         missing=sorted(set(missing)), consent_to_share=request.consent_to_share,
         hypotheses=[f"Hypothesis (not confirmed): {KNOWLEDGE[request.cover_type]} [kb:pmi-household-v1]"],
     )

@@ -20,6 +20,7 @@ from app.db.store import SessionLocal, latest, save_snapshot, audit
 from app.demo import seed_demo
 from app.schemas import DNR, DomainError, Fact, Model, QuoteRequest, State, Survey
 from app import service
+from app.compliance.medical_firewall import safe_case
 
 
 def database():
@@ -175,10 +176,12 @@ def create_demo_request(body: QuoteRequest, request: Request, db=Depends(databas
 
 
 @app.get("/api/v1/cases/{case_id}")
-def case_detail(case_id: str, request: Request, db=Depends(database)):
-    identity(db, request)
+def case_detail(case_id: str, request: Request, include_medical: bool = False, db=Depends(database)):
+    user, _ = identity(db, request)
     service.process_due_jobs(db)
-    return service.detail(db, service.get_case(db, case_id))
+    if include_medical and user.role not in ("authorised_broker", "compliance_officer"):
+        raise DomainError("Your role cannot reveal medical statements", 403)
+    return safe_case(service.detail(db, service.get_case(db, case_id)), user, include_medical)
 
 
 @app.patch("/api/v1/cases/{case_id}/dnr")
@@ -192,6 +195,7 @@ def edit_dnr(case_id: str, body: EditDNR, request: Request, db=Depends(database)
     if body.dnr.request_id != previous.body["request_id"]:
         raise DomainError("Request identity cannot be changed", 422)
     revised = body.dnr.model_copy(update={"version": previous.version + 1})
+    revised.medical_items = previous.body["medical_items"]
     if revised.needs.budget_annual_pence != previous.body["needs"]["budget_annual_pence"]:
         revised.facts["budget_annual_pence"] = Fact(value=revised.needs.budget_annual_pence,
             source=f"broker_edit:{case_id}:v{revised.version}", verified_by=user.id)
@@ -199,7 +203,7 @@ def edit_dnr(case_id: str, body: EditDNR, request: Request, db=Depends(database)
     save_snapshot(db, case_id, "dnr_edit", {"reason": body.reason, "by": user.id, "version": revised.version})
     service.transition(db, case, [case.state], State.NEEDS_INFO if revised.missing else State.FACTFIND_REVIEW,
                        "dnr_revised", f"broker:{user.id}", {"version": revised.version})
-    return service.detail(db, case)
+    return safe_case(service.detail(db, case), user)
 
 
 @app.post("/api/v1/cases/{case_id}/{action}")
@@ -209,7 +213,7 @@ def case_action(case_id: str, action: Literal["sign-off", "release", "selection"
     user, session = identity(db, request)
     if action == "selection" and body.survey is None:
         raise DomainError("Selection requires the short survey", 422)
-    return service.act(db, case_id, action, user, session, body.model_dump())
+    return safe_case(service.act(db, case_id, action, user, session, body.model_dump()), user)
 
 
 @app.put("/api/v1/cases/{case_id}/suitability")

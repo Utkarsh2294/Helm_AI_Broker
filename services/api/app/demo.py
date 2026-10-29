@@ -8,14 +8,23 @@ DEMO_PASSWORD = "HelmDemo!2026"
 
 
 def seed_demo(db):
+    from app.knowledge import seed_knowledge
+    seed_knowledge(db)
     for email, name, role, approve in [
         ("broker@helm.demo", "Garv Gupta", "authorised_broker", True),
         ("assistant@helm.demo", "Alex Morgan", "broker_assistant", False),
         ("compliance@helm.demo", "Sam Taylor", "compliance_officer", False),
+        ("auditor@helm.demo", "Jamie Lee", "auditor", False),
+        ("lead@helm.demo", "James Thornton", "authorised_broker", True),
     ]:
         if not db.scalar(select(User).where(User.email == email)):
             db.add(User(email=email, name=name, role=role, can_approve=approve,
-                        password_hash=hasher.hash(DEMO_PASSWORD)))
+                        password_hash=hasher.hash(DEMO_PASSWORD), fca_irn="DEMO-IRN" if approve else None,
+                        is_lead_broker=email == "lead@helm.demo"))
+        elif approve:
+            user = db.scalar(select(User).where(User.email == email))
+            if not user.fca_irn:
+                user.fca_irn = "DEMO-IRN"
     for i, (name, cover, postcode, budget) in enumerate([
         ("Asha Patel", "family", "M20", 240000),
         ("Oliver Bennett", "individual", "SW11", 150000),
