@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 async function login(page) {
   await page.goto('/');
@@ -19,6 +20,9 @@ test('broker completes the five-agent workflow with real approval and evidence',
   await panel.getByRole('button', { name: 'Release demo RFQ' }).click();
   await expect(panel.getByRole('button', { name: 'Compare top five' })).toBeVisible({ timeout: 20000 });
   await panel.getByRole('button', { name: 'Compare top five' }).click();
+  const copilotReply = page.waitForResponse(r => r.url().endsWith('/ranking/copilot'));
+  await panel.getByRole('button', { name: 'Why #2 above #3?' }).click();
+  expect((await (await copilotReply).json()).cited_fields.length).toBeGreaterThan(0);
   for (let i = 0; i < 3; i++) {
     const card = panel.locator('.quote-card').nth(i);
     await card.getByRole('button', { name: 'Select this plan' }).click();
@@ -39,7 +43,19 @@ test('broker completes the five-agent workflow with real approval and evidence',
   await expect(panel.getByText('Approved. Ready for the next step.')).toBeVisible();
   const download = page.waitForEvent('download');
   await panel.getByRole('button', { name: 'Evidence', exact: true }).click();
-  expect((await download).suggestedFilename()).toContain('helm-evidence');
+  const jsonDownload = await download;
+  expect(jsonDownload.suggestedFilename()).toContain('helm-evidence');
+  const evidence = JSON.parse(await readFile(await jsonDownload.path(), 'utf8'));
+  expect(evidence.compliance_checklist).toHaveLength(18);
+  expect(evidence.audit_chain.verified).toBe(true);
+  const pdf = page.waitForEvent('download');
+  await panel.getByRole('button', { name: 'PDF', exact: true }).click();
+  await (await pdf).saveAs('../../.runtime/qa/complete-evidence.pdf');
+  await panel.getByLabel('Case time-machine').focus();
+  await page.keyboard.press('Home');
+  await expect(panel.getByText('Historical view · read only')).toBeVisible();
+  await panel.getByRole('button', { name: 'Return to present' }).click();
+  await expect(panel.getByText('Historical view · read only')).toHaveCount(0);
   await panel.getByRole('button', { name: 'Close case' }).click();
   await page.getByRole('button', { name: 'Learning & insights', exact: true }).click();
   const evaluationResponse = page.waitForResponse(r => r.url().endsWith('/models/evaluate') && r.request().method() === 'POST');
