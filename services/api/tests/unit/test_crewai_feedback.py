@@ -2,12 +2,13 @@ import json
 import os
 
 
-def test_nonblocking_human_feedback_round_trip():
+def test_nonblocking_human_feedback_round_trip(tmp_path):
     os.environ["CREWAI_TRACING_ENABLED"] = "false"
     os.environ["OTEL_SDK_DISABLED"] = "true"
     from crewai.flow.flow import Flow, start, listen
     from crewai.flow.human_feedback import human_feedback
     from crewai.flow.async_feedback import HumanFeedbackPending
+    from crewai.flow.persistence.sqlite import SQLiteFlowPersistence
     from pydantic import BaseModel
 
     class State(BaseModel):
@@ -31,9 +32,11 @@ def test_nonblocking_human_feedback_round_trip():
             self.state.steps += 1
             return self.state.approved
 
-    flow = ReviewFlow(tracing=False)
+    persistence = SQLiteFlowPersistence(db_path=str(tmp_path / "feedback.db"))
+    flow = ReviewFlow(tracing=False, persistence=persistence)
     pending = flow.kickoff()
     assert isinstance(pending, HumanFeedbackPending)
     assert json.loads(flow.state.model_dump_json())["steps"] == 1
-    assert flow.resume('{"approved": true}') is True
-    assert flow.state.steps == 2
+    restored = ReviewFlow.from_pending(pending.context.flow_id, persistence=persistence)
+    assert restored.resume('{"approved": true}') is True
+    assert restored.state.steps == 2

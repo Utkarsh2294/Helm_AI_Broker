@@ -18,4 +18,11 @@ def upgrade():
 
 
 def downgrade():
-    raise RuntimeError("Archive evidential records before destructive downgrade; use a disposable DB for migration tests")
+    from sqlalchemy import func, select
+    legacy = {"users", "sessions", "cases", "snapshots", "approvals", "activity_events", "jobs", "model_change_requests", "publications"}
+    bind = op.get_bind()
+    for table in reversed(Base.metadata.sorted_tables):
+        if table.name not in legacy:
+            if bind.scalar(select(func.count()).select_from(table)):
+                raise RuntimeError("Archive prototype records before destructive downgrade")
+            table.drop(bind, checkfirst=True)

@@ -24,4 +24,12 @@ def upgrade():
 
 
 def downgrade():
-    raise RuntimeError("Evidence retention requires an explicit archival procedure; destructive downgrade disabled")
+    from sqlalchemy import select, func, inspect
+    bind = op.get_bind()
+    existing = set(inspect(bind).get_table_names())
+    for table in Base.metadata.sorted_tables:
+        if table.name in existing and bind.scalar(select(func.count()).select_from(table)):
+            raise RuntimeError("Destructive downgrade refused: database contains user or evidence records")
+    Base.metadata.drop_all(bind)
+    if bind.dialect.name == "postgresql":
+        op.execute("DROP FUNCTION IF EXISTS helm_deny_mutation()")

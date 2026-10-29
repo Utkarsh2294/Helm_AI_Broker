@@ -556,6 +556,38 @@
           }
         }
       }
+    },
+    "/api/v1/health": {
+      "get": {
+        "summary": "Readiness",
+        "operationId": "readiness_api_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/webhooks/core": {
+      "post": {
+        "summary": "Receive Webhook",
+        "operationId": "receive_webhook_api_v1_webhooks_core_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
