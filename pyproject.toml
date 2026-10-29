@@ -4,15 +4,38 @@ version = "0.1.0"
 description = "Human-approved UK PMI broker workspace"
 requires-python = ">=3.12,<3.14"
 dependencies = [
-  "fastapi>=0.115,<1", "uvicorn>=0.34,<1", "pydantic>=2.10,<3",
-  "pydantic-settings>=2.7,<3", "sqlalchemy>=2.0,<3", "alembic>=1.14,<2",
-  "psycopg[binary]>=3.2,<4", "argon2-cffi>=23,<26", "cryptography>=44,<47",
-  "httpx>=0.28,<1", "arq>=0.26,<1", "tzdata>=2025,<2028"
+  "fastapi>=0.115,<1",
+  "uvicorn>=0.34,<1",
+  "pydantic>=2.10,<3",
+  "pydantic-settings>=2.7,<3",
+  "sqlalchemy>=2.0,<3",
+  "alembic>=1.14,<2",
+  "psycopg[binary]>=3.2,<4",
+  "argon2-cffi>=23,<26",
+  "cryptography>=44,<47",
+  "httpx>=0.28,<1",
+  "arq>=0.26,<1",
+  "tzdata>=2025,<2028",
+  "webauthn>=2,<3",
+  "pyotp>=2.9,<3",
+  "pyjwt>=2.10,<3",
+  "litellm>=1.80,<2",
+  "structlog>=25,<27",
+  "reportlab>=4,<5",
+  "pymupdf>=1.25,<2",
+  "opentelemetry-instrumentation-fastapi>=0.60b0",
+  "opentelemetry-sdk>=1.39,<2",
 ]
 
 [project.optional-dependencies]
 agents = ["crewai>=1.8,<2"]
-dev = ["pytest>=8,<10", "ruff>=0.11,<1"]
+dev = [
+    "fakeredis[lua]>=2,<3",
+    "freezegun>=1.5,<2",
+    "hypothesis>=6,<7",
+    "pytest>=8,<10",
+    "ruff>=0.11,<1",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["services/api"]

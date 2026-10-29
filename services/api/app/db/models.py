@@ -71,6 +71,8 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(Text)
     role: Mapped[str] = mapped_column(String(40), default="authorised_broker")
     can_approve: Mapped[bool] = mapped_column(default=False)
+    fca_irn: Mapped[str | None] = mapped_column(String(100))
+    is_lead_broker: Mapped[bool] = mapped_column(default=False)
 
 
 class LoginSession(Base):
@@ -168,3 +170,6 @@ def immutable(mapper, connection, target):
 for table in (Snapshot, Approval, Activity, Publication):
     event.listen(table, "before_update", immutable)
     event.listen(table, "before_delete", immutable)
+
+# Register the concrete tables used by auth, integration and governance.
+from app.db import platform as platform_models  # noqa: E402,F401

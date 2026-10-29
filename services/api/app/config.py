@@ -1,6 +1,8 @@
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
+from decimal import Decimal
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -9,6 +11,29 @@ ROOT = Path(__file__).resolve().parents[3]
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="HELM_", env_file=str(ROOT / ".env"), extra="ignore")
     mode: Literal["demo"] = "demo"
+    clock_mode: Literal["demo", "live"] = "demo"
+    partner_mode: Literal["simulator", "core"] = "simulator"
+    secret_key: str = Field(default="local-demo-only-change-before-live-64-characters-helm-broker-portal", min_length=32)
+    core_api_url: str = "http://127.0.0.1:8011"
+    core_webhook_secret: str = "demo-webhook-secret-change-before-live"
+    core_client_id: str = "helm-broker-demo"
+    core_client_secret: str = "demo-core-client-secret"
+    core_delivery_enabled: bool = False
+    llm_provider: str = "groq"
+    llm_api_key: str = ""
+    llm_model: str = "groq/llama-3.3-70b-versatile"
+    llm_allowed_providers: list[str] = ["groq", "anthropic"]
+    llm_region: str = "unverified"
+    llm_token_budget: int = 20000
+    llm_enabled: bool = False
+    min_quotes: int = 3
+    min_new_comparisons: int = 30
+    demo_clock_multiplier: int = 2700
+    agents_paused: bool = False
+    rp_id: str = "127.0.0.1"
+    auth_rate_limit: int = 5
+    shadow_case_minimum: int = 20
+    otlp_endpoint: str = ""
     database_url: str = f"sqlite:///{(ROOT / '.runtime/broker.db').as_posix()}"
     redis_url: str = "redis://127.0.0.1:56389/0"
     encryption_key: str = ""
@@ -18,6 +43,18 @@ class Settings(BaseSettings):
     demo_delay_seconds: int = 8
     session_hours: int = 8
     agent_runtime: Literal["python", "crewai"] = "python"
+
+    @property
+    def ipt_standard_rate(self) -> Decimal:
+        return Decimal(self.ipt_rate)
+
+    @model_validator(mode="after")
+    def check_live_configuration(self):
+        if self.clock_mode == "live" and ("demo" in self.secret_key or not self.encryption_key or not self.cookie_secure):
+            raise ValueError("Live mode requires non-demo secrets, field encryption and secure cookies")
+        if not 0 <= Decimal(self.ipt_rate) <= 1:
+            raise ValueError("Invalid IPT rate")
+        return self
 
 
 @lru_cache
