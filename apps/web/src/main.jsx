@@ -8,6 +8,7 @@ import { api } from './api';
 import './styles.css';
 import './design/tokens.css';
 import './design/semantic.css';
+import './design/light.css';
 import ThemeToggle from './design/theme';
 import SecuritySettings from './security-settings';
 import { Fingerprint, Settings } from 'lucide-react';
@@ -25,11 +26,12 @@ function Login({ onLogin }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [challengeId, setChallengeId] = useState('');
+  const [recovery, setRecovery] = useState(false);
   const [code, setCode] = useState('');
   async function submit(event) {
     event.preventDefault(); setBusy(true); setError('');
     try {
-      const result = await api(challengeId ? '/auth/totp/verify' : '/auth/password', { method: 'POST', body: challengeId ? { challenge_id: challengeId, code } : { email, password } });
+      const result = await api(challengeId ? recovery ? '/auth/recovery' : '/auth/totp/verify' : '/auth/password', { method: 'POST', body: challengeId ? { challenge_id: challengeId, code } : { email, password } });
       if (result.requires_totp) setChallengeId(result.challenge_id); else onLogin(result.user);
     }
     catch (e) { setError(e.message); } finally { setBusy(false); }
@@ -44,8 +46,8 @@ function Login({ onLogin }) {
     <h2>Welcome back.</h2><p className="muted">Your next great recommendation starts here.</p>
     <motion.form variants={staggerChildren} initial="initial" animate="animate" onSubmit={submit}><motion.div variants={slideUp}><button type="button" className="button full" disabled={busy} onClick={async () => { setBusy(true); setError(''); try { const options = await api('/auth/passkey/options', { method: 'POST', body: {} }); const credential = await startAuthentication({ optionsJSON: options.options }); onLogin((await api('/auth/passkey/verify', { method: 'POST', body: { challenge_id: options.challenge_id, credential } })).user); } catch (e) { setError(e.name === 'NotAllowedError' ? 'Passkey sign-in was cancelled.' : e.message); } finally { setBusy(false); } }}><Fingerprint size={17}/>Continue with passkey</button></motion.div><label>Email address<input type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} required/></label>
       <label>Password<input type="password" autoComplete="current-password" placeholder="Enter your password" value={password} onChange={e => setPassword(e.target.value)} required/></label>
-      {challengeId && <label>Authenticator code<input inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" value={code} onChange={e => setCode(e.target.value)} required autoFocus/></label>}
-      {error && <p role="alert" className="error">{error}</p>}
+      {challengeId && <label>{recovery ? 'Recovery code' : 'Authenticator code'}<input inputMode={recovery ? 'text' : 'numeric'} autoComplete="one-time-code" pattern={recovery ? '[A-Z0-9]{8,16}' : '[0-9]{6}'} value={code} onChange={e => setCode(e.target.value)} required autoFocus/></label>}
+      {challengeId && <button type="button" className="text-button" onClick={() => { setRecovery(!recovery); setCode(''); }}>{recovery ? 'Use authenticator' : 'Use a recovery code'}</button>}{error && <p role="alert" className="error">{error}</p>}
       <button className="button primary full" disabled={busy}>{busy ? 'Signing in…' : 'Sign in to your workspace'}<ArrowRight size={17}/></button>
     </motion.form><div className="demo-credentials"><strong>Explore the demo</strong><p>Fictional cases. All five agents. You stay in control.</p>
       <button className="text-button" onClick={() => { setEmail('broker@helm.demo'); setPassword('HelmDemo!2026'); }}>Fill demo credentials <ArrowRight size={14}/></button>

@@ -1,4 +1,12 @@
 :root {
+  color-scheme: light;
+  --helm-light-canvas: #f5f7f4;
+  --helm-light-paper: #ffffff;
+  --helm-light-soft: #eaf1e8;
+  --helm-light-ink: #20382e;
+  --helm-light-muted: #52645a;
+  --helm-light-line: #d4dfd3;
+  --helm-light-control-border: #778c7d;
   --helm-tone-0c241f30: #0c241f30;
   --helm-tone-14271d70: #14271d70;
   --helm-tone-162d2430: #162d2430;
