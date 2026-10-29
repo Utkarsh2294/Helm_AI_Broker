@@ -41,5 +41,7 @@ for ($brokerAttempt = 0; $brokerAttempt -lt 30; $brokerAttempt++) {
     } catch { Start-Sleep -Seconds 1 }
 }
 if (-not $brokerReady) { throw 'API did not become ready. Read .runtime/api.stderr.log' }
+$brokerListener = Get-NetTCPConnection -LocalPort 8010 -State Listen | Select-Object -First 1
+$brokerListener.OwningProcess | Set-Content '.runtime\api.pid'
 Write-Output 'Helm Broker: http://127.0.0.1:5180/'
 Write-Output 'Demo login: broker@helm.demo / HelmDemo!2026'

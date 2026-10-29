@@ -37,8 +37,11 @@ test('broker completes the five-agent workflow with real approval and evidence',
   expect((await download).suggestedFilename()).toContain('helm-evidence');
   await panel.getByRole('button', { name: 'Close case' }).click();
   await page.getByRole('button', { name: 'Learning & insights', exact: true }).click();
+  const evaluationResponse = page.waitForResponse(r => r.url().endsWith('/models/evaluate') && r.request().method() === 'POST');
   await page.getByRole('button', { name: 'Run feedback evaluation' }).click();
-  await expect(page.getByText('More feedback needed').first()).toBeVisible();
+  const evaluation = await (await evaluationResponse).json();
+  expect(evaluation.auto_applied).toBe(false);
+  await expect(page.getByRole('heading', { name: evaluation.status === 'proposed' ? 'Model change proposal' : 'More feedback needed' }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible();
   expect(errors).toEqual([]);
@@ -54,8 +57,11 @@ for (const width of [1440, 768, 390]) {
     await page.getByRole('button', { name: 'Open Asha Patel' }).click();
     const panel = page.getByRole('dialog', { name: 'Case workspace' });
     await expect(panel).toBeVisible();
+    const bounds = await panel.boundingBox();
+    expect(bounds.y).toBe(0);
+    expect(bounds.width).toBeLessThanOrEqual(width);
     expect(await panel.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
-    await page.screenshot({ path: `../../.runtime/case-${width}.png`, fullPage: true });
+    await page.screenshot({ path: `../../.runtime/case-${width}.png` });
     await page.keyboard.press('Escape');
     await expect(panel).toHaveCount(0);
   });

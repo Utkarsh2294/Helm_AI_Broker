@@ -10,7 +10,13 @@ foreach ($brokerService in @('api', 'web')) {
         if (-not $brokerProcess.CommandLine.Contains($brokerNeedle)) {
             throw "PID $brokerProcessId no longer belongs to the recorded Helm $brokerService service; refusing to stop it."
         }
-        Stop-Process -Id $brokerProcessId
+        # Windows virtualenv launchers may own a second Python process.
+        foreach ($brokerChild in (Get-CimInstance Win32_Process -Filter "ParentProcessId=$brokerProcessId")) {
+            if ($brokerChild.CommandLine -and $brokerChild.CommandLine.Contains($brokerNeedle)) {
+                Stop-Process -Id $brokerChild.ProcessId -ErrorAction SilentlyContinue
+            }
+        }
+        Stop-Process -Id $brokerProcessId -ErrorAction SilentlyContinue
     }
     Remove-Item -LiteralPath $brokerPidPath
 }
