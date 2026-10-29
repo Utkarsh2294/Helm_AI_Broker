@@ -223,7 +223,7 @@ def cases(request: Request, q: str = "", state: str = "", db=Depends(database)):
 def create_demo_request(body: QuoteRequest, request: Request, db=Depends(database)):
     user, _ = identity(db, request)
     service.require_broker(user)
-    return service.detail(db, service.import_request(db, body))
+    return safe_case(service.detail(db, service.import_request(db, body)), user)
 
 
 @app.get("/api/v1/cases/{case_id}")

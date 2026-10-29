@@ -14,14 +14,28 @@ def workspace(tmp_path):
     engine = make_engine(f"sqlite:///{tmp_path / 'workflow.db'}")
     Base.metadata.create_all(engine)
     with Session(engine, expire_on_commit=False) as db:
-        user = User(email="test@helm.demo", name="Broker", password_hash=hasher.hash("demo"),
-                    role="authorised_broker", can_approve=True)
+        user = User(
+            email="test@helm.demo",
+            name="Broker",
+            password_hash=hasher.hash("demo"),
+            role="authorised_broker",
+            can_approve=True,
+            fca_irn="TEST-IRN",
+        )
         db.add(user)
         db.flush()
-        session = LoginSession(id="s", user_id=user.id, csrf="c", expires_at=(utcnow() + timedelta(hours=1)).isoformat())
+        session = LoginSession(
+            id="s", user_id=user.id, csrf="c", expires_at=(utcnow() + timedelta(hours=1)).isoformat()
+        )
         db.add(session)
-        case = service.import_request(db, QuoteRequest(id="test", name="Demo",
-            needs=Needs(coverage={"cancer": CoverageNeed(level=3, must_have=True)})))
+        case = service.import_request(
+            db,
+            QuoteRequest(
+                id="test",
+                name="Demo",
+                needs=Needs(coverage={"cancer": CoverageNeed(level=3, must_have=True)}),
+            ),
+        )
         db.commit()
         yield db, case, user, session
 
@@ -42,16 +56,29 @@ def test_full_journey_binds_human_approval_to_latest_pack(workspace):
         service.act(db, case.id, "approve", user, session, {})
     ranking = ready_for_selection(db, case, user, session).body
     selected = [r["plan"]["id"] for r in ranking["top"][:3]]
-    body = {"ranking_id": ranking["id"], "selected": selected,
-            "survey": {"thumbs": dict.fromkeys(selected, "up")}, "acknowledgements": selected}
+    body = {
+        "ranking_id": ranking["id"],
+        "selected": selected,
+        "survey": {"thumbs": dict.fromkeys(selected, "up")},
+        "acknowledgements": selected,
+    }
     service.act(db, case.id, "selection", user, session, body)
     pack = latest(db, case.id, "pack").body
     with pytest.raises(DomainError, match="Re-authenticate"):
         service.act(db, case.id, "approve", user, session, {"pack_hash": pack["pack_hash"]})
     session.step_up_at = utcnow().isoformat()
+    from app.auth.mfa import challenge
+    from app.agents.review import canonical_hash
+    from app.db.store import save_snapshot
+    pack = {**pack, "dnr_sections_confirmed": ["priorities", "coverage", "budget", "household", "medical_flag"],
+            "unmet_needs_addressed": [f"{n['plan_id']}:{n['need']}" for n in pack["unmet_needs"]]}
+    pack["pack_hash"] = canonical_hash({k: v for k, v in pack.items() if k != "pack_hash"})
+    save_snapshot(db, case.id, "pack", pack)
+    proof = challenge(db, user.id, "step-up", {"session_id": session.id})
+    db.flush()
     with pytest.raises(DomainError, match="Pack changed"):
-        service.act(db, case.id, "approve", user, session, {"pack_hash": "old"})
-    result = service.act(db, case.id, "approve", user, session, {"pack_hash": pack["pack_hash"]})
+        service.act(db, case.id, "approve", user, session, {"pack_hash": "old", "step_up_token": proof})
+    result = service.act(db, case.id, "approve", user, session, {"pack_hash": pack["pack_hash"], "step_up_token": proof})
     db.commit()
     assert result["state"] == State.PUBLISHED
     approval = db.scalar(select(Approval).where(Approval.gate == "G2"))

@@ -6,8 +6,14 @@ from app.schemas import CRITERIA
 
 def test_line_search_convergence_and_shrinkage():
     base = user_weights([])
-    pairs = [{"preferred": {c: 1 if c == "coverage" else 0 for c in CRITERIA},
-              "other": dict.fromkeys(CRITERIA, 0), "weight": 1} for _ in range(100)]
+    pairs = [
+        {
+            "preferred": {c: 1 if c == "coverage" else 0 for c in CRITERIA},
+            "other": dict.fromkeys(CRITERIA, 0),
+            "weight": 1,
+        }
+        for _ in range(100)
+    ]
     first = fit_bradley_terry(pairs, base)
     second = fit_bradley_terry(pairs, base)
     assert first == second

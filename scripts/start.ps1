@@ -2,8 +2,13 @@ param([switch]$Install, [switch]$CrewAI)
 $ErrorActionPreference = 'Stop'
 $brokerRoot = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $brokerRoot
-if ($Install -or -not (Test-Path -LiteralPath '.venv\Scripts\python.exe')) {
-    uv sync --frozen --extra dev --extra agents
+$brokerRuntime = Join-Path $env:LOCALAPPDATA 'HelmBroker\venv'
+$brokerPython = Join-Path $brokerRuntime 'Scripts\python.exe'
+if ($Install -or -not (Test-Path -LiteralPath $brokerPython)) {
+    $brokerOriginalEnvironment = $env:UV_PROJECT_ENVIRONMENT
+    $env:UV_PROJECT_ENVIRONMENT = $brokerRuntime
+    uv sync --frozen --extra dev --extra agents --link-mode copy
+    $env:UV_PROJECT_ENVIRONMENT = $brokerOriginalEnvironment
     if ($LASTEXITCODE -ne 0) { throw 'Python dependency installation failed' }
 }
 if ($Install -or -not (Test-Path -LiteralPath 'apps\web\node_modules')) {
@@ -14,14 +19,14 @@ if ($Install -or -not (Test-Path -LiteralPath 'apps\web\node_modules')) {
 New-Item -ItemType Directory -Force '.runtime' | Out-Null
 $env:PYTHONUTF8 = '1'
 if ($CrewAI) { $env:HELM_AGENT_RUNTIME = 'crewai' }
-& '.venv\Scripts\python.exe' -m alembic upgrade head
+& $brokerPython -m alembic upgrade head
 if ($LASTEXITCODE -ne 0) { throw 'Database migration failed' }
 foreach ($brokerPort in @(8010, 5180)) {
     if (Get-NetTCPConnection -LocalPort $brokerPort -State Listen -ErrorAction SilentlyContinue) {
         throw "Port $brokerPort is already in use. Stop this project's preview with scripts/stop.ps1 or choose another instance."
     }
 }
-$brokerApi = Start-Process -FilePath "$brokerRoot\.venv\Scripts\python.exe" `
+$brokerApi = Start-Process -FilePath $brokerPython `
     -ArgumentList '-m uvicorn app.main:app --app-dir services/api --host 127.0.0.1 --port 8010' `
     -WorkingDirectory $brokerRoot -WindowStyle Hidden -PassThru `
     -RedirectStandardOutput "$brokerRoot\.runtime\api.stdout.log" -RedirectStandardError "$brokerRoot\.runtime\api.stderr.log"
