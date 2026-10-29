@@ -40,8 +40,12 @@ async def lifespan(app):
     yield
 
 
-app = FastAPI(title="Helm Broker API", version="0.1.0", lifespan=lifespan,
-              description="Demo-first five-agent workspace. No real insurer delivery.")
+app = FastAPI(
+    title="Helm Broker API",
+    version="0.1.0",
+    lifespan=lifespan,
+    description="Demo-first five-agent workspace. No real insurer delivery.",
+)
 
 
 @app.middleware("http")
@@ -60,8 +64,17 @@ async def request_boundary(request, call_next):
 
 @app.exception_handler(DomainError)
 async def domain_error(request, error):
-    return JSONResponse({"type": "about:blank", "title": str(error), "detail": str(error),
-                         "status": error.status, **error.flags}, status_code=error.status, media_type="application/problem+json")
+    return JSONResponse(
+        {
+            "type": "about:blank",
+            "title": str(error),
+            "detail": str(error),
+            "status": error.status,
+            **error.flags,
+        },
+        status_code=error.status,
+        media_type="application/problem+json",
+    )
 
 
 @app.exception_handler(StaleDataError)
@@ -124,8 +137,15 @@ def login(body: Credentials, request: Request, response: Response, db=Depends(da
     attempts[address].append(now)
     user = authenticate(db, body.email, body.password)
     session, token = new_session(db, user)
-    response.set_cookie("helm_session", token, httponly=True, secure=settings().cookie_secure,
-                        samesite="strict", max_age=settings().session_hours * 3600, path="/")
+    response.set_cookie(
+        "helm_session",
+        token,
+        httponly=True,
+        secure=settings().cookie_secure,
+        samesite="strict",
+        max_age=settings().session_hours * 3600,
+        path="/",
+    )
     return {"user": public_user(user), "csrf": session.csrf}
 
 
@@ -169,9 +189,18 @@ def cases(request: Request, q: str = "", state: str = "", db=Depends(database)):
     identity(db, request)
     service.process_due_jobs(db)
     rows = db.scalars(select(Case).order_by(Case.created_at.desc())).all()
-    return [{"id": c.id, **c.profile, "state": c.state, "created_at": c.created_at,
-             "assigned_to": c.assigned_to, "version": c.version}
-            for c in rows if (not q or q.lower() in c.profile["name"].lower()) and (not state or c.state == state)]
+    return [
+        {
+            "id": c.id,
+            **c.profile,
+            "state": c.state,
+            "created_at": c.created_at,
+            "assigned_to": c.assigned_to,
+            "version": c.version,
+        }
+        for c in rows
+        if (not q or q.lower() in c.profile["name"].lower()) and (not state or c.state == state)
+    ]
 
 
 @app.post("/api/v1/demo/requests")
@@ -203,19 +232,44 @@ def edit_dnr(case_id: str, body: EditDNR, request: Request, db=Depends(database)
     revised = body.dnr.model_copy(update={"version": previous.version + 1})
     revised.medical_items = previous.body["medical_items"]
     if revised.needs.budget_annual_pence != previous.body["needs"]["budget_annual_pence"]:
-        revised.facts["budget_annual_pence"] = Fact(value=revised.needs.budget_annual_pence,
-            source=f"broker_edit:{case_id}:v{revised.version}", verified_by=user.id)
+        revised.facts["budget_annual_pence"] = Fact(
+            value=revised.needs.budget_annual_pence,
+            source=f"broker_edit:{case_id}:v{revised.version}",
+            verified_by=user.id,
+        )
     save_snapshot(db, case_id, "dnr", revised.model_dump())
     save_snapshot(db, case_id, "dnr_edit", {"reason": body.reason, "by": user.id, "version": revised.version})
-    service.transition(db, case, [case.state], State.NEEDS_INFO if revised.missing else State.FACTFIND_REVIEW,
-                       "dnr_revised", f"broker:{user.id}", {"version": revised.version})
+    service.transition(
+        db,
+        case,
+        [case.state],
+        State.NEEDS_INFO if revised.missing else State.FACTFIND_REVIEW,
+        "dnr_revised",
+        f"broker:{user.id}",
+        {"version": revised.version},
+    )
     return safe_case(service.detail(db, case), user)
 
 
 @app.post("/api/v1/cases/{case_id}/{action}")
-def case_action(case_id: str, action: Literal["sign-off", "release", "selection", "approve", "pause", "resume",
-                                             "assign", "request-changes", "complaint", "resolve"],
-                body: Action, request: Request, db=Depends(database)):
+def case_action(
+    case_id: str,
+    action: Literal[
+        "sign-off",
+        "release",
+        "selection",
+        "approve",
+        "pause",
+        "resume",
+        "assign",
+        "request-changes",
+        "complaint",
+        "resolve",
+    ],
+    body: Action,
+    request: Request,
+    db=Depends(database),
+):
     user, session = identity(db, request)
     if action == "selection" and body.survey is None:
         raise DomainError("Selection requires the short survey", 422)
@@ -235,19 +289,25 @@ def edit_suitability(case_id: str, body: SuitabilityEdit, request: Request, db=D
     revised["dnr_sections_confirmed"] = body.dnr_sections_confirmed
     revised["unmet_needs_addressed"] = body.unmet_needs_addressed
     import difflib
-    revised["suitability_diff"] = list(difflib.unified_diff(previous["suitability_draft"].splitlines(), body.text.strip().splitlines()))
+
+    revised["suitability_diff"] = list(
+        difflib.unified_diff(previous["suitability_draft"].splitlines(), body.text.strip().splitlines())
+    )
     revised["pack_hash"] = canonical_hash(revised)
     save_snapshot(db, case_id, "pack", revised)
     audit(db, case_id, "suitability_edited", f"broker:{user.id}", {"pack_hash": revised["pack_hash"]})
-    return service.detail(db, case)
+    return safe_case(service.detail(db, case), user)
 
 
 @app.get("/api/v1/cases/{case_id}/evidence")
 def export_evidence(case_id: str, request: Request, db=Depends(database)):
     user, _ = identity(db, request)
     case = service.get_case(db, case_id)
-    result = service.evidence(db, case)
+    from app.evidence import generate, pdf_bytes
+    result = generate(db, case, user, request.query_params.get("include_medical") == "true")
     audit(db, case_id, "evidence_exported", f"user:{user.id}")
+    if "application/pdf" in request.headers.get("accept", ""):
+        return Response(pdf_bytes(result), media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="helm-evidence-{case_id}.pdf"'})
     return result
 
 
@@ -270,22 +330,28 @@ async def stream(case_id: str, request: Request, after: int = 0, db=Depends(data
                     identity(connection, request)
                 except DomainError:
                     return
-                rows = connection.scalars(select(Activity).where(Activity.case_id == case_id, Activity.seq > cursor)
-                                           .order_by(Activity.seq)).all()
+                rows = connection.scalars(
+                    select(Activity)
+                    .where(Activity.case_id == case_id, Activity.seq > cursor)
+                    .order_by(Activity.seq)
+                ).all()
                 for row in rows:
                     cursor = row.seq
                     data = {"type": row.type, "seq": row.seq, "payload": row.payload}
                     yield f"id: {row.seq}\ndata: {json.dumps(data)}\n\n"
             yield ": heartbeat\n\n"
             await asyncio.sleep(1)
+
     return StreamingResponse(events(), media_type="text/event-stream", headers={"X-Accel-Buffering": "no"})
 
 
 @app.get("/api/v1/models")
 def models(request: Request, db=Depends(database)):
     identity(db, request)
-    return [{"id": m.id, "created_at": m.created_at, **m.body}
-            for m in db.scalars(select(ModelProposal).order_by(ModelProposal.created_at.desc())).all()]
+    return [
+        {"id": m.id, "created_at": m.created_at, **m.body}
+        for m in db.scalars(select(ModelProposal).order_by(ModelProposal.created_at.desc())).all()
+    ]
 
 
 @app.post("/api/v1/models/evaluate")
@@ -297,12 +363,24 @@ def evaluate(request: Request, db=Depends(database)):
 
 
 from app.platform_api import router as platform_router  # noqa: E402
+
 app.include_router(platform_router)
 from app.auth.router import router as auth_router  # noqa: E402
-app.router.routes = [route for route in app.router.routes if not getattr(route, "path", "").startswith("/api/v1/auth/")]
+
+app.router.routes = [
+    route for route in app.router.routes if not getattr(route, "path", "").startswith("/api/v1/auth/")
+]
 app.include_router(auth_router)
 from app.live import router as live_router  # noqa: E402
-app.router.routes = [route for route in app.router.routes if not getattr(route, "path", "").endswith("/stream")]
+
+app.router.routes = [
+    route for route in app.router.routes if not getattr(route, "path", "").endswith("/stream")
+]
 app.include_router(live_router)
 from app.governance_api import router as governance_router  # noqa: E402
+
 app.include_router(governance_router)
+from app.insights_api import router as insights_router  # noqa: E402
+app.include_router(insights_router)
+from app.observability import instrument  # noqa: E402
+instrument(app)
