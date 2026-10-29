@@ -11,9 +11,29 @@ from app.db.platform import InboxEvent
 from app.db.store import audit
 from app.main import database
 from app.schemas import DomainError, QuoteRequest
+from app.schemas import Model
+from pydantic import Field
+from app.auth import identity
+from app.db.store import latest
 from app import service
 
 router = APIRouter(prefix="/api/v1")
+
+
+class CopilotQuestion(Model):
+    question: str = Field(min_length=1, max_length=500)
+    ranking_id: str
+
+
+@router.post("/cases/{case_id}/ranking/copilot")
+def copilot(case_id: str, body: CopilotQuestion, request: Request, db=Depends(database)):
+    identity(db, request)
+    service.get_case(db, case_id)
+    ranking = latest(db, case_id, "ranking")
+    if not ranking or ranking.body["id"] != body.ranking_id:
+        raise DomainError("Ranking changed; refresh before asking")
+    from app.copilot import answer_question
+    return answer_question(ranking.body, body.question)
 
 
 @router.get("/health")
