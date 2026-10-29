@@ -5,8 +5,11 @@ from app.schemas import DomainError, QuoteRequest, Needs, CoverageNeed
 
 
 def fixture_dnr():
-    return research_request(QuoteRequest(id="q1", name="Demo", needs=Needs(
-        coverage={"cancer": CoverageNeed(level=3, must_have=True)})))
+    return research_request(
+        QuoteRequest(
+            id="q1", name="Demo", needs=Needs(coverage={"cancer": CoverageNeed(level=3, must_have=True)})
+        )
+    )
 
 
 def test_release_guards_and_minimisation():
@@ -28,8 +31,12 @@ def test_all_partners_and_adverse_scenarios():
     plans, board = simulate_responses(rfq)
     assert len(plans) == 30 and len(board) == 5
     assert all(p.annualPremiumPence == premium_with_tax(p.basePremiumPence) for p in plans)
-    for scenario, state in [("decline", "declined"), ("late", "late"), ("medical", "clarification"),
-                            ("referral", "referred")]:
+    for scenario, state in [
+        ("decline", "declined"),
+        ("late", "late"),
+        ("medical", "clarification"),
+        ("referral", "referred"),
+    ]:
         quotes, statuses = simulate_responses(rfq, scenario)
         assert len(quotes) == 24 and statuses[-1]["state"] == state
 

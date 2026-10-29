@@ -14,10 +14,23 @@ def test_independent_g5_shadow_metrics_promotion_and_rollback(tmp_path):
     engine = make_engine(f"sqlite:///{tmp_path / 'governance.db'}")
     Base.metadata.create_all(engine)
     with Session(engine) as db:
-        compliance = User(email="c@test.demo", name="Compliance", role="compliance_officer", password_hash=hasher.hash("test"))
-        lead = User(email="l@test.demo", name="Lead", role="authorised_broker", is_lead_broker=True, password_hash=hasher.hash("test"))
+        compliance = User(
+            email="c@test.demo",
+            name="Compliance",
+            role="compliance_officer",
+            password_hash=hasher.hash("test"),
+        )
+        lead = User(
+            email="l@test.demo",
+            name="Lead",
+            role="authorised_broker",
+            is_lead_broker=True,
+            password_hash=hasher.hash("test"),
+        )
         db.add_all([compliance, lead])
-        proposal = ModelProposal(status="proposed", body={"eligible_for_shadow": True, "weights": user_weights([])})
+        proposal = ModelProposal(
+            status="proposed", body={"eligible_for_shadow": True, "weights": user_weights([])}
+        )
         db.add(proposal)
         db.flush()
         with pytest.raises(DomainError, match="Compliance must"):
@@ -37,7 +50,17 @@ def test_independent_g5_shadow_metrics_promotion_and_rollback(tmp_path):
             db.add(case)
             db.flush()
             save_snapshot(db, case.id, "selection", {"ranking_id": f"rank-{i}", "selected": ["a", "b", "c"]})
-            db.add(ShadowEvaluation(model_id=model.id, case_id=case.id, body={"ranking_id": f"rank-{i}", "champion": ["c", "b", "a"], "challenger": ["a", "b", "c"]}))
+            db.add(
+                ShadowEvaluation(
+                    model_id=model.id,
+                    case_id=case.id,
+                    body={
+                        "ranking_id": f"rank-{i}",
+                        "champion": ["c", "b", "a"],
+                        "challenger": ["a", "b", "c"],
+                    },
+                )
+            )
         db.flush()
         governance.promote(db, proposal.id, compliance)
         db.flush()

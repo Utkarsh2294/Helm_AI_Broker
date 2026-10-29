@@ -1,4 +1,5 @@
 """Governance evidence and a single database-enforced champion."""
+
 from alembic import op
 from app.db.platform import GovernanceEvent, EngineModel
 
@@ -13,7 +14,9 @@ def upgrade():
     for index in EngineModel.__table__.indexes:
         index.create(bind, checkfirst=True)
     if bind.dialect.name == "postgresql":
-        op.execute("CREATE TRIGGER governance_append_only BEFORE UPDATE OR DELETE ON governance_events FOR EACH ROW EXECUTE FUNCTION helm_deny_mutation()")
+        op.execute(
+            "CREATE TRIGGER governance_append_only BEFORE UPDATE OR DELETE ON governance_events FOR EACH ROW EXECUTE FUNCTION helm_deny_mutation()"
+        )
 
 
 def downgrade():

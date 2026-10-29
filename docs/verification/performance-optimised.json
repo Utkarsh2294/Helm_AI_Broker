@@ -1,0 +1,36 @@
+{
+  "measured_at": "2026-10-29T20:36:08.091938+00:00",
+  "server": "http://127.0.0.1:8012",
+  "environment": "Local Windows, SQLite, Redis DB 1; not a production capacity claim",
+  "case_count": 1063,
+  "case_list_50_concurrent": {
+    "samples": 50,
+    "p50_ms": 715.22,
+    "p95_ms": 1378.08,
+    "max_ms": 1387.71
+  },
+  "insights": {
+    "samples": 10,
+    "p50_ms": 52.08,
+    "p95_ms": 192.62,
+    "max_ms": 192.62
+  },
+  "sse_50_connections": {
+    "samples": 50,
+    "p50_ms": 1048.12,
+    "p95_ms": 1621.14,
+    "max_ms": 1647.74
+  },
+  "sse_event_delivery": {
+    "samples": 50,
+    "p50_ms": 95.0,
+    "p95_ms": 114.46,
+    "max_ms": 147.51
+  },
+  "ranking_enqueue_20_concurrent": {
+    "samples": 20,
+    "p50_ms": 352.11,
+    "p95_ms": 656.8,
+    "max_ms": 715.39
+  }
+}

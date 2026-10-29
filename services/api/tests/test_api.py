@@ -26,7 +26,6 @@ def login(client, email="broker@helm.demo"):
 def test_auth_csrf_origin_and_logout(client):
     assert client.get("/api/v1/cases").status_code == 401
 
-
     assert client.post("/api/v1/auth/password", json={"password": "wrong"}).status_code == 401
     headers = login(client)
     cases = client.get("/api/v1/cases").json()
@@ -59,7 +58,7 @@ def test_assistant_cannot_cross_gate_and_import_is_idempotent(client):
 
 def test_specific_ranking_route_precedes_generic_case_actions(client):
     headers = login(client)
-    case_id = client.get('/api/v1/cases').json()[0]['id']
-    response = client.post(f'/api/v1/cases/{case_id}/ranking', json={}, headers=headers)
+    case_id = client.get("/api/v1/cases").json()[0]["id"]
+    response = client.post(f"/api/v1/cases/{case_id}/ranking", json={}, headers=headers)
     assert response.status_code == 409
-    assert 'awaiting broker review' in response.json()['detail']
+    assert "awaiting broker review" in response.json()["detail"]

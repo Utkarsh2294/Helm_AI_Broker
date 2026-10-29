@@ -1,4 +1,5 @@
 """Protect new approval, ingress and anchor evidence against direct SQL mutation."""
+
 from alembic import op
 
 revision = "004"
@@ -14,10 +15,14 @@ def upgrade():
             op.execute(f"DROP TRIGGER IF EXISTS {table}_append_only ON {table}")
             if table == "governance_events":
                 op.execute("DROP TRIGGER IF EXISTS governance_append_only ON governance_events")
-            op.execute(f"CREATE TRIGGER {table}_append_only BEFORE UPDATE OR DELETE ON {table} FOR EACH ROW EXECUTE FUNCTION helm_deny_mutation()")
+            op.execute(
+                f"CREATE TRIGGER {table}_append_only BEFORE UPDATE OR DELETE ON {table} FOR EACH ROW EXECUTE FUNCTION helm_deny_mutation()"
+            )
         else:
             for operation in ("UPDATE", "DELETE"):
-                op.execute(f"CREATE TRIGGER IF NOT EXISTS {table}_no_{operation.lower()} BEFORE {operation} ON {table} BEGIN SELECT RAISE(ABORT, 'Evidence records are append-only'); END")
+                op.execute(
+                    f"CREATE TRIGGER IF NOT EXISTS {table}_no_{operation.lower()} BEFORE {operation} ON {table} BEGIN SELECT RAISE(ABORT, 'Evidence records are append-only'); END"
+                )
 
 
 def downgrade():

@@ -1,5 +1,5 @@
 import pytest
-from app.agents.guards import grounded, consumer_draft
+from app.agents.guards import grounded
 from app.agents.ranking import rank_quotes
 from app.agents.quotation import build_rfq, simulate_responses
 from app.copilot import answer_question

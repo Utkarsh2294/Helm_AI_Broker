@@ -1,4 +1,5 @@
 """Export the implemented API schema without starting the app or seeding a DB."""
+
 import json
 import sys
 from pathlib import Path
@@ -13,5 +14,7 @@ target = root / "packages/contracts/broker.openapi.json"
 target.write_text(json.dumps(app.openapi(), indent=2) + "\n", encoding="utf-8")
 for name, application in (("broker", app), ("core", core_app)):
     # JSON is a YAML 1.2 subset; these contracts can be read by either format's tooling.
-    (target.parent / f"{name}.yaml").write_text(json.dumps(application.openapi(), indent=2) + "\n", encoding="utf-8")
+    (target.parent / f"{name}.yaml").write_text(
+        json.dumps(application.openapi(), indent=2) + "\n", encoding="utf-8"
+    )
 print(target)

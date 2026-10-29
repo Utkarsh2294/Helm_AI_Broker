@@ -1,23 +1,24 @@
 # Helm Broker
 
 Independent UK PMI broker workspace. React/JavaScript website, five Python agents,
-and an API boundary to the Helm consumer portal. Built from the supplied Parts 1–3.
+and an API boundary to the Helm consumer portal. Developed through the P0–P11 prototype phases in the complete project specification.
 
 ## Run on Windows
 
 Install Python 3.12, [uv](https://docs.astral.sh/uv/) and Node.js 22+. From this checkout:
 
 ```powershell
+docker compose up -d postgres redis
 .\scripts\start.ps1 -Install
 ```
 
-Open **http://127.0.0.1:5180/**. API docs: **http://127.0.0.1:8010/docs**.
+Open **http://localhost:5180/** (required for browser passkeys). The IP address also supports password/TOTP sign-in. API docs: **http://127.0.0.1:8010/docs**.
 
 - Broker: `broker@helm.demo` / `HelmDemo!2026`
-- Read-only assistant: `assistant@helm.demo` / `HelmDemo!2026`
+- Assistant (G0 review): `assistant@helm.demo` / `HelmDemo!2026`
 - Compliance: `compliance@helm.demo` / `HelmDemo!2026`
 
-Use the same password for the approval re-authentication prompt. All records and
+Enroll a passkey or TOTP in Security & devices. Demo accounts without MFA may use password re-entry for step-up. All records and
 credentials are for a local demo. Stop recorded preview processes with `scripts/stop.ps1`.
 Restart without `-Install` to keep the database and existing cases.
 
@@ -33,9 +34,9 @@ are sent to an LLM**. The framework smoke test exercises all five CrewAI steps.
 3. Sign off the fact-find, select a partner scenario, and release the demo RFQ.
 4. After about eight seconds, compare the top five, scores, uncertainty and sources.
 5. Select three plans in preference order. Acknowledge any blockers and give per-plan feedback.
-6. Prepare the pack, review/edit and save the suitability statement.
+6. Prepare the pack, review/edit the suitability statement and save all DNR/unmet-need confirmations.
 7. Re-enter the demo password and approve. Delivery is simulated and recorded.
-8. Export JSON evidence; run Agent 5's feedback evaluation in Learning & insights.
+8. Export fourteen-section JSON/PDF evidence and replay historical states; run Agent 5's feedback evaluation in Learning & insights.
 
 Pausing survives reloads. Medical clarification and referral scenarios require
 explicit demo exception resolution. Complaint holds block agent jobs and cannot be
@@ -52,8 +53,7 @@ automatically closed. Repeated imports and repeated partner revisions are dedupl
 | 5 Learning | `services/api/app/agents/learning.py` | Bradley–Terry proposal, evidence shrinkage, disputed-case exclusion, case-level holdout metrics |
 
 `CaseService` owns persisted state and human approval gates. Agent functions cannot
-publish advice. The consumer API is not connected in this build and no consumer
-database is read.
+publish advice. MockCore supplies the consumer boundary in the six-service stack. The real consumer portal and insurer systems are not connected.
 
 ## Layout
 
@@ -79,16 +79,15 @@ For PostgreSQL 16 and Redis 7:
 ```powershell
 docker compose up -d postgres redis
 # Copy .env.example to .env and select its PostgreSQL/Redis URLs, then:
-.venv\Scripts\python -m alembic upgrade head
-.venv\Scripts\python -m arq app.worker.WorkerSettings
+& "$env:LOCALAPPDATA\HelmBroker\venv\Scripts\python.exe" -m alembic upgrade head
+& "$env:LOCALAPPDATA\HelmBroker\venv\Scripts\python.exe" -m arq app.worker.WorkerSettings
 ```
 
 Set `PYTHONPATH=services/api` when starting the Arq worker from the repository root.
 The worker polls durable quotation jobs every five seconds and checks for daily
 learning at 02:00 Europe/London (or the next hourly tick after a restart).
 
-Alternatively, `docker compose up --build api worker` runs the backend containers.
-Run the website locally with `npm ci` and `npm run dev` from `apps/web`. Container
+`docker compose up --build` runs PostgreSQL, Redis, API, worker, website and MockCore. Container
 ports bind only to loopback. The API and worker share the encryption-key volume.
 
 **Back up the database and encryption key together.** `.runtime/demo.key` is the
@@ -98,19 +97,21 @@ unreadable. A live deployment requires KMS-backed key management and access cont
 ## Verification
 
 ```powershell
-uv sync --frozen --extra dev --extra agents
-.venv\Scripts\python -m ruff check services/api tools
-.venv\Scripts\python -m pytest -q
-.venv\Scripts\python -m alembic upgrade head
-.venv\Scripts\python tools/export_contract.py
+$env:UV_PROJECT_ENVIRONMENT = Join-Path $env:LOCALAPPDATA 'HelmBroker\venv'
+uv sync --frozen --extra dev --extra agents --link-mode copy
+& "$env:LOCALAPPDATA\HelmBroker\venv\Scripts\python.exe" -m ruff check services/api tools
+& "$env:LOCALAPPDATA\HelmBroker\venv\Scripts\python.exe" -m pytest -q
+& "$env:LOCALAPPDATA\HelmBroker\venv\Scripts\python.exe" -m alembic upgrade head
+& "$env:LOCALAPPDATA\HelmBroker\venv\Scripts\python.exe" tools/export_contract.py
 ```
 
-From `apps/web`, run `npm run build`, then `npm run test:e2e` while the local API and
-website are running. Browser tests use installed Microsoft Edge. Set another browser
+Start an isolated QA server with `tools/qa-server.ps1` (ports 8012/5182), then run `npm run build` and `npm run test:e2e` from `apps/web`. Use `tools/qa-server.ps1 -Stop` afterwards. QA uses separate fictional records and a separate Redis database; its login limit is raised only for repeated automated sign-ins. Browser tests use installed Microsoft Edge. Set another browser
 channel in `playwright.config.js` if Edge is unavailable. Tests cover the full broker
-journey and layouts at 1440, 768 and 390 pixels.
+journey, all eight partner scenarios, passkeys, TOTP, search, evidence/replay, contrast and layouts at 1440, 768 and 390 pixels.
 
 GitHub Actions runs backend checks/migrations and the frontend build. The implemented
 OpenAPI contract is tracked at `packages/contracts/broker.openapi.json`.
 
 See [docs/STATUS.md](docs/STATUS.md) for exact limits and outstanding live work.
+
+The phase evidence ledger is [docs/phases/EVIDENCE.md](docs/phases/EVIDENCE.md). Operational instructions, the DPIA draft, model card and live launch gates are under `docs/`. Do not treat prototype test results as production approval.

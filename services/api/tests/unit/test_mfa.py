@@ -1,4 +1,3 @@
-from datetime import timedelta
 import pytest
 import pyotp
 import fakeredis
@@ -14,7 +13,9 @@ from app.schemas import DomainError
 
 
 def request():
-    return Request({"type": "http", "method": "POST", "path": "/", "headers": [], "client": ("127.0.0.50", 1)})
+    return Request(
+        {"type": "http", "method": "POST", "path": "/", "headers": [], "client": ("127.0.0.50", 1)}
+    )
 
 
 def test_totp_recovery_and_replay(tmp_path):
@@ -22,7 +23,8 @@ def test_totp_recovery_and_replay(tmp_path):
     Base.metadata.create_all(engine)
     with Session(engine) as db:
         user = User(email="mfa@test.demo", name="Test", password_hash=hasher.hash("Password"))
-        db.add(user); db.flush()
+        db.add(user)
+        db.flush()
         data = setup_totp(db, user)
         codes = enable_totp(db, user.id, pyotp.TOTP(data["secret"]).now())
         assert len(codes) == 10
@@ -38,13 +40,15 @@ def test_refresh_reuse_revokes_family(tmp_path):
     Base.metadata.create_all(engine)
     with Session(engine) as db:
         user = User(email="sessions@test.demo", name="Test", password_hash=hasher.hash("Password"))
-        db.add(user); db.flush()
+        db.add(user)
+        db.flush()
         response = Response()
         issue(db, user, request(), response)
         cookies = response.headers.getlist("set-cookie")
-        raw = next(c for c in cookies if c.startswith("helm_refresh=")).split(';')[0].split('=', 1)[1]
+        raw = next(c for c in cookies if c.startswith("helm_refresh=")).split(";")[0].split("=", 1)[1]
         db.commit()
-        rotate(db, raw, request(), Response()); db.commit()
+        rotate(db, raw, request(), Response())
+        db.commit()
         with pytest.raises(DomainError, match="reuse"):
             rotate(db, raw, request(), Response())
 

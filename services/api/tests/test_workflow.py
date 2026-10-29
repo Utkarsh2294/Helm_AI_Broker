@@ -23,7 +23,14 @@ def workspace(tmp_path):
             fca_irn="TEST-IRN",
         )
         db.add(user)
-        db.add(User(email="owner@test.demo", name="Compliance", password_hash=user.password_hash, role="compliance_officer"))
+        db.add(
+            User(
+                email="owner@test.demo",
+                name="Compliance",
+                password_hash=user.password_hash,
+                role="compliance_officer",
+            )
+        )
         db.flush()
         session = LoginSession(
             id="s", user_id=user.id, csrf="c", expires_at=(utcnow() + timedelta(hours=1)).isoformat()
@@ -71,15 +78,21 @@ def test_full_journey_binds_human_approval_to_latest_pack(workspace):
     from app.auth.mfa import challenge
     from app.agents.review import canonical_hash
     from app.db.store import save_snapshot
-    pack = {**pack, "dnr_sections_confirmed": ["priorities", "coverage", "budget", "household", "medical_flag"],
-            "unmet_needs_addressed": [f"{n['plan_id']}:{n['need']}" for n in pack["unmet_needs"]]}
+
+    pack = {
+        **pack,
+        "dnr_sections_confirmed": ["priorities", "coverage", "budget", "household", "medical_flag"],
+        "unmet_needs_addressed": [f"{n['plan_id']}:{n['need']}" for n in pack["unmet_needs"]],
+    }
     pack["pack_hash"] = canonical_hash({k: v for k, v in pack.items() if k != "pack_hash"})
     save_snapshot(db, case.id, "pack", pack)
     proof = challenge(db, user.id, "step-up", {"session_id": session.id})
     db.flush()
     with pytest.raises(DomainError, match="Pack changed"):
         service.act(db, case.id, "approve", user, session, {"pack_hash": "old", "step_up_token": proof})
-    result = service.act(db, case.id, "approve", user, session, {"pack_hash": pack["pack_hash"], "step_up_token": proof})
+    result = service.act(
+        db, case.id, "approve", user, session, {"pack_hash": pack["pack_hash"], "step_up_token": proof}
+    )
     db.commit()
     assert result["state"] == State.PUBLISHED
     approval = db.scalar(select(Approval).where(Approval.gate == "G2"))

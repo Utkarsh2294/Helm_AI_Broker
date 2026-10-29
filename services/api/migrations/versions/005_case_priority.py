@@ -1,5 +1,6 @@
 from alembic import op
 from sqlalchemy import Column, String, inspect
+
 revision = "005"
 down_revision = "004"
 branch_labels = depends_on = None

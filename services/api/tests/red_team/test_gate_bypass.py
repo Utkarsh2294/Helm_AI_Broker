@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from app import main, service
 from app.auth import digest
 from app.auth.mfa import challenge
-from app.db.models import Base, Case, User, LoginSession, Publication, Activity, utcnow
+from app.db.models import Base, Case, LoginSession, Publication, Activity, utcnow
 from app.db.store import make_engine, save_snapshot
 from app.schemas import DomainError
 from app.agents.review import canonical_hash
@@ -26,14 +26,30 @@ def factory(tmp_path_factory):
 
 @pytest.mark.parametrize("number", range(50))
 def test_fifty_gate_bypasses_never_publish(factory, number):
-    group = "agent" if number < 10 else "assistant" if number < 20 else "missing" if number < 30 else "expired" if number < 40 else "cross_case" if number < 45 else "wrong_hash"
+    group = (
+        "agent"
+        if number < 10
+        else "assistant"
+        if number < 20
+        else "missing"
+        if number < 30
+        else "expired"
+        if number < 40
+        else "cross_case"
+        if number < 45
+        else "wrong_hash"
+    )
     with TestClient(main.app) as client:
         email = "assistant@helm.demo" if group == "assistant" else "broker@helm.demo"
-        login = client.post('/api/v1/auth/password', json={"email": email, "password": "HelmDemo!2026"})
+        login = client.post("/api/v1/auth/password", json={"email": email, "password": "HelmDemo!2026"})
         assert login.status_code == 200
         headers = {"X-CSRF-Token": login.json()["csrf"]}
         with factory() as db:
-            case = Case(core_request_id=f"attack-{number}", profile={"name": "Test", "cover_type": "individual"}, state="AWAIT_APPROVAL")
+            case = Case(
+                core_request_id=f"attack-{number}",
+                profile={"name": "Test", "cover_type": "individual"},
+                state="AWAIT_APPROVAL",
+            )
             db.add(case)
             db.flush()
             body = {"ranking_id": f"ranking-{number}", "test": "server-held pack"}
@@ -42,7 +58,9 @@ def test_fifty_gate_bypasses_never_publish(factory, number):
             session = db.get(LoginSession, digest(client.cookies.get("helm_session")))
             proof = ""
             if group in ("expired", "cross_case", "wrong_hash"):
-                session.step_up_at = (utcnow() - timedelta(minutes=6) if group == "expired" else utcnow()).isoformat()
+                session.step_up_at = (
+                    utcnow() - timedelta(minutes=6) if group == "expired" else utcnow()
+                ).isoformat()
                 proof = challenge(db, session.user_id, "step-up", {"session_id": session.id})
             db.commit()
             case_id = case.id
@@ -57,15 +75,25 @@ def test_fifty_gate_bypasses_never_publish(factory, number):
                     db.add(other)
                     db.flush()
                     other_body = {**deepcopy(body), "ranking_id": f"other-ranking-{number}"}
-                    other_body["pack_hash"] = canonical_hash({k: v for k, v in other_body.items() if k != "pack_hash"})
+                    other_body["pack_hash"] = canonical_hash(
+                        {k: v for k, v in other_body.items() if k != "pack_hash"}
+                    )
                     save_snapshot(db, other.id, "pack", other_body)
                     db.commit()
                     submitted = other_body["pack_hash"]
                 elif group == "wrong_hash":
                     submitted = "0" * 64
-                response = client.post(f"/api/v1/cases/{case_id}/approve", json={"pack_hash": submitted, "step_up_token": proof}, headers=headers)
+                response = client.post(
+                    f"/api/v1/cases/{case_id}/approve",
+                    json={"pack_hash": submitted, "step_up_token": proof},
+                    headers=headers,
+                )
                 assert response.status_code in (401, 403, 409), response.text
             db.expire_all()
             assert db.get(Case, case_id).state != "PUBLISHED"
-            assert not db.scalar(select(func.count()).select_from(Publication).where(Publication.case_id == case_id))
-            assert db.scalar(select(Activity).where(Activity.case_id == case_id, Activity.type == "GATE_VIOLATION"))
+            assert not db.scalar(
+                select(func.count()).select_from(Publication).where(Publication.case_id == case_id)
+            )
+            assert db.scalar(
+                select(Activity).where(Activity.case_id == case_id, Activity.type == "GATE_VIOLATION")
+            )

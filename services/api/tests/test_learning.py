@@ -5,9 +5,16 @@ from app.schemas import CRITERIA
 
 def records():
     rows = [{"plan": {"id": str(i)}, "utilities": {c: (i + 1) / 6 for c in CRITERIA}} for i in range(5)]
-    return [{"id": f"s{i}", "case_id": f"c{i}", "ranking": {"top": rows},
-             "selected": ["4", "3", "2"], "survey": {"thumbs": {"4": "up", "3": "up", "2": "up"}}}
-            for i in range(10)]
+    return [
+        {
+            "id": f"s{i}",
+            "case_id": f"c{i}",
+            "ranking": {"top": rows},
+            "selected": ["4", "3", "2"],
+            "survey": {"thumbs": {"4": "up", "3": "up", "2": "up"}},
+        }
+        for i in range(10)
+    ]
 
 
 def test_learning_has_evidence_gate_holdout_and_no_auto_activation():

@@ -59,10 +59,22 @@ def test_independent_javascript_scalar_parity_forty_cases(sample):
         p = plans[i % len(plans)].model_copy(deep=True)
         p.excessPence = rng.randrange(100001)
         p.insurerStats.finStrength = rng.random()
-        cases.append({"plan": p.model_dump(), "needs": needs.model_dump(), "weights": user_weights(rng.sample(list(CRITERIA), 3))})
-    result = subprocess.run(["node", str(ROOT / "tools/engine_oracle.mjs")], input=json.dumps(cases), capture_output=True, text=True)
+        cases.append(
+            {
+                "plan": p.model_dump(),
+                "needs": needs.model_dump(),
+                "weights": user_weights(rng.sample(list(CRITERIA), 3)),
+            }
+        )
+    result = subprocess.run(
+        ["node", str(ROOT / "tools/engine_oracle.mjs")],
+        input=json.dumps(cases),
+        capture_output=True,
+        text=True,
+    )
     assert result.returncode == 0, result.stderr
     from app.schemas import Plan, Needs
+
     for case, oracle in zip(cases, json.loads(result.stdout)):
         u = utilities(Plan.model_validate(case["plan"]), Needs.model_validate(case["needs"]))
         assert all(abs(u[c] - oracle["utilities"][c]) < 1e-9 for c in CRITERIA)
@@ -74,7 +86,10 @@ def test_monotonicity_and_diversity(sample):
     lower = plans[0].model_copy(deep=True)
     lower.basePremiumPence -= 1000
     lower.annualPremiumPence = premium_with_tax(lower.basePremiumPence)
-    assert aggregate(utilities(lower, needs), user_weights([]))[0] >= aggregate(utilities(plans[0], needs), user_weights([]))[0]
+    assert (
+        aggregate(utilities(lower, needs), user_weights([]))[0]
+        >= aggregate(utilities(plans[0], needs), user_weights([]))[0]
+    )
     result = rank_plans(plans, needs, "diversity", draws=50)
     assert max(Counter(r["plan"]["insurerId"] for r in result["top"]).values()) <= 2
 

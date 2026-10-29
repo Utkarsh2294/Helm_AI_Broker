@@ -1,0 +1,45 @@
+{
+  "recorded_at": "2026-10-29T20:41:06.502561+00:00",
+  "npm": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "python_scope": "locked runtime plus optional agents",
+  "python_remaining": [
+    {
+      "package": "chromadb",
+      "version": "1.5.9",
+      "advisories": [
+        {
+          "id": "PYSEC-2026-311",
+          "fix_versions": []
+        },
+        {
+          "id": "PYSEC-2026-311",
+          "fix_versions": []
+        },
+        {
+          "id": "PYSEC-2026-3814",
+          "fix_versions": []
+        },
+        {
+          "id": "PYSEC-2026-3815",
+          "fix_versions": []
+        },
+        {
+          "id": "PYSEC-2026-3813",
+          "fix_versions": []
+        }
+      ]
+    }
+  ],
+  "remediated": [
+    "cryptography upgraded to 50.0.2",
+    "filelock upgraded to 4.2.4"
+  ],
+  "live_release_gate": "Unpatched optional CrewAI/ChromaDB findings require review; no Chroma server, retrieval store or Chroma endpoint is exposed by the prototype."
+}

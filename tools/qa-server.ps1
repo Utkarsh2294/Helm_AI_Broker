@@ -1,4 +1,4 @@
-param([switch]$Stop, [switch]$ReuseDatabase)
+param([switch]$Stop, [switch]$ReuseDatabase, [switch]$Postgres)
 $ErrorActionPreference = 'Stop'
 $qaRoot = Split-Path -Parent $PSScriptRoot
 $qaDirectory = Join-Path $qaRoot '.runtime\qa'
@@ -24,6 +24,12 @@ $qaPython = Join-Path $env:LOCALAPPDATA 'HelmBroker\venv\Scripts\python.exe'
 $qaDatabase = if ($ReuseDatabase) { (Get-ChildItem -LiteralPath $qaDirectory -Filter 'browser-*.db' | Sort-Object Name -Descending | Select-Object -First 1).FullName } else { Join-Path $qaDirectory ('browser-' + (Get-Date -Format 'yyyyMMddHHmmssfff') + '.db') }
 if (-not $qaDatabase) { throw 'No QA fixture database available' }
 $env:HELM_DATABASE_URL = 'sqlite:///' + $qaDatabase.Replace('\', '/')
+if ($Postgres) {
+    $qaDatabaseName = & $qaPython (Join-Path $qaRoot 'tools\create_qa_database.py')
+    if ($LASTEXITCODE) { throw 'QA PostgreSQL database creation failed' }
+    if ($qaDatabaseName -notmatch '^helm_qa_\d+$') { throw 'Unexpected QA database name' }
+    $env:HELM_DATABASE_URL = "postgresql+psycopg://helm:helm_local_demo_only@127.0.0.1:55439/$qaDatabaseName"
+}
 $env:HELM_REDIS_URL = 'redis://127.0.0.1:56389/1'
 $env:HELM_ALLOWED_ORIGIN = 'http://127.0.0.1:5182'
 # QA only: shared login traffic deliberately exceeds the live five-attempt policy.
