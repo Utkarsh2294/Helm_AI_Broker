@@ -80,6 +80,9 @@ class StepUp(Model):
 
 
 class Action(Model):
+    dnr_acknowledged: bool = False
+    vulnerability_acknowledged: bool = False
+    underwriter_reference: str = Field(default="", max_length=200)
     scenario: Scenario = "happy"
     medical_released: bool = False
     ranking_id: str = ""

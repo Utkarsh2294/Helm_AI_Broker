@@ -113,7 +113,7 @@ def create_rfq(body: dict, idempotency_key: str = Header()):
     rfq = RFQ(request_id=body.get("request_id", "demo"), dnr_version=1,
               deadline=utcnow() + timedelta(seconds=8), partners=[p["id"] for p in PARTNERS], body=body)
     scenario = {f"S{i}": value for i, value in enumerate(["happy", "decline", "late", "arithmetic", "medical", "duplicate", "referral", "injection"], 1)}
-    quotes, board = simulate_responses(rfq, scenario.get(body.get("scenario", "S1"), "happy"))
+    quotes, board = simulate_responses(rfq, scenario.get(body.get("scenario", "S1"), body.get("scenario", "happy")))
     rfqs[rfq_id] = {"id": rfq_id, "quotes": [p.model_dump() for p in quotes], "partners": board, "status": "answered"}
     idempotency[idempotency_key] = rfqs[rfq_id]
     return rfqs[rfq_id]

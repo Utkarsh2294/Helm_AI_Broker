@@ -78,8 +78,13 @@ def act(db, case_id, action, user, session, body):
         target = case.previous_state or State.FACTFIND_REVIEW
         transition(db, case, [State.PAUSED_NEEDS_HUMAN], target, "broker_resumed", actor)
     elif action == "resolve":
-        if case.state != State.PAUSED_NEEDS_HUMAN:
+        if case.state not in (State.PAUSED_NEEDS_HUMAN, State.UW_REFERRAL):
             raise DomainError("No exception is awaiting resolution")
+        if case.state == State.UW_REFERRAL:
+            if settings().partner_mode != "simulator" or len(body.get("underwriter_reference", "")) < 3:
+                raise DomainError("G3 requires a recorded fictional underwriter confirmation; live referrals need partner evidence")
+            db.add(Approval(case_id=case.id, gate="G3", user_id=user.id, payload_hash=latest(db, case.id, "rfq").body_hash))
+            save_snapshot(db, case.id, "referral_resolution", {"underwriter_reference": body["underwriter_reference"], "by": user.id})
         jobs = db.scalars(select(Job).where(Job.case_id == case.id, Job.status == "needs_human")).all()
         if not jobs:
             raise DomainError("Use Resume after reviewing the ranking exception")
@@ -87,7 +92,7 @@ def act(db, case_id, action, user, session, body):
             job.body = {"scenario": "happy"}
             job.status = "pending"
             job.due_at = utcnow().isoformat()
-        transition(db, case, [State.PAUSED_NEEDS_HUMAN], State.QUOTES_PENDING,
+        transition(db, case, [State.PAUSED_NEEDS_HUMAN, State.UW_REFERRAL], State.QUOTES_PENDING,
                    "broker_resolved_demo_partner_exception", actor)
     elif action == "complaint":
         if case.state in [State.CLOSED, State.COMPLAINT_FLAGGED]:
@@ -102,6 +107,8 @@ def act(db, case_id, action, user, session, body):
             raise DomainError("Fact-find is not ready for sign-off")
         dnr = latest(db, case.id, "dnr")
         data = DNR.model_validate(dnr.body)
+        if not body.get("dnr_acknowledged") or (data.vulnerability_flags and not body.get("vulnerability_acknowledged")):
+            raise DomainError("Explicitly acknowledge the fact-find and any vulnerability indicators", 422)
         if data.missing or not data.consent_to_share:
             raise DomainError("Fact-find has missing information or consent")
         db.add(Approval(case_id=case.id, gate="G0", user_id=user.id, payload_hash=dnr.body_hash))
@@ -167,7 +174,7 @@ def act(db, case_id, action, user, session, body):
 def process_due_jobs(db):
     if settings().agents_paused:
         return
-    jobs = db.scalars(select(Job).where(Job.status == "pending", Job.due_at <= utcnow().isoformat())
+    jobs = db.scalars(select(Job).where(Job.status == "pending", Job.due_at <= utcnow().isoformat()).order_by(Job.due_at)
                       .with_for_update(skip_locked=True)).all()
     for job in jobs:
         case = get_case(db, job.case_id)
