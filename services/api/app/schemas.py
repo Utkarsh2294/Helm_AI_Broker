@@ -97,6 +97,7 @@ class Plan(Model):
     id: str
     insurerId: str
     name: str
+    revision: int = Field(default=1, ge=1)
     status: Literal["quoted", "declined", "referred"] = "quoted"
     basePremiumPence: Pence
     annualPremiumPence: Pence

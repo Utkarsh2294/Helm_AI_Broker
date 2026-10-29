@@ -1,9 +1,9 @@
 """Arq wakes persisted jobs; restarting the worker never loses quotation deadlines."""
-import os
 from datetime import timezone
 from zoneinfo import ZoneInfo
 from arq import cron
 from arq.connections import RedisSettings
+from app.config import settings
 from sqlalchemy import select
 from app.db.models import ModelProposal, utcnow
 from app.db.store import SessionLocal
@@ -30,7 +30,7 @@ async def daily_learning(ctx):
 
 
 class WorkerSettings:
-    redis_settings = RedisSettings.from_dsn(os.getenv("HELM_REDIS_URL", "redis://127.0.0.1:56389/0"))
+    redis_settings = RedisSettings.from_dsn(settings().redis_url)
     functions = [poll_jobs, daily_learning]
     cron_jobs = [cron(poll_jobs, second={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55}),
                  cron(daily_learning, minute=0)]

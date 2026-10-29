@@ -1,6 +1,6 @@
 import pytest
 from app.agents.intake import research_request
-from app.agents.quotation import build_rfq, premium_with_tax, simulate_responses
+from app.agents.quotation import build_rfq, normalise_responses, premium_with_tax, simulate_responses
 from app.schemas import DomainError, QuoteRequest, Needs, CoverageNeed
 
 
@@ -31,3 +31,15 @@ def test_all_partners_and_adverse_scenarios():
                             ("referral", "referred")]:
         quotes, statuses = simulate_responses(rfq, scenario)
         assert len(quotes) == 8 and statuses[-1]["state"] == state
+
+
+def test_duplicate_and_out_of_order_quotes_are_not_double_counted():
+    rfq = build_rfq(fixture_dnr(), signed_off=True)
+    quotes, _ = simulate_responses(rfq, "duplicate")
+    assert len(quotes) == 12
+    canonical = normalise_responses(quotes)
+    assert len(canonical) == 10
+    assert next(p for p in canonical if p.id == quotes[0].id).revision == 2
+    bad = quotes[0].model_copy(update={"annualPremiumPence": 1})
+    with pytest.raises(DomainError, match="Contradictory"):
+        normalise_responses([quotes[0], bad])

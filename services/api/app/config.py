@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="HELM_", env_file=str(ROOT / ".env"), extra="ignore")
     mode: Literal["demo"] = "demo"
     database_url: str = f"sqlite:///{(ROOT / '.runtime/broker.db').as_posix()}"
+    redis_url: str = "redis://127.0.0.1:56389/0"
     encryption_key: str = ""
     cookie_secure: bool = False
     allowed_origin: str = "http://127.0.0.1:5180"

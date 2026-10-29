@@ -75,4 +75,21 @@ def simulate_responses(rfq: RFQ, scenario: Scenario = "happy",
                 provenance={"basePremiumPence": f"demo:{rfq.request_id}:{plan_id}#premium",
                             "coverage": f"demo:{rfq.request_id}:{plan_id}#benefits"},
             ))
+    if scenario == "duplicate" and plans:
+        plans[0].revision = 2
+        plans.extend([plans[0].model_copy(deep=True), plans[0].model_copy(update={"revision": 1})])
     return plans, board
+
+
+def normalise_responses(plans: list[Plan]) -> list[Plan]:
+    """Ignore identical/replayed replies and older revisions; contradictory revisions halt."""
+    versions = {}
+    latest = {}
+    for plan in plans:
+        key = (plan.id, plan.revision)
+        if key in versions and versions[key] != plan.model_dump():
+            raise DomainError("Contradictory partner revisions require broker review")
+        versions[key] = plan.model_dump()
+        if plan.id not in latest or plan.revision > latest[plan.id].revision:
+            latest[plan.id] = plan
+    return sorted(latest.values(), key=lambda plan: plan.id)

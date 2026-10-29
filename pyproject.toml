@@ -7,7 +7,7 @@ dependencies = [
   "fastapi>=0.115,<1", "uvicorn>=0.34,<1", "pydantic>=2.10,<3",
   "pydantic-settings>=2.7,<3", "sqlalchemy>=2.0,<3", "alembic>=1.14,<2",
   "psycopg[binary]>=3.2,<4", "argon2-cffi>=23,<26", "cryptography>=44,<47",
-  "httpx>=0.28,<1", "arq>=0.26,<1"
+  "httpx>=0.28,<1", "arq>=0.26,<1", "tzdata>=2025,<2028"
 ]
 
 [project.optional-dependencies]

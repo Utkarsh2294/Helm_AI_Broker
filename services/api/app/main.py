@@ -18,7 +18,7 @@ from app.config import settings
 from app.db.models import Activity, Case, ModelProposal, utcnow
 from app.db.store import SessionLocal, latest, save_snapshot, audit
 from app.demo import seed_demo
-from app.schemas import DNR, DomainError, Model, QuoteRequest, State, Survey
+from app.schemas import DNR, DomainError, Fact, Model, QuoteRequest, State, Survey
 from app import service
 
 
@@ -192,6 +192,9 @@ def edit_dnr(case_id: str, body: EditDNR, request: Request, db=Depends(database)
     if body.dnr.request_id != previous.body["request_id"]:
         raise DomainError("Request identity cannot be changed", 422)
     revised = body.dnr.model_copy(update={"version": previous.version + 1})
+    if revised.needs.budget_annual_pence != previous.body["needs"]["budget_annual_pence"]:
+        revised.facts["budget_annual_pence"] = Fact(value=revised.needs.budget_annual_pence,
+            source=f"broker_edit:{case_id}:v{revised.version}", verified_by=user.id)
     save_snapshot(db, case_id, "dnr", revised.model_dump())
     save_snapshot(db, case_id, "dnr_edit", {"reason": body.reason, "by": user.id, "version": revised.version})
     service.transition(db, case, [case.state], State.NEEDS_INFO if revised.missing else State.FACTFIND_REVIEW,

@@ -189,13 +189,23 @@ def process_due_jobs(db):
 
 def learning_run(db):
     records = []
-    for selection in db.scalars(select(Snapshot).where(Snapshot.kind == "selection")).all():
+    consumed = set()
+    for proposal in db.scalars(select(ModelProposal).where(ModelProposal.status == "proposed")):
+        consumed.update(proposal.body.get("selection_ids", []))
+    # Keep the latest preference per case so repeated draft edits do not multiply the evidence.
+    selections = {}
+    for selection in db.scalars(select(Snapshot).where(Snapshot.kind == "selection").order_by(Snapshot.version)):
+        selections[selection.case_id] = selection
+    for selection in selections.values():
+        if selection.id in consumed:
+            continue
         ranking = db.scalar(select(Snapshot).where(Snapshot.case_id == selection.case_id,
                                                    Snapshot.kind == "ranking").order_by(Snapshot.version.desc()))
         if ranking and ranking.body["id"] == selection.body["ranking_id"]:
             records.append({"id": selection.id, "case_id": selection.case_id,
                             "ranking": ranking.body, **selection.body})
     result = invoke("learning", {"records": records})
+    result["selection_ids"] = [record["id"] for record in records]
     proposal = ModelProposal(body=result, status=result["status"])
     db.add(proposal)
     db.flush()
@@ -217,6 +227,9 @@ def detail(db, case):
 def evidence(db, case):
     events = db.scalars(select(Activity).where(Activity.case_id == case.id).order_by(Activity.seq)).all()
     return {"case": detail(db, case), "chain_valid": verify_chain(events),
+            "approvals": [{k: getattr(a, k) for k in
+                           ("id", "gate", "user_id", "payload_hash", "created_at", "step_up_at")}
+                          for a in db.scalars(select(Approval).where(Approval.case_id == case.id))],
             "snapshots": [{"id": s.id, "kind": s.kind, "version": s.version,
                            "body_hash": s.body_hash, "body": s.body}
                           for s in db.scalars(select(Snapshot).where(Snapshot.case_id == case.id))]}

@@ -2,7 +2,7 @@
 import os
 from decimal import Decimal
 from app.agents.intake import research_request
-from app.agents.quotation import RFQ, simulate_responses
+from app.agents.quotation import RFQ, normalise_responses, simulate_responses
 from app.agents.ranking import rank_quotes
 from app.agents.review import assemble_pack
 from app.agents.learning import propose_improvement
@@ -23,7 +23,8 @@ def execute_step(kind, payload):
     if kind == "quotation":
         plans, board = simulate_responses(RFQ.model_validate(payload["rfq"]), payload["scenario"],
                                           Decimal(payload.get("tax_rate", "0.12")))
-        return {"quotes": [p.model_dump() for p in plans], "partners": board}
+        return {"quotes": [p.model_dump() for p in normalise_responses(plans)],
+                "raw_quotes": [p.model_dump() for p in plans], "partners": board}
     if kind == "ranking":
         return rank_quotes(DNR.model_validate(payload["dnr"]), [Plan.model_validate(p) for p in payload["quotes"]],
                            payload["id"], tax_rate=Decimal(payload.get("tax_rate", "0.12")))
@@ -54,4 +55,4 @@ def run_agent(kind, payload, runtime="python"):
         def execute(self):
             return execute_step(self.state.kind, self.state.payload)
 
-    return BrokerStep().kickoff(inputs={"kind": kind, "payload": payload})
+    return BrokerStep(tracing=False).kickoff(inputs={"kind": kind, "payload": payload})

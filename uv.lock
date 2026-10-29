@@ -847,6 +847,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "sqlalchemy" },
+    { name = "tzdata" },
     { name = "uvicorn" },
 ]
 
@@ -874,6 +875,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8,<10" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.11,<1" },
     { name = "sqlalchemy", specifier = ">=2.0,<3" },
+    { name = "tzdata", specifier = ">=2025,<2028" },
     { name = "uvicorn", specifier = ">=0.34,<1" },
 ]
 provides-extras = ["agents", "dev"]
