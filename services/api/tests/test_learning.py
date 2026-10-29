@@ -16,7 +16,7 @@ def test_learning_has_evidence_gate_holdout_and_no_auto_activation():
     data[0]["survey"]["thumbs"]["4"] = "down"
     base = user_weights([])
     proposal = propose_improvement(data, base)
-    assert proposal["status"] == "proposed" and not proposal["auto_applied"]
+    assert proposal["status"] == "no_improvement" and not proposal["auto_applied"]
     assert proposal["disputed"] == ["s0"]
     assert len(proposal["holdout_case_ids"]) >= 1
     assert all(0.7 * base[c] <= proposal["weights"][c] <= 1.3 * base[c] for c in CRITERIA)

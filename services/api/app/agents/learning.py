@@ -2,6 +2,7 @@
 import math
 from app.engine.ranking import aggregate, combine_weights
 from app.schemas import CRITERIA
+from app.learning_fit import fit_bradley_terry
 
 
 def preference_pairs(records: list[dict]) -> tuple[list[dict], list[str]]:
@@ -51,29 +52,15 @@ def propose_improvement(records: list[dict], champion: dict | None = None, min_c
         return {**base, "status": "insufficient_evidence", "weights": champion}
     holdout = set(case_ids[::5])
     training = [p for p in pairs if p["case_id"] not in holdout]
-    prior = {c: math.log(max(champion[c], 1e-9)) for c in CRITERIA}
-    logits = dict(prior)
-    for _ in range(100):
-        exps = {c: math.exp(logits[c] - max(logits.values())) for c in CRITERIA}
-        w = {c: exps[c] / sum(exps.values()) for c in CRITERIA}
-        gradient = {c: -0.1 * (logits[c] - prior[c]) for c in CRITERIA}
-        for pair in training:
-            diff = {c: pair["preferred"][c] - pair["other"][c] for c in CRITERIA}
-            mean = sum(w[c] * diff[c] for c in CRITERIA)
-            probability = 1 / (1 + math.exp(max(-700, min(700, -8 * mean))))
-            for c in CRITERIA:
-                gradient[c] += pair["weight"] * (1 - probability) * 8 * w[c] * (diff[c] - mean) / len(training)
-        logits = {c: logits[c] + 0.2 * gradient[c] for c in CRITERIA}
-    exps = {c: math.exp(logits[c]) for c in CRITERIA}
-    fitted = {c: exps[c] / sum(exps.values()) for c in CRITERIA}
-    evidence = len(training) / (len(training) + 50)
-    shrunk = {c: (1 - evidence) * champion[c] + evidence * fitted[c] for c in CRITERIA}
-    proposed = combine_weights(champion, shrunk)
+    fit = fit_bradley_terry(training, champion)
+    proposed = combine_weights(champion, fit["weights"])
     evaluation = [r for r in records if r["case_id"] in holdout and r["id"] not in disputed]
     old, new = metrics(evaluation, champion), metrics(evaluation, proposed)
-    return {**base, "status": "proposed", "weights": proposed,
+    improved = new["ndcg3"] > old["ndcg3"] + 1e-12 and new["top3_agreement"] >= old["top3_agreement"]
+    return {**base, "status": "proposed" if improved else "no_improvement", "weights": proposed,
+            "fit": {"iterations": fit["iterations"], "evidence_factor": fit["evidence_factor"]},
             "training_comparisons": len(training), "holdout_case_ids": sorted(holdout),
             "champion_metrics": old, "challenger_metrics": new,
-            "eligible_for_shadow": new["ndcg3"] >= old["ndcg3"] and new["top3_agreement"] >= old["top3_agreement"],
+            "eligible_for_shadow": improved,
             "report": "Weights are a proposal only. Review disputed examples before any model change. "
                       "Synthetic demo feedback does not establish real-world ranking quality."}
