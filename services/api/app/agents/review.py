@@ -2,6 +2,10 @@
 import hashlib
 import json
 from app.schemas import DNR, DomainError, Survey
+from app.compliance.rule_packs import RULE_PACK
+from app.compliance.pack_validator import validate_pack
+from app.config import settings
+from app.engine.governance import commission_deviation_check
 
 
 def canonical_hash(value: dict) -> str:
@@ -47,4 +51,24 @@ def assemble_pack(dnr: DNR, ranking: dict, selected: list[str], survey: Survey,
         "medical_notice": "No conclusion about cover for any medical condition has been made.",
         "demo": True,
     }
+    body["plan_explanations"] = [{"plan_id": r["plan"]["id"], "text": f"{r['plan']['name']} was selected against the stated priorities: {', '.join(dnr.needs.priorities)}. Its recorded benefit levels and hospital list are shown in the comparison. Review unmet needs and insurer terms before proceeding."} for r in chosen]
+    body["commission_diagnostic"] = commission_deviation_check(ranking["top"], selected)
+    body["commission_deviation"] = body["commission_diagnostic"]["requires_audit"]
+    body["manifest"] = {"plans": [{"id": r["plan"]["id"], "premium_breakdown": {
+        "base_pence": r["plan"]["basePremiumPence"],
+        "ipt_pence": r["plan"]["annualPremiumPence"] - r["plan"]["basePremiumPence"],
+        "ipt_rate": str(settings().ipt_standard_rate), "annual_pence": r["plan"]["annualPremiumPence"],
+        "monthly_pence": round(r["plan"]["annualPremiumPence"] / 12)},
+        "key_terms": r["plan"]["coverage"], "excess_pence": r["plan"]["excessPence"],
+        "ipid_reference": {"url": r["plan"]["ipidUrl"], "version": r["plan"]["ipidVersion"]},
+        "toba_reference": {"status": "active", "reference": f"DEMO-TOBA-{r['plan']['insurerId']}"}}
+        for r in chosen], "cancellation_notice": RULE_PACK["cancellation_notice"],
+        "search_basis_statement": {"type": "panel", "partner_count": 5, "fictional": True},
+        "remuneration_panel": {"fair_value_statement": RULE_PACK["fair_value_statement"],
+            "commissions": {r["plan"]["id"]: r["plan"]["commissionPct"] for r in chosen}},
+        "vulnerability_note": "Human-led handling required" if dnr.vulnerability_flags else "No flags recorded"}
+    body["rule_pack_version"] = RULE_PACK["version"]
+    body["dnr_sections_confirmed"] = []
+    body["unmet_needs_addressed"] = []
+    validate_pack(body)
     return {**body, "pack_hash": canonical_hash(body)}

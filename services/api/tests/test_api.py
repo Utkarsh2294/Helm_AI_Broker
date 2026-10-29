@@ -33,13 +33,13 @@ def test_auth_csrf_origin_and_logout(client):
     assert client.post(endpoint, json={}).status_code == 403
     assert client.post(endpoint, json={}, headers={**headers, "Origin": "https://attacker.example"}).status_code == 403
     assert client.post(endpoint, json={"actor": "broker:pretend"}, headers=headers).status_code == 422
-    assert client.post(endpoint, json={}, headers=headers).status_code == 200
+    assert client.post(endpoint, json={"dnr_acknowledged": True}, headers=headers).status_code == 200
     assert client.post("/api/v1/auth/logout", headers=headers).status_code == 200
     assert client.get("/api/v1/cases").status_code == 401
 
 
 def test_assistant_cannot_cross_gate_and_import_is_idempotent(client):
-    headers = login(client, "assistant@helm.demo")
+    headers = login(client, "auditor@helm.demo")
     case_id = client.get("/api/v1/cases").json()[0]["id"]
     assert client.post(f"/api/v1/cases/{case_id}/sign-off", json={}, headers=headers).status_code == 403
     client.post("/api/v1/auth/logout", headers=headers)

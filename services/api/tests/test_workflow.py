@@ -27,7 +27,7 @@ def workspace(tmp_path):
 
 
 def ready_for_selection(db, case, user, session, scenario="happy"):
-    service.act(db, case.id, "sign-off", user, session, {})
+    service.act(db, case.id, "sign-off", user, session, {"dnr_acknowledged": True})
     service.act(db, case.id, "release", user, session, {"scenario": scenario})
     job = db.scalar(select(Job).where(Job.case_id == case.id))
     job.due_at = (utcnow() - timedelta(seconds=1)).isoformat()
@@ -66,7 +66,7 @@ def test_complaint_locks_jobs_and_assistant_cannot_act(workspace):
     with pytest.raises(DomainError):
         service.act(db, case.id, "sign-off", user, session, {})
     user.role = "authorised_broker"
-    service.act(db, case.id, "sign-off", user, session, {})
+    service.act(db, case.id, "sign-off", user, session, {"dnr_acknowledged": True})
     service.act(db, case.id, "release", user, session, {})
     service.act(db, case.id, "complaint", user, session, {})
     job = db.scalar(select(Job).where(Job.case_id == case.id))
