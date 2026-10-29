@@ -13,6 +13,10 @@ def validate_pack(pack):
         premium = plan.get("premium_breakdown", {})
         if not all(k in premium for k in ("base_pence", "ipt_pence", "annual_pence")) or abs(premium.get("annual_pence", 0) - premium.get("base_pence", 0) - premium.get("ipt_pence", 0)) > 1:
             missing.append("C7:premium_breakdown")
+        else:
+            from app.agents.quotation import premium_with_tax
+            if abs(premium["annual_pence"] - premium_with_tax(premium["base_pence"])) > 1:
+                missing.append("C7:tax_arithmetic")
         if plan.get("toba_reference", {}).get("status") != "active":
             missing.append("C9:toba")
     if not manifest.get("cancellation_notice", {}).get("basis"):

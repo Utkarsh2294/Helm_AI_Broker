@@ -9,6 +9,7 @@ from app.config import settings
 from app.db.models import Activity, Approval, Case, Job, ModelProposal, Publication, Snapshot, uid, utcnow
 from app.db.store import audit, latest, save_snapshot, verify_chain
 from app.schemas import DNR, DomainError, QuoteRequest, State
+from app.publication import process_publication
 
 
 def invoke(kind, payload):
@@ -148,23 +149,40 @@ def act(db, case_id, action, user, session, body):
     elif action == "request-changes":
         transition(db, case, [State.AWAIT_APPROVAL], State.BROKER_REVIEW, "changes_requested", actor)
     elif action == "approve":
-        if not user.can_approve or user.role != "authorised_broker":
+        if not user.can_approve or user.role != "authorised_broker" or not user.fca_irn:
             raise DomainError("Only an authorised adviser may approve advice", 403)
         if not session.step_up_at or utcnow() - datetime.fromisoformat(session.step_up_at) > timedelta(minutes=5):
-            raise DomainError("Re-authenticate before approval", 403)
+            raise DomainError("Re-authenticate before approval", 401, requires_step_up=True)
+        from app.auth.mfa import load_challenge
+        step_up = load_challenge(db, body.get("step_up_token", ""), "step-up")
+        if step_up.user_id != user.id or step_up.body.get("session_id") != session.id:
+            raise DomainError("Step-up belongs to a different session", 403)
         if case.state != State.AWAIT_APPROVAL:
             raise DomainError("No pack is awaiting approval")
         pack = latest(db, case.id, "pack").body
         if body.get("pack_hash") != pack["pack_hash"]:
             raise DomainError("Pack changed; review the latest version")
+        from app.compliance.pack_validator import validate_pack
+        validate_pack(pack)
+        if set(pack.get("dnr_sections_confirmed", [])) != {"priorities", "coverage", "budget", "household", "medical_flag"}:
+            raise DomainError("Review and confirm every DNR reference section before approval", 422)
+        if set(pack.get("unmet_needs_addressed", [])) != {f"{item['plan_id']}:{item['need']}" for item in pack["unmet_needs"]}:
+            raise DomainError("Address every unmet need before approval", 422)
+        step_up.consumed = True
         approval = Approval(case_id=case.id, gate="G2", user_id=user.id, payload_hash=pack["pack_hash"],
                             step_up_at=session.step_up_at)
         db.add(approval)
         db.flush()
-        # Demo delivery has no external side effect. A live adapter must acknowledge before PUBLISHED.
-        db.add(Publication(case_id=case.id, approval_id=approval.id, pack_hash=pack["pack_hash"]))
-        transition(db, case, [State.AWAIT_APPROVAL], State.PUBLISHED, "demo_recommendation_delivered", actor,
-                   {"approval_id": approval.id, "pack_hash": pack["pack_hash"]})
+        if pack.get("commission_deviation"):
+            audit(db, case.id, "commission_deviation", actor, pack["commission_diagnostic"])
+        if settings().core_delivery_enabled:
+            db.add(Job(case_id=case.id, kind="publish", due_at=utcnow().isoformat(),
+                       body={"approval_id": approval.id, "pack_hash": pack["pack_hash"], "attempts": 0}))
+            audit(db, case.id, "publication_queued", actor, {"approval_id": approval.id})
+        else:
+            db.add(Publication(case_id=case.id, approval_id=approval.id, pack_hash=pack["pack_hash"]))
+            transition(db, case, [State.AWAIT_APPROVAL], State.PUBLISHED, "demo_recommendation_delivered", actor,
+                       {"approval_id": approval.id, "pack_hash": pack["pack_hash"]})
     else:
         raise DomainError("Unknown action", 404)
     db.flush()
@@ -179,6 +197,9 @@ def process_due_jobs(db):
     for job in jobs:
         case = get_case(db, job.case_id)
         if case.state in (State.PAUSED_NEEDS_HUMAN, State.COMPLAINT_FLAGGED):
+            continue
+        if job.kind == "publish":
+            process_publication(db, case, job)
             continue
         if case.state != State.QUOTES_PENDING:
             job.status = "cancelled"
@@ -243,7 +264,7 @@ def detail(db, case):
     data = {"id": case.id, "core_request_id": case.core_request_id, **case.profile,
             "state": case.state, "assigned_to": case.assigned_to, "created_at": case.created_at,
             "version": case.version}
-    for kind in ("dnr", "rfq", "quotes", "ranking", "pack"):
+    for kind in ("dnr", "rfq", "quotes", "ranking", "pack", "publication"):
         snapshot = latest(db, case.id, kind)
         data[kind] = snapshot.body if snapshot else None
     data["events"] = [{k: getattr(row, k) for k in ("seq", "actor", "type", "payload", "created_at", "hash")}

@@ -113,7 +113,7 @@ def verify(body: Ceremony, request: Request, response: Response, db=Depends(data
         if current_user.id != user.id or current.id != step_session_id:
             raise DomainError("Step-up is bound to a different session", 403)
         current.step_up_at = utcnow().isoformat()
-        return {"ok": True, "expires_in": 300}
+        return {"ok": True, "expires_in": 300, "step_up_token": mfa.challenge(db, user.id, "step-up", {"session_id": current.id})}
     return sessions.issue(db, user, request, response)
 
 
@@ -127,7 +127,7 @@ def step_up(body: StepUp, request: Request, db=Depends(database)):
     elif not verify_password(body.password, user.password_hash):
         raise DomainError("Verify with your password or enrolled authenticator", 401)
     session.step_up_at = utcnow().isoformat()
-    return {"ok": True, "expires_in": 300}
+    return {"ok": True, "expires_in": 300, "step_up_token": mfa.challenge(db, user.id, "step-up", {"session_id": session.id})}
 
 
 @router.get("/session")

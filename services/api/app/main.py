@@ -61,7 +61,7 @@ async def request_boundary(request, call_next):
 @app.exception_handler(DomainError)
 async def domain_error(request, error):
     return JSONResponse({"type": "about:blank", "title": str(error), "detail": str(error),
-                         "status": error.status}, status_code=error.status, media_type="application/problem+json")
+                         "status": error.status, **error.flags}, status_code=error.status, media_type="application/problem+json")
 
 
 @app.exception_handler(StaleDataError)
@@ -91,6 +91,7 @@ class Action(Model):
     acknowledgements: list[str] = Field(default_factory=list)
     suitability: str | None = Field(default=None, max_length=20000)
     pack_hash: str = ""
+    step_up_token: str = ""
 
 
 class EditDNR(Model):
@@ -100,6 +101,8 @@ class EditDNR(Model):
 
 class SuitabilityEdit(Model):
     text: str = Field(min_length=20, max_length=20000)
+    dnr_sections_confirmed: list[str] = Field(default_factory=list)
+    unmet_needs_addressed: list[str] = Field(default_factory=list)
 
 
 # shortcut: per-process login throttle for a local demo; replace with shared Redis limits before live use.
@@ -229,6 +232,10 @@ def edit_suitability(case_id: str, body: SuitabilityEdit, request: Request, db=D
     previous = latest(db, case_id, "pack").body
     revised = {k: v for k, v in previous.items() if k != "pack_hash"}
     revised["suitability_final"] = body.text.strip()
+    revised["dnr_sections_confirmed"] = body.dnr_sections_confirmed
+    revised["unmet_needs_addressed"] = body.unmet_needs_addressed
+    import difflib
+    revised["suitability_diff"] = list(difflib.unified_diff(previous["suitability_draft"].splitlines(), body.text.strip().splitlines()))
     revised["pack_hash"] = canonical_hash(revised)
     save_snapshot(db, case_id, "pack", revised)
     audit(db, case_id, "suitability_edited", f"broker:{user.id}", {"pack_hash": revised["pack_hash"]})

@@ -144,6 +144,7 @@ class Survey(Model):
 
 
 class DomainError(Exception):
-    def __init__(self, message: str, status: int = 409):
+    def __init__(self, message: str, status: int = 409, **flags):
         super().__init__(message)
         self.status = status
+        self.flags = flags
