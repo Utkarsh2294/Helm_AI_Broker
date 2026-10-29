@@ -37,7 +37,7 @@ class State(StrEnum):
 
 class CoverageNeed(Model):
     level: int = Field(ge=0, le=3)
-    importance: float = Field(default=1, gt=0, le=1)
+    importance: float = Field(default=1, ge=0, le=1)
     must_have: bool = False
 
 

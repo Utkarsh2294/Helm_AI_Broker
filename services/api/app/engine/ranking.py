@@ -56,7 +56,7 @@ def utilities(p: Plan, n: Needs) -> dict[str, float]:
     reference = clamp((n.reference_high_pence - teco) / (n.reference_high_pence - n.reference_low_pence))
     importance = sum(v.importance for v in n.coverage.values())
     coverage = sum(v.importance * clamp(p.coverage.get(k, 0) / max(v.level, 1))
-                   for k, v in n.coverage.items()) / importance if importance else 0
+                   for k, v in n.coverage.items()) / importance if importance else 0.5
     stats = p.insurerStats
     upheld = (stats.n * stats.upheldRate + 30 * 0.25) / (stats.n + 30)
     return {

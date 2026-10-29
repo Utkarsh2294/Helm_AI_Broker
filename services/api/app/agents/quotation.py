@@ -4,6 +4,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from typing import Literal
 
 from app.schemas import DNR, DomainError, Model, Plan
+from app.config import settings
 
 Scenario = Literal["happy", "decline", "late", "arithmetic", "medical", "duplicate", "referral", "injection"]
 PARTNERS = [
@@ -13,7 +14,8 @@ PARTNERS = [
 ]
 
 
-def premium_with_tax(base: int, rate: Decimal = Decimal("0.12")) -> int:
+def premium_with_tax(base: int, rate: Decimal | None = None) -> int:
+    rate = settings().ipt_standard_rate if rate is None else rate
     return base + int((Decimal(base) * rate).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
 
@@ -40,7 +42,7 @@ def build_rfq(dnr: DNR, *, signed_off: bool, medical_released: bool = False,
     if dnr.medical_items:
         body["medical_items"] = [{"category": "unspecified", "needs_clinical_underwriting": True} for _ in dnr.medical_items]
     return RFQ(request_id=dnr.request_id, dnr_version=dnr.version,
-               deadline=(now or datetime.now(timezone.utc)) + timedelta(seconds=8 if __import__('app.config', fromlist=['settings']).settings().clock_mode == "demo" else 21600),
+               deadline=(now or datetime.now(timezone.utc)) + timedelta(seconds=settings().demo_delay_seconds if settings().clock_mode == "demo" else 21600),
                partners=[p["id"] for p in PARTNERS
                          if p["toba_status"] == "active" and p["fca_status"] == "authorised"], body=body)
 
