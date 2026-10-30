@@ -8,6 +8,17 @@ Demo identities are broker, assistant, compliance, auditor and lead at `@helm.de
 
 ## Case journey
 
+The primary workspace action is now **Start automatic demo**. For this generated
+fictional case, agents prepare the facts, quotations and ranking automatically.
+The broker selects and orders three policies, then gives one authenticated final
+sign-off after reviewing the recommendation and its gaps. Agent 5 evaluates the
+recorded choices after delivery. The local start script enables durable background
+processing even with the case window closed. See the
+[automatic walkthrough](../TWO_DECISION_DEMO.md) for each function. Digital client
+files, per-agent work/reasons and the scoped case assistant are available from the
+case workspace. The staged process below describes existing manual cases and the
+separate pilot/exception showcase.
+
 The separate partner simulator is the seventh Compose service. For unreliable Docker DNS, run `scripts/build-containers.ps1 -PrepareWheelhouse`; later builds can reuse `%LOCALAPPDATA%/HelmBroker/linux-wheels`. The script verifies locked wheel hashes and hydrates source bytes into a fresh build context outside OneDrive, avoiding cloud-placeholder errors. Do not delete the download cache or any database/key volumes when retrying.
 
 Create a fictional request. Review its facts and source references. Edit stated requirements with a reason; the form saves a fresh version after a short pause. Resolve ambiguous medical wording through the case-bound reveal and review controls, then acknowledge and sign off the DNR. Authorise a minimised RFQ and select one of the eight scenarios. The default clock compresses six business hours to six seconds. Save stars, a Recommend/Exclude/Refer decision and a written reason for every shortlisted plan. Select saved recommended policies as you go; finish all five assessments and choose exactly three before preparing the pack. The comparison guide identifies unfinished work. Final review is guided through Client needs, Selected plans and their listed gaps, then Final confirmation. Save the review once, then authenticate and approve the exact pack and assessment hashes. No required confirmation is pre-checked automatically.

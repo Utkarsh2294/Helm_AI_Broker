@@ -1,0 +1,154 @@
+[
+  {
+    "screen": "login",
+    "violations": []
+  },
+  {
+    "screen": "/queue",
+    "violations": []
+  },
+  {
+    "screen": "/agents",
+    "violations": []
+  },
+  {
+    "screen": "/partners",
+    "violations": []
+  },
+  {
+    "screen": "/learning",
+    "violations": []
+  },
+  {
+    "screen": "/audit",
+    "violations": []
+  },
+  {
+    "screen": "/security",
+    "violations": []
+  },
+  {
+    "screen": "case fact-find",
+    "violations": []
+  },
+  {
+    "screen": "workspace assistant",
+    "violations": []
+  },
+  {
+    "screen": "automatic policy selection desktop",
+    "violations": []
+  },
+  {
+    "screen": "digital client file",
+    "violations": []
+  },
+  {
+    "screen": "case assistant",
+    "violations": []
+  },
+  {
+    "screen": "readable agent audit",
+    "violations": []
+  },
+  {
+    "screen": "policy selection mobile",
+    "violations": []
+  },
+  {
+    "screen": "single final signoff desktop",
+    "violations": []
+  },
+  {
+    "screen": "single final signoff mobile",
+    "violations": []
+  },
+  {
+    "screen": "delivered and learning complete",
+    "violations": []
+  },
+  {
+    "screen": "completed case agent audit",
+    "violations": []
+  },
+  {
+    "screen": "pilot documents desktop",
+    "violations": []
+  },
+  {
+    "screen": "case uploaded source document",
+    "violations": []
+  },
+  {
+    "screen": "case comparison ratings",
+    "violations": []
+  },
+  {
+    "screen": "selection feedback sheet",
+    "violations": []
+  },
+  {
+    "screen": "recommendation review",
+    "violations": []
+  },
+  {
+    "screen": "guided selected plan review",
+    "violations": []
+  },
+  {
+    "screen": "guided final review confirmation",
+    "violations": []
+  },
+  {
+    "screen": "ready for password approval",
+    "violations": []
+  },
+  {
+    "screen": "published case Fact-find",
+    "violations": []
+  },
+  {
+    "screen": "published case Compare (5)",
+    "violations": []
+  },
+  {
+    "screen": "published case Recommendation",
+    "violations": []
+  },
+  {
+    "screen": "published case Activity",
+    "violations": []
+  },
+  {
+    "screen": "pilot review compliance@helm.demo",
+    "violations": []
+  },
+  {
+    "screen": "pilot review legal@helm.demo",
+    "violations": []
+  },
+  {
+    "screen": "pilot completed mobile 200 percent reduced motion",
+    "violations": []
+  },
+  {
+    "screen": "no advice closure confirmation",
+    "violations": []
+  },
+  {
+    "screen": "case controls confirmation",
+    "violations": []
+  },
+  {
+    "screen": "underwriter referral hold",
+    "violations": []
+  },
+  {
+    "screen": "underwriter response confirmation",
+    "violations": []
+  },
+  {
+    "screen": "complaint hold",
+    "violations": []
+  }
+]

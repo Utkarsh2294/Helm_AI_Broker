@@ -78,8 +78,11 @@ docs/                      requirements, architecture and runbooks
 
 The local preview uses SQLite and AES-GCM encrypted snapshots. Alembic applies the
 schema and database triggers that reject evidence updates/deletes. Case transitions,
-approvals and hash-chained audit events commit together. Pending jobs persist in SQL;
-the browser's polling can advance due demo jobs even without Redis.
+approvals and hash-chained audit events commit together. Pending jobs persist in SQL.
+The start script enables a background runner for automatic demos, so closing the
+case does not stop preparation. Compose uses Arq. Automatic case reads do not run
+jobs; older manual cases retain their preview polling behaviour. Redis supports
+authentication limits and event delivery.
 
 For PostgreSQL 16 and Redis 7:
 

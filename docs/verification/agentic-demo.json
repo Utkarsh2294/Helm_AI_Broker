@@ -1,0 +1,112 @@
+{
+  "date": "2026-10-31",
+  "revision": "d17d0d2c21d724a41ad16d9c74f6bbf2a70ddae3",
+  "scope": "Owner-requested fictional automatic journey, case file, audit and local broker assistant",
+  "python": {
+    "baseline_regression_run": {
+      "passed": 570,
+      "failed": 1,
+      "failure": "New hold test omitted its Snapshot import; production logic was unaffected."
+    },
+    "after_test_import_fix": {
+      "suite": "services/api/tests/test_agentic_demo.py",
+      "passed": 11,
+      "failed": 0
+    },
+    "after_final_receipt_fix": {
+      "passed": 1,
+      "failed": 0,
+      "test": "Explicit authenticated final signature, immutable approval, learning and client-file receipt"
+    },
+    "verified_distinct_cases": 571,
+    "single_full_clean_run_after_fixes": false
+  },
+  "frontend_units": {
+    "passed": 9,
+    "failed": 0
+  },
+  "browser": {
+    "production_web_regression_before_final_accessibility_fixes": {
+      "passed": 31,
+      "failed": 2,
+      "total": 33,
+      "failures": [
+        "Audit metadata contrast",
+        "Case-controls trigger target size"
+      ]
+    },
+    "focused_recheck_after_fixes": {
+      "passed": 6,
+      "failed": 0,
+      "suites": [
+        "accessibility.spec.js",
+        "agentic-demo.spec.js",
+        "demo-showcase.spec.js"
+      ]
+    },
+    "single_full_clean_run_after_fixes": false,
+    "earlier_interrupted_attempts": "Excluded; temporary authentication infrastructure errors were diagnosed separately."
+  },
+  "accessibility": {
+    "screens": 38,
+    "violations": 0,
+    "report": "agentic-accessibility.json",
+    "manual_device_and_screen_reader_acceptance": "not claimed"
+  },
+  "runtime_walkthroughs": [
+    {
+      "runtime": "preview",
+      "case_id": "10a87718-4e6c-4378-8de7-ff011ab553ab",
+      "state": "PUBLISHED",
+      "agent_runtime": "python",
+      "all_agents_complete": true,
+      "chain_valid": true,
+      "human_decisions": 2,
+      "publication": null,
+      "learning_status": "insufficient_evidence",
+      "console_errors": [],
+      "client_file_receipt_verified": true,
+      "client_file_mobile_fits": true
+    },
+    {
+      "runtime": "containers",
+      "case_id": "6408f612-b8e7-4def-9d88-b56af584324e",
+      "state": "PUBLISHED",
+      "agent_runtime": "crewai",
+      "all_agents_complete": true,
+      "chain_valid": true,
+      "human_decisions": 2,
+      "publication": {
+        "status": "demo_delivered",
+        "recommendation_id": "19f74980d0784bc0e73ed729"
+      },
+      "learning_status": "no_improvement",
+      "console_errors": [],
+      "client_file_receipt_verified": true,
+      "client_file_mobile_fits": true
+    }
+  ],
+  "builds": {
+    "web": "passed",
+    "api_image": "passed",
+    "worker_image": "passed",
+    "web_image": "passed",
+    "container_stack_services": 7,
+    "dependency_manifests_changed": false,
+    "dependency_cache_base": "sha256:b38212ce27ea1d16325f97f70dc965c3b0dd1ff3daee5086a678f3409f30222b",
+    "dependency_security_rescan": "not claimed; existing demo-ci.json live blockers remain"
+  },
+  "checks": {
+    "ruff": "passed",
+    "eslint": "passed",
+    "prettier": "passed",
+    "spectral_broker_and_core": "passed"
+  },
+  "limits": [
+    "Fictional fixed-fixture automatic demo only; existing manual cases retain their earlier workflow.",
+    "Assistant answers bounded questions from accessible saved records; no paid language-model connection.",
+    "Missing clinical history and identity details are not invented.",
+    "No automatic signatures, manufactured ratings or automatic model activation.",
+    "Existing real-customer launch requirements remain open."
+  ]
+}
