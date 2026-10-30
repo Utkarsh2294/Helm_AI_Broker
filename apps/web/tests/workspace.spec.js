@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 
 async function login(page) {
   await page.goto('/');
@@ -62,7 +63,9 @@ test('broker completes the five-agent workflow with real approval and evidence',
   expect(evidence.audit_chain.verified).toBe(true);
   const pdf = page.waitForEvent('download');
   await panel.getByRole('button', { name: 'PDF', exact: true }).click();
-  await (await pdf).saveAs('../../.runtime/qa/complete-evidence.pdf');
+  await (
+    await pdf
+  ).saveAs(fileURLToPath(new URL('../../../.runtime/qa/complete-evidence.pdf', import.meta.url)));
   await panel.getByLabel('Case time-machine').focus();
   await page.keyboard.press('Home');
   await expect(panel.getByText('Historical view · read only')).toBeVisible();

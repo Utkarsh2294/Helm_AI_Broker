@@ -18,6 +18,7 @@ export default [
       ...js.configs.recommended.rules,
       'react/jsx-uses-react': 'error',
       'react/jsx-uses-vars': 'error',
+      'react/jsx-no-undef': 'error',
       'react-hooks/rules-of-hooks': 'error',
       'no-unused-vars': [
         'error',

@@ -2470,6 +2470,34 @@ dialog.case-panel {
     font-size: 12px;
   }
 }
+.dnr-editor,
+.medical-review-form {
+  display: grid;
+  gap: 14px;
+  margin-block: 20px;
+  padding: 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.dnr-editor fieldset {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.dnr-editor label:not(.checkbox-label),
+.medical-review-form label:not(.checkbox-label) {
+  display: grid;
+  gap: 6px;
+}
+.dnr-editor select,
+.medical-review-form select {
+  width: 100%;
+  min-height: 44px;
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

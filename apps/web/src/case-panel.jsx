@@ -32,6 +32,8 @@ import RankingTools from './components/RankingTools';
 import ReviewChecklist from './components/ReviewChecklist';
 import BottomSheet from './components/BottomSheet';
 import Reauthenticate from './components/Reauthenticate';
+import DnrEditor from './components/DnrEditor';
+import MedicalReview from './components/MedicalReview';
 
 export default function CasePanel({ id, user, onClose }) {
   const dialog = useRef(null),
@@ -61,9 +63,7 @@ export default function CasePanel({ id, user, onClose }) {
     [uwRef, setUwRef] = useState('');
   const [password, setPassword] = useState(''),
     [suitability, setSuitability] = useState('');
-  const [editing, setEditing] = useState(false),
-    [budget, setBudget] = useState(''),
-    [reason, setReason] = useState('');
+  const [editing, setEditing] = useState(false);
   const broker = user.role === 'authorised_broker' && !historical;
   const canRevealMedical =
     !historical && ['authorised_broker', 'compliance_officer'].includes(user.role);
@@ -122,28 +122,6 @@ export default function CasePanel({ id, user, onClose }) {
       await refresh();
     } catch (e) {
       setError(e.message);
-    }
-  }
-  async function saveRequirements() {
-    setBusy(true);
-    setError('');
-    try {
-      const pence = Math.round(Number(budget) * 100);
-      if (!Number.isFinite(pence) || pence <= 0) throw new Error('Enter a positive annual budget.');
-      setCase(
-        await api(`/cases/${id}/dnr`, {
-          method: 'PATCH',
-          body: {
-            dnr: { ...c.dnr, needs: { ...c.dnr.needs, budget_annual_pence: pence } },
-            reason,
-          },
-        }),
-      );
-      setEditing(false);
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
     }
   }
   async function saveSuitability() {
@@ -363,6 +341,16 @@ export default function CasePanel({ id, user, onClose }) {
                   </div>
                 </div>
               )}
+              {broker && c.medical_triage && !c.medical_review?.resolved && (
+                <MedicalReview
+                  item={c}
+                  revealed={medicalRevealed.current}
+                  onSaved={(value) => {
+                    setCase(value);
+                    refresh();
+                  }}
+                />
+              )}
               {c.state === 'UW_REFERRAL' && (
                 <div className="notice warning">
                   <div>
@@ -510,58 +498,21 @@ export default function CasePanel({ id, user, onClose }) {
                           <button
                             className="text-button"
                             onClick={() => {
-                              setBudget(String(c.dnr.needs.budget_annual_pence / 100));
                               setEditing(true);
                             }}
                           >
                             <Pencil size={14} />
-                            Edit annual budget
+                            Edit stated requirements
                           </button>
                         ) : (
-                          <form
-                            onSubmit={(e) => {
-                              e.preventDefault();
-                              saveRequirements();
+                          <DnrEditor
+                            item={c}
+                            onSaved={(value) => {
+                              setCase(value);
+                              setDnrAck(false);
                             }}
-                          >
-                            <label>
-                              Annual budget (£)
-                              <input
-                                type="number"
-                                min="1"
-                                step="0.01"
-                                required
-                                value={budget}
-                                onChange={(e) => setBudget(e.target.value)}
-                              />
-                            </label>
-                            <label>
-                              Reason for change
-                              <input
-                                required
-                                minLength={3}
-                                value={reason}
-                                onChange={(e) => setReason(e.target.value)}
-                                placeholder="Record why this requirement changed"
-                              />
-                            </label>
-                            <p className="muted">
-                              Saving creates a new version and requires a fresh sign-off.
-                            </p>
-                            <div className="button-row">
-                              <button className="button primary small" disabled={busy}>
-                                <Save size={14} />
-                                Save requirements
-                              </button>
-                              <button
-                                type="button"
-                                className="button small"
-                                onClick={() => setEditing(false)}
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </form>
+                            onClose={() => setEditing(false)}
+                          />
                         )}
                       </div>
                     )}
