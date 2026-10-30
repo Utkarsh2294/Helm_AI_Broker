@@ -636,6 +636,107 @@
         "description": "Enqueue Ranking."
       }
     },
+    "/api/v1/cases/{case_id}/medical-review": {
+      "post": {
+        "summary": "Review Medical Wording",
+        "operationId": "review_medical_wording_api_v1_cases__case_id__medical_review_post",
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Case Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MedicalReview"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Action prohibited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "State or version conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Cases"
+        ],
+        "description": "Review Medical Wording."
+      }
+    },
     "/api/v1/cases/{case_id}/complaints/resolve": {
       "post": {
         "summary": "Resolve Complaint",
@@ -4765,6 +4866,16 @@
           "consent_to_share": {
             "type": "boolean",
             "title": "Consent To Share"
+          },
+          "record": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DNRRecord"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -4780,6 +4891,73 @@
           "consent_to_share"
         ],
         "title": "DNR"
+      },
+      "DNRRecord": {
+        "properties": {
+          "client_ref": {
+            "type": "string",
+            "title": "Client Ref"
+          },
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "broker_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Broker Ref"
+          },
+          "stated_needs": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Stated Needs"
+          },
+          "budget_confirmed": {
+            "type": "boolean",
+            "title": "Budget Confirmed",
+            "default": false
+          },
+          "recommended_product_type": {
+            "type": "string",
+            "const": "PMI",
+            "title": "Recommended Product Type",
+            "default": "PMI"
+          },
+          "suitability_basis": {
+            "type": "string",
+            "title": "Suitability Basis",
+            "default": "Advised sale \u2014 broker confirmation required"
+          },
+          "record_kept_date": {
+            "type": "string",
+            "title": "Record Kept Date"
+          },
+          "review_date": {
+            "type": "string",
+            "title": "Review Date"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "client_ref",
+          "date",
+          "stated_needs",
+          "record_kept_date",
+          "review_date"
+        ],
+        "title": "DNRRecord"
       },
       "EditDNR": {
         "properties": {
@@ -4871,6 +5049,28 @@
           "password"
         ],
         "title": "Login"
+      },
+      "MedicalReview": {
+        "properties": {
+          "decision": {
+            "type": "string",
+            "pattern": "^(record_declared|no_ambiguity|seek_clarification)$",
+            "title": "Decision"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 3000,
+            "minLength": 30,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "decision",
+          "reason"
+        ],
+        "title": "MedicalReview"
       },
       "Needs": {
         "properties": {
@@ -5059,7 +5259,8 @@
           },
           "medical_items": {
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 4000
             },
             "type": "array",
             "maxItems": 30,

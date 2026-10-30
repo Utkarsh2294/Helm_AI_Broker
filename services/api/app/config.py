@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     llm_allowed_providers: list[str] = ["groq", "anthropic"]
     llm_region: str = "unverified"
     llm_token_budget: int = 20000
+    llm_daily_token_budget: int = 1000000
     llm_enabled: bool = False
     min_quotes: int = 3
     min_new_comparisons: int = 30

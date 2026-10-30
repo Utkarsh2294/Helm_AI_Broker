@@ -34,6 +34,58 @@ class ComplaintResolution(Model):
     resolution: str = Field(min_length=20, max_length=3000)
 
 
+class MedicalReview(Model):
+    decision: str = Field(pattern="^(record_declared|no_ambiguity|seek_clarification)$")
+    reason: str = Field(min_length=30, max_length=3000)
+
+
+@router.post("/cases/{case_id}/medical-review")
+def review_medical_wording(
+    case_id: str, body: MedicalReview, request: Request, db=Depends(database, scope="function")
+):
+    from app.compliance.medical_ambiguity import pending_review
+    from app.medical_access import require_medical_access
+    from app.db.store import save_snapshot
+
+    user, session = identity(db, request)
+    if len(body.reason.strip()) < 30:
+        raise DomainError("Explain the review in at least 30 characters", 422)
+    service.require_broker(user)
+    case = service.get_case(db, case_id)
+    if case.state not in (
+        State.PAUSED_NEEDS_HUMAN,
+        State.NEEDS_INFO,
+        State.FACTFIND_REVIEW,
+    ) or not pending_review(db, case_id):
+        raise DomainError("No medical wording review is pending", 409)
+    require_medical_access(db, case, user, session)
+    resolved = body.decision != "seek_clarification"
+    save_snapshot(
+        db,
+        case_id,
+        "medical_review",
+        {**body.model_dump(), "resolved": resolved, "by": user.id, "at": utcnow().isoformat()},
+    )
+    audit(
+        db,
+        case_id,
+        "medical_wording_reviewed",
+        f"broker:{user.id}",
+        {"decision": body.decision, "resolved": resolved},
+    )
+    service.transition(
+        db,
+        case,
+        [case.state],
+        State.FACTFIND_REVIEW if resolved else State.NEEDS_INFO,
+        "medical_review_recorded",
+        f"broker:{user.id}",
+    )
+    from app.compliance.medical_firewall import safe_case
+
+    return safe_case(service.detail(db, case), user)
+
+
 @router.post("/cases/{case_id}/complaints/resolve")
 def resolve_complaint(
     case_id: str, body: ComplaintResolution, request: Request, db=Depends(database, scope="function")

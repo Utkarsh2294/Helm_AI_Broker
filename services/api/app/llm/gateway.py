@@ -2,6 +2,9 @@ import hashlib
 import json
 import time
 import inspect
+import logging
+import re
+from app.clock import wall_now
 from app.config import settings
 from app.db.platform import LLMCall
 from app.schemas import DomainError
@@ -32,19 +35,23 @@ class LLMGateway:
         if case:
             identifiers = tuple(identifiers) + (case.profile.get("name", ""),)
         # Redact every message, including templates; caller-provided medical canaries never leave.
-        clean = []
+        clean, redactions = [], 0
         for message in messages:
-            text, _ = redactor.redact(str(message["content"]), case_id, identifiers, medical_texts)
+            text, mapping = redactor.redact(str(message["content"]), case_id, identifiers, medical_texts)
+            redactions += len(mapping) + text.count("[MEDICAL_REDACTED]")
             clean.append({"role": message["role"], "content": text})
         encoded = json.dumps(clean, sort_keys=True)
-        reserve = len(encoded) // 4 + max_tokens
+        # Byte count is a conservative input-token reservation, including non-Latin text.
+        reserve = len(encoded.encode()) + max_tokens
         key = f"helm:tokens:{case_id}"
         allowed = self.redis.eval(
-            "local n=redis.call('INCRBY',KEYS[1],ARGV[1]); redis.call('EXPIRE',KEYS[1],86400); if n>tonumber(ARGV[2]) then redis.call('DECRBY',KEYS[1],ARGV[1]); return 0 end; return 1",
-            1,
+            "local a=redis.call('INCRBY',KEYS[1],ARGV[1]); local b=redis.call('INCRBY',KEYS[2],ARGV[1]); redis.call('EXPIRE',KEYS[1],86400); redis.call('EXPIRE',KEYS[2],86400); if a>tonumber(ARGV[2]) or b>tonumber(ARGV[3]) then redis.call('DECRBY',KEYS[1],ARGV[1]); redis.call('DECRBY',KEYS[2],ARGV[1]); return 0 end; return 1",
+            2,
             key,
+            f"helm:tokens:daily:{wall_now().date().isoformat()}",
             reserve,
             config.llm_token_budget,
+            config.llm_daily_token_budget,
         )
         if not allowed:
             raise DomainError("H9: case model-token budget exceeded", 429)
@@ -61,11 +68,27 @@ class LLMGateway:
             if inspect.isawaitable(response):
                 response = await response
             text = response["choices"][0]["message"]["content"]
-            if any(secret and secret in text for secret in medical_texts):
+            if any(secret and secret.casefold() in text.casefold() for secret in medical_texts):
                 raise DomainError("H10: forbidden medical output", 422)
+            if re.search(
+                r"ignore (?:all |the )?(?:previous|prior) instructions|\bDAN mode\b|reveal (?:the )?system prompt",
+                text,
+                re.IGNORECASE,
+            ):
+                raise DomainError("H10: model output violated the instruction boundary", 422)
             status = "ok"
             return text
         finally:
+            logging.getLogger("helm.llm").info(
+                "model_call",
+                extra={
+                    "model": model,
+                    "token_reservation": reserve,
+                    "redactions_made": redactions,
+                    "status": status,
+                    "latency_ms": int((time.monotonic() - started) * 1000),
+                },
+            )
             self.db.add(
                 LLMCall(
                     case_id=case_id,

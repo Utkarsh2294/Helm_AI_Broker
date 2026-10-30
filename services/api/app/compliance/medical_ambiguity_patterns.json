@@ -1,0 +1,8 @@
+[
+  {"id":"complex-negation","pattern":"\\b(?:don't|do not|no|not|never|haven't|have not)\\b.{0,100}\\b(?:but|except|although|unless|however|apart from)\\b"},
+  {"id":"abbreviation-or-colloquial","pattern":"\\b(?:IBS|IBD|MS|CFS|COPD|BPD|PCOS|RA|TIA|AF|asthmatic|sugar problem|heart thing|chest thing|funny turns)\\b"},
+  {"id":"historical-comparison","pattern":"\\b(?:used to|previously|years? ago|no longer|in remission|resolved|cleared up|when I was|history of)\\b"},
+  {"id":"uncertain-wording","pattern":"\\b(?:maybe|might|possibly|suspected|not sure|unsure|awaiting|pending|under investigation|tests? for|could be)\\b"},
+  {"id":"unclear-relationship","pattern":"\\b(?:related to|caused by|linked to|or something|and/or|either)\\b"},
+  {"id":"human-review-request","pattern":"\\b(?:terminal|palliative|urgent referral|unconfirmed diagnosis)\\b"}
+]

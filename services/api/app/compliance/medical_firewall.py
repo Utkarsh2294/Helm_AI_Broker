@@ -45,6 +45,8 @@ def safe_case(data, user, include_medical=False):
                     key: (
                         ["[REDACTED]"] * len(item)
                         if key == "medical_items" and isinstance(item, list)
+                        else {**redact(item), "reason": "[REDACTED]"}
+                        if key == "medical_review" and isinstance(item, dict)
                         else redact(item)
                     )
                     for key, item in value.items()

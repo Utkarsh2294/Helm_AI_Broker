@@ -69,6 +69,9 @@ def transition(db, case, expected, target, event_type, actor, payload=None):
 
 
 def import_request(db, request: QuoteRequest):
+    from app.compliance.medical_ambiguity import check_medical_ambiguity
+    from app.agents.intake import research_request
+
     existing = db.scalar(select(Case).where(Case.core_request_id == request.id))
     if existing:
         return existing
@@ -85,13 +88,21 @@ def import_request(db, request: QuoteRequest):
     save_snapshot(db, case.id, "request", request.model_dump())
     audit(db, case.id, "request_received", "system")
     transition(db, case, [State.RECEIVED], State.INTAKE_RUNNING, "intake_started", "system")
-    result = invoke("intake", request.model_dump())
+    medical_halt = check_medical_ambiguity(request.model_dump())
+    result = (
+        research_request(request).model_dump(mode="json")
+        if medical_halt
+        else invoke("intake", request.model_dump())
+    )
     save_snapshot(db, case.id, "dnr", result)
     target = State.NEEDS_INFO if result["missing"] else State.FACTFIND_REVIEW
-    if result["vulnerability_flags"]:
+    if result["vulnerability_flags"] or medical_halt:
         case.priority = "urgent"
         target = State.PAUSED_NEEDS_HUMAN
         case.previous_state = State.FACTFIND_REVIEW
+    if medical_halt:
+        save_snapshot(db, case.id, "medical_triage", medical_halt)
+        audit(db, case.id, "medical_review_required", "firewall", medical_halt)
     transition(db, case, [State.INTAKE_RUNNING], target, "intake_completed", "agent:1")
     return case
 
@@ -114,6 +125,10 @@ def act(db, case_id, action, user, session, body):
         case.previous_state = case.state
         transition(db, case, [case.state], State.PAUSED_NEEDS_HUMAN, "broker_paused", actor)
     elif action == "resume":
+        from app.compliance.medical_ambiguity import pending_review
+
+        if pending_review(db, case.id):
+            raise DomainError("Record the medical wording review before resuming", 409)
         if db.scalar(select(Job).where(Job.case_id == case.id, Job.status == "needs_human")):
             raise DomainError("Resolve the partner exception before resuming")
         target = case.previous_state or State.FACTFIND_REVIEW
@@ -171,6 +186,10 @@ def act(db, case_id, action, user, session, body):
         case.assigned_to = user.id
         audit(db, case.id, "case_assigned", actor)
     elif action == "sign-off":
+        from app.compliance.medical_ambiguity import pending_review
+
+        if pending_review(db, case.id):
+            raise DomainError("Medical wording review is still required", 409)
         if case.state != State.FACTFIND_REVIEW:
             raise DomainError("Fact-find is not ready for sign-off")
         dnr = latest(db, case.id, "dnr")
@@ -181,6 +200,10 @@ def act(db, case_id, action, user, session, body):
             raise DomainError("Explicitly acknowledge the fact-find and any vulnerability indicators", 422)
         if data.missing or not data.consent_to_share:
             raise DomainError("Fact-find has missing information or consent")
+        if data.record:
+            data.record.broker_ref, data.record.budget_confirmed = user.id, True
+            data.version = dnr.version + 1
+            dnr = save_snapshot(db, case.id, "dnr", data.model_dump(mode="json"))
         db.add(Approval(case_id=case.id, gate="G0", user_id=user.id, payload_hash=dnr.body_hash))
         transition(
             db,
@@ -516,7 +539,16 @@ def detail(db, case):
         "created_at": case.created_at,
         "version": case.version,
     }
-    for kind in ("dnr", "rfq", "quotes", "ranking", "pack", "publication"):
+    for kind in (
+        "dnr",
+        "rfq",
+        "quotes",
+        "ranking",
+        "pack",
+        "publication",
+        "medical_triage",
+        "medical_review",
+    ):
         snapshot = latest(db, case.id, kind)
         data[kind] = snapshot.body if snapshot else None
     data["events"] = [

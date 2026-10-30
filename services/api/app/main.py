@@ -283,16 +283,38 @@ def edit_dnr(case_id: str, body: EditDNR, request: Request, db=Depends(database,
     if case.state not in (State.NEEDS_INFO, State.FACTFIND_REVIEW, State.AWAIT_BROKER_RELEASE):
         raise DomainError("Return the case to fact-find review before changing requirements")
     previous = latest(db, case_id, "dnr")
+    if body.dnr.version != previous.version:
+        raise DomainError("This fact-find changed. Reload before editing again.", 409)
     if body.dnr.request_id != previous.body["request_id"]:
         raise DomainError("Request identity cannot be changed", 422)
     revised = body.dnr.model_copy(update={"version": previous.version + 1})
     revised.medical_items = previous.body["medical_items"]
-    if revised.needs.budget_annual_pence != previous.body["needs"]["budget_annual_pence"]:
-        revised.facts["budget_annual_pence"] = Fact(
-            value=revised.needs.budget_annual_pence,
+    revised.facts = {key: Fact.model_validate(value) for key, value in previous.body["facts"].items()}
+    for field, value in revised.needs.model_dump().items():
+        if value == previous.body["needs"].get(field):
+            continue
+        revised.facts[field] = Fact(
+            value=value,
             source=f"broker_edit:{case_id}:v{revised.version}",
             verified_by=user.id,
         )
+    if previous.body.get("record"):
+        from app.schemas import DNRRecord
+
+        revised.record = DNRRecord.model_validate(previous.body["record"])
+        revised.record.budget_confirmed, revised.record.broker_ref = False, None
+        revised.record.stated_needs = [
+            {
+                "category": key,
+                "detail": str(value),
+                "source": "client" if value == previous.body["needs"].get(key) else f"broker:{user.id}",
+            }
+            for key, value in revised.needs.model_dump().items()
+        ]
+    if not revised.consent_to_share and "consent_to_share" not in revised.missing:
+        revised.missing.append("consent_to_share")
+    if not revised.needs.coverage and "desired_coverage" not in revised.missing:
+        revised.missing.append("desired_coverage")
     save_snapshot(db, case_id, "dnr", revised.model_dump())
     save_snapshot(db, case_id, "dnr_edit", {"reason": body.reason, "by": user.id, "version": revised.version})
     service.transition(

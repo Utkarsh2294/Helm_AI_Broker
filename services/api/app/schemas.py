@@ -3,7 +3,7 @@
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 Pence = Annotated[int, Field(ge=0, strict=True)]
 Unit = Annotated[float, Field(ge=0, le=1)]
@@ -77,7 +77,9 @@ class QuoteRequest(Model):
     postcode_district: str = Field(default="M20", max_length=10)
     needs: Needs = Field(default_factory=Needs)
     consent_to_share: bool = True
-    medical_items: list[str] = Field(default_factory=list, max_length=30)
+    medical_items: list[Annotated[str, StringConstraints(max_length=4000)]] = Field(
+        default_factory=list, max_length=30
+    )
     vulnerability_flags: list[str] = Field(default_factory=list)
     missing_fields: list[str] = Field(default_factory=list)
 
@@ -87,6 +89,18 @@ class Fact(Model):
     confidence: Unit = 1
     source: str
     verified_by: str | None = None
+
+
+class DNRRecord(Model):
+    client_ref: str
+    date: str
+    broker_ref: str | None = None
+    stated_needs: list[dict[str, str]]
+    budget_confirmed: bool = False
+    recommended_product_type: Literal["PMI"] = "PMI"
+    suitability_basis: str = "Advised sale — broker confirmation required"
+    record_kept_date: str
+    review_date: str
 
 
 class DNR(Model):
@@ -99,6 +113,7 @@ class DNR(Model):
     missing: list[str]
     hypotheses: list[str]
     consent_to_share: bool
+    record: DNRRecord | None = None
 
 
 class InsurerStats(Model):

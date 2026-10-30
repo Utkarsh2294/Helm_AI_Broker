@@ -79,8 +79,8 @@ async def receive_webhook(request: Request, db=Depends(database, scope="function
         raise DomainError("Invalid event envelope", 422)
     if db.get(InboxEvent, event_id):
         return {"received": True, "duplicate": True}
-    if event_type in ('quote_request.submitted', 'case.created'):
-        case = service.import_request(db, QuoteRequest.model_validate(event.get('request')))
+    if event_type in ("quote_request.submitted", "case.created"):
+        case = service.import_request(db, QuoteRequest.model_validate(event.get("request")))
     elif event_type.startswith("recommendation."):
         case = db.scalar(select(Case).where(Case.id == event.get("case_id")))
         if not case:

@@ -7,7 +7,7 @@ from app.db.models import encryption_key
 
 PATTERNS = {
     "EMAIL": r"\b[\w.+-]+@[\w.-]+\.[a-zA-Z]{2,}\b",
-    "NHS": r"\b\d{3}[ -]\d{3}[ -]\d{4}\b",
+    "NHS": r"\b\d{3}[ -]?\d{3}[ -]?\d{4}\b",
     "DOB": r"\b(?:\d{4}-\d{2}-\d{2}|\d{2}[/-]\d{2}[/-]\d{4})\b",
     "PHONE": r"(?<!\w)(?:\+44\s?\d[\d\s-]{8,}|0\d[\d\s-]{8,})(?!\w)",
     "POSTCODE": r"\b[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}\b",
@@ -24,7 +24,7 @@ class RedactionService:
         mapping = {}
         for medical in sorted(medical_texts, key=len, reverse=True):
             if medical:
-                text = text.replace(medical, "[MEDICAL_REDACTED]")
+                text = re.sub(re.escape(medical), "[MEDICAL_REDACTED]", text, flags=re.IGNORECASE)
 
         def substitute(kind, value):
             for placeholder, original in mapping.items():
@@ -36,7 +36,8 @@ class RedactionService:
 
         for identifier in sorted(identifiers, key=len, reverse=True):
             if identifier:
-                text = text.replace(identifier, substitute("IDENTIFIER", identifier))
+                token = substitute("IDENTIFIER", identifier)
+                text = re.sub(re.escape(identifier), lambda _: token, text, flags=re.IGNORECASE)
         for kind, pattern in PATTERNS.items():
             text = re.sub(
                 pattern,

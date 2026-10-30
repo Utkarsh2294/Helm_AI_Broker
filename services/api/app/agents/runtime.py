@@ -101,6 +101,10 @@ def run_agent(kind, payload, runtime="python"):
     class BrokerStep(Flow[StepState]):
         @start()
         def execute(self):
+            if self.state.kind == "intake":
+                from app.agents.a1_research import research_with_crew
+
+                return research_with_crew(QuoteRequest.model_validate(self.state.payload))
             return execute_step(self.state.kind, self.state.payload)
 
     return BrokerStep(tracing=False).kickoff(inputs={"kind": kind, "payload": payload})

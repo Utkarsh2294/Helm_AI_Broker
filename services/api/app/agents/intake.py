@@ -1,6 +1,8 @@
 """A1: grounded fact-find and needs research; no inferred medical conclusions."""
 
-from app.schemas import DNR, Fact, QuoteRequest
+from app.schemas import DNR, DNRRecord, Fact, QuoteRequest
+from app.clock import wall_now
+from datetime import timedelta
 from app.compliance.medical_firewall import screen_vulnerability
 
 KNOWLEDGE = {
@@ -36,4 +38,14 @@ def research_request(request: QuoteRequest) -> DNR:
         missing=sorted(set(missing)),
         consent_to_share=request.consent_to_share,
         hypotheses=[f"Hypothesis (not confirmed): {KNOWLEDGE[request.cover_type]} [kb:pmi-household-v1]"],
+        record=DNRRecord(
+            client_ref=request.id,
+            date=wall_now().date().isoformat(),
+            stated_needs=[
+                {"category": key, "detail": str(value), "source": "client"}
+                for key, value in request.needs.model_dump().items()
+            ],
+            record_kept_date=wall_now().date().isoformat(),
+            review_date=(wall_now() + timedelta(days=365)).date().isoformat(),
+        ),
     )
