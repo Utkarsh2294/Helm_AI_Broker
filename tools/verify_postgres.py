@@ -7,14 +7,14 @@ import sys
 from pathlib import Path
 
 from uuid import uuid4
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import DatabaseError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "services/api"))
-from app.db.models import Case  # noqa: E402
+from app.db.models import Case, User  # noqa: E402
 from app.db.store import audit, save_snapshot  # noqa: E402
-from app.db.platform import Partner, CasePlan  # noqa: E402
+from app.db.platform import Partner, CasePlan, BrokerRating  # noqa: E402
 from app.schemas import Plan  # noqa: E402
 from app.agents.review import canonical_hash  # noqa: E402
 
@@ -68,10 +68,39 @@ def main():
                 )
             )
             db.commit()
+            quote = db.scalar(select(CasePlan).where(CasePlan.case_id == case.id))
+            broker = User(
+                email="migration-reviewer@example.test",
+                name="Fictional migration reviewer",
+                password_hash="not-a-login-credential",
+            )
+            db.add(broker)
+            db.flush()
+            ranking = save_snapshot(db, case.id, "ranking", {"id": "migration-ranking"})
+            db.add(
+                BrokerRating(
+                    case_id=case.id,
+                    ranking_id="migration-ranking",
+                    ranking_snapshot_id=ranking.id,
+                    plan_id=quote.plan_id,
+                    plan_record_id=quote.id,
+                    broker_id=broker.id,
+                    stars=4,
+                    decision="YES",
+                    body={"reason_text": "Fictional migration guard assessment."},
+                    is_edited=True,
+                    chars_changed=40,
+                    version=1,
+                    body_hash="0" * 64,
+                )
+            )
+            db.commit()
             for statement in (
                 "UPDATE activity_events SET type='tampered'",
                 "UPDATE plans SET revision=999",
                 "DELETE FROM plans",
+                "UPDATE broker_ratings SET stars=1",
+                "DELETE FROM broker_ratings",
             ):
                 try:
                     db.execute(text(statement))
