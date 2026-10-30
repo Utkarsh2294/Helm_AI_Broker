@@ -37,6 +37,7 @@ import MedicalReview from './components/MedicalReview';
 import TextArea from './components/TextArea';
 import PlanAssessment from './components/PlanAssessment';
 import ComplaintHold from './components/ComplaintHold';
+import CloseWithoutAdvice from './components/CloseWithoutAdvice';
 
 export default function CasePanel({ id, user, onClose }) {
   const dialog = useRef(null),
@@ -899,6 +900,14 @@ export default function CasePanel({ id, user, onClose }) {
                             </p>
                           ))}
                         </details>
+                      )}
+                      {broker && c.state === 'BROKER_REVIEW' && allReviewed && (
+                        <CloseWithoutAdvice
+                          item={c}
+                          ratings={ratings}
+                          container={dialog.current}
+                          onClosed={refresh}
+                        />
                       )}
                       {broker &&
                         c.state === 'BROKER_REVIEW' &&
