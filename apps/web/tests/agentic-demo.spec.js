@@ -106,6 +106,12 @@ test('automatic demo needs only policy selection and authenticated final sign-of
     'No model change was applied',
   );
   await scan(page, 'delivered and learning complete');
+  await panel.getByRole('button', { name: 'Agent work & audit', exact: true }).click();
+  await expect(
+    panel.getByText('Automatic delivery after broker approval', { exact: true }),
+  ).toBeVisible();
+  await scan(page, 'completed case agent audit');
+  await panel.getByRole('button', { name: 'Case journey', exact: true }).click();
   await page.screenshot({ path: '.runtime/qa/automatic-complete-mobile.png', fullPage: true });
   const id = page.url().split('/case/')[1];
   const current = await (await page.request.get(`/api/v1/cases/${id}`)).json();
