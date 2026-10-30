@@ -18,7 +18,7 @@ def cases(
     sort: str = "newest",
     limit: int = Query(0, ge=0, le=200),
     offset: int = Query(0, ge=0),
-    db=Depends(database),
+    db=Depends(database, scope="function"),
 ):
     user, _ = identity(db, request)
     query = select(Case)

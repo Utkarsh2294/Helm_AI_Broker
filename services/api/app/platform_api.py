@@ -27,7 +27,7 @@ class CopilotQuestion(Model):
 
 
 @router.post("/cases/{case_id}/ranking/copilot")
-def copilot(case_id: str, body: CopilotQuestion, request: Request, db=Depends(database)):
+def copilot(case_id: str, body: CopilotQuestion, request: Request, db=Depends(database, scope="function")):
     identity(db, request)
     service.get_case(db, case_id)
     ranking = latest(db, case_id, "ranking")
@@ -39,7 +39,7 @@ def copilot(case_id: str, body: CopilotQuestion, request: Request, db=Depends(da
 
 
 @router.get("/health")
-def readiness(db=Depends(database)):
+def readiness(db=Depends(database, scope="function")):
     checks = {"db": "error", "redis": "error"}
     try:
         db.execute(text("SELECT 1"))
@@ -63,7 +63,7 @@ def readiness(db=Depends(database)):
 
 
 @router.post("/webhooks/core")
-async def receive_webhook(request: Request, db=Depends(database)):
+async def receive_webhook(request: Request, db=Depends(database, scope="function")):
     raw = await request.body()
     if len(raw) > 1_000_000:
         raise DomainError("Webhook too large", 413)

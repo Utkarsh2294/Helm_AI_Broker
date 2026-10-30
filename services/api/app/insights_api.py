@@ -11,7 +11,7 @@ router = APIRouter(prefix="/api/v1")
 
 
 @router.get("/cases/{case_id}/replay")
-def historical(case_id: str, request: Request, at: datetime, db=Depends(database)):
+def historical(case_id: str, request: Request, at: datetime, db=Depends(database, scope="function")):
     user, _ = identity(db, request)
     return replay(db, service.get_case(db, case_id), at, user)
 
@@ -26,7 +26,7 @@ def search(
     before: str = "",
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    db=Depends(database),
+    db=Depends(database, scope="function"),
 ):
     identity(db, request)
     query = select(Activity)
@@ -52,7 +52,7 @@ def search(
 
 
 @router.get("/insights")
-def insights(request: Request, db=Depends(database)):
+def insights(request: Request, db=Depends(database, scope="function")):
     identity(db, request)
     states = dict(db.execute(select(Case.state, func.count()).group_by(Case.state)).all())
     halts = dict(

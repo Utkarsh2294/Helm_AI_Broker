@@ -49,7 +49,7 @@ def fetch_events(case_id, cursor, request):
 
 
 @router.get("/{case_id}/events")
-def events(case_id: str, request: Request, after: int = 0, db=Depends(database)):
+def events(case_id: str, request: Request, after: int = 0, db=Depends(database, scope="function")):
     identity(db, request)
     get_case(db, case_id)
     return [
@@ -61,7 +61,7 @@ def events(case_id: str, request: Request, after: int = 0, db=Depends(database))
 
 
 @router.get("/{case_id}/stream")
-def stream(case_id: str, request: Request, after: int = 0, db=Depends(database)):
+def stream(case_id: str, request: Request, after: int = 0, db=Depends(database, scope="function")):
     identity(db, request)
     get_case(db, case_id)
     db.rollback()

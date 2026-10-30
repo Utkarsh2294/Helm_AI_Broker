@@ -44,7 +44,7 @@ def identify(body: Options):
 
 
 @router.post("/password")
-def login(body: Login, request: Request, response: Response, db=Depends(database)):
+def login(body: Login, request: Request, response: Response, db=Depends(database, scope="function")):
     check_limit(request)
     user = authenticate(db, body.email, body.password)
     totp = db.get(TOTPSecret, user.id)
@@ -54,7 +54,7 @@ def login(body: Login, request: Request, response: Response, db=Depends(database
 
 
 @router.post("/totp/verify")
-def totp_login(body: OTP, request: Request, response: Response, db=Depends(database)):
+def totp_login(body: OTP, request: Request, response: Response, db=Depends(database, scope="function")):
     check_limit(request, "totp")
     pending = mfa.load_challenge(db, body.challenge_id, "totp-login")
     mfa.verify_totp(db, pending.user_id, body.code)
@@ -63,19 +63,19 @@ def totp_login(body: OTP, request: Request, response: Response, db=Depends(datab
 
 
 @router.post("/totp/setup")
-def totp_setup(request: Request, db=Depends(database)):
+def totp_setup(request: Request, db=Depends(database, scope="function")):
     user, _ = identity(db, request)
     return mfa.setup_totp(db, user)
 
 
 @router.post("/totp/enable")
-def totp_enable(body: OTP, request: Request, db=Depends(database)):
+def totp_enable(body: OTP, request: Request, db=Depends(database, scope="function")):
     user, _ = identity(db, request)
     return {"recovery_codes": mfa.enable_totp(db, user.id, body.code)}
 
 
 @router.post("/recovery")
-def recovery(body: OTP, request: Request, response: Response, db=Depends(database)):
+def recovery(body: OTP, request: Request, response: Response, db=Depends(database, scope="function")):
     check_limit(request, "recovery")
     pending = mfa.load_challenge(db, body.challenge_id, "totp-login")
     mfa.consume_recovery(db, pending.user_id, body.code)
@@ -84,19 +84,19 @@ def recovery(body: OTP, request: Request, response: Response, db=Depends(databas
 
 
 @router.post("/passkeys/register/options")
-def register_options(request: Request, db=Depends(database)):
+def register_options(request: Request, db=Depends(database, scope="function")):
     user, _ = identity(db, request)
     return passkeys.registration_options(db, user)
 
 
 @router.post("/passkeys/register")
-def register(body: Ceremony, request: Request, db=Depends(database)):
+def register(body: Ceremony, request: Request, db=Depends(database, scope="function")):
     user, _ = identity(db, request)
     return passkeys.register(db, user, body.challenge_id, body.credential)
 
 
 @router.post("/passkey/options")
-def auth_options(body: Options, request: Request, db=Depends(database)):
+def auth_options(body: Options, request: Request, db=Depends(database, scope="function")):
     check_limit(request, "passkey-options", limit=20)
     if body.step_up:
         user, session = identity(db, request)
@@ -105,7 +105,7 @@ def auth_options(body: Options, request: Request, db=Depends(database)):
 
 
 @router.post("/passkey/verify")
-def verify(body: Ceremony, request: Request, response: Response, db=Depends(database)):
+def verify(body: Ceremony, request: Request, response: Response, db=Depends(database, scope="function")):
     check_limit(request, "passkey-verify")
     user, step_session_id = passkeys.authenticate_passkey(db, body.challenge_id, body.credential)
     if step_session_id:
@@ -122,7 +122,7 @@ def verify(body: Ceremony, request: Request, response: Response, db=Depends(data
 
 
 @router.post("/step-up")
-def step_up(body: StepUp, request: Request, db=Depends(database)):
+def step_up(body: StepUp, request: Request, db=Depends(database, scope="function")):
     user, session = identity(db, request)
     check_limit(request, "step-up")
     record = db.get(TOTPSecret, user.id)
@@ -139,7 +139,7 @@ def step_up(body: StepUp, request: Request, db=Depends(database)):
 
 
 @router.get("/session")
-def session(request: Request, db=Depends(database)):
+def session(request: Request, db=Depends(database, scope="function")):
     user, row = identity(db, request)
     totp = db.get(TOTPSecret, user.id)
     return {
@@ -151,7 +151,7 @@ def session(request: Request, db=Depends(database)):
 
 
 @router.post("/refresh")
-def refresh(request: Request, response: Response, db=Depends(database)):
+def refresh(request: Request, response: Response, db=Depends(database, scope="function")):
     cookie, header = request.cookies.get("helm_csrf", ""), request.headers.get("X-CSRF-Token", "")
     if not cookie or not secrets.compare_digest(cookie, header):
         raise DomainError("Invalid refresh CSRF token", 403)
@@ -160,7 +160,7 @@ def refresh(request: Request, response: Response, db=Depends(database)):
 
 @router.post("/logout")
 @router.post("/logout-all")
-def logout(request: Request, response: Response, db=Depends(database)):
+def logout(request: Request, response: Response, db=Depends(database, scope="function")):
     user, current = identity(db, request)
     if request.url.path.endswith("logout-all"):
         for token in db.scalars(select(RefreshToken).where(RefreshToken.user_id == user.id)):
@@ -177,7 +177,7 @@ def logout(request: Request, response: Response, db=Depends(database)):
 
 
 @router.get("/devices")
-def devices(request: Request, db=Depends(database)):
+def devices(request: Request, db=Depends(database, scope="function")):
     user, current = identity(db, request)
     rows = db.execute(
         select(SessionDevice, LoginSession)
@@ -197,7 +197,7 @@ def devices(request: Request, db=Depends(database)):
 
 
 @router.delete("/devices/{session_id}")
-def revoke_device(session_id: str, request: Request, db=Depends(database)):
+def revoke_device(session_id: str, request: Request, db=Depends(database, scope="function")):
     user, _ = identity(db, request)
     row = db.get(LoginSession, session_id)
     if not row or row.user_id != user.id:

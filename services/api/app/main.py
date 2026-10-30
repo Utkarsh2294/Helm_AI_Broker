@@ -146,7 +146,7 @@ def health():
 
 
 @app.post("/api/v1/auth/password")
-def login(body: Credentials, request: Request, response: Response, db=Depends(database)):
+def login(body: Credentials, request: Request, response: Response, db=Depends(database, scope="function")):
     address = request.client.host if request.client else "local"
     now = utcnow().timestamp()
     attempts[address] = [t for t in attempts.get(address, []) if t > now - 60]
@@ -168,13 +168,13 @@ def login(body: Credentials, request: Request, response: Response, db=Depends(da
 
 
 @app.get("/api/v1/auth/session")
-def session(request: Request, db=Depends(database)):
+def session(request: Request, db=Depends(database, scope="function")):
     user, session = identity(db, request)
     return {"user": public_user(user), "csrf": session.csrf}
 
 
 @app.post("/api/v1/auth/logout")
-def logout(request: Request, response: Response, db=Depends(database)):
+def logout(request: Request, response: Response, db=Depends(database, scope="function")):
     _, session = identity(db, request)
     db.delete(session)
     response.delete_cookie("helm_session", path="/")
@@ -182,7 +182,7 @@ def logout(request: Request, response: Response, db=Depends(database)):
 
 
 @app.post("/api/v1/auth/step-up")
-def step_up(body: StepUp, request: Request, db=Depends(database)):
+def step_up(body: StepUp, request: Request, db=Depends(database, scope="function")):
     user, session = identity(db, request)
     if not verify_password(body.password, user.password_hash):
         raise DomainError("Password is incorrect", 401)
@@ -191,19 +191,19 @@ def step_up(body: StepUp, request: Request, db=Depends(database)):
 
 
 @app.get("/api/v1/agents")
-def agents(request: Request, db=Depends(database)):
+def agents(request: Request, db=Depends(database, scope="function")):
     identity(db, request)
     return {"agents": AGENTS, "runtime": settings().agent_runtime, "llm_enabled": False}
 
 
 @app.get("/api/v1/partners")
-def partners(request: Request, db=Depends(database)):
+def partners(request: Request, db=Depends(database, scope="function")):
     identity(db, request)
     return PARTNERS
 
 
 @app.get("/api/v1/cases")
-def cases(request: Request, q: str = "", state: str = "", db=Depends(database)):
+def cases(request: Request, q: str = "", state: str = "", db=Depends(database, scope="function")):
     identity(db, request)
     service.process_due_jobs(db)
     rows = db.scalars(select(Case).order_by(Case.created_at.desc())).all()
@@ -222,14 +222,16 @@ def cases(request: Request, q: str = "", state: str = "", db=Depends(database)):
 
 
 @app.post("/api/v1/demo/requests")
-def create_demo_request(body: QuoteRequest, request: Request, db=Depends(database)):
+def create_demo_request(body: QuoteRequest, request: Request, db=Depends(database, scope="function")):
     user, _ = identity(db, request)
     service.require_broker(user)
     return safe_case(service.detail(db, service.import_request(db, body)), user)
 
 
 @app.get("/api/v1/cases/{case_id}")
-def case_detail(case_id: str, request: Request, include_medical: bool = False, db=Depends(database)):
+def case_detail(
+    case_id: str, request: Request, include_medical: bool = False, db=Depends(database, scope="function")
+):
     user, _ = identity(db, request)
     service.process_due_jobs(db)
     if include_medical and user.role not in ("authorised_broker", "compliance_officer"):
@@ -238,7 +240,7 @@ def case_detail(case_id: str, request: Request, include_medical: bool = False, d
 
 
 @app.patch("/api/v1/cases/{case_id}/dnr")
-def edit_dnr(case_id: str, body: EditDNR, request: Request, db=Depends(database)):
+def edit_dnr(case_id: str, body: EditDNR, request: Request, db=Depends(database, scope="function")):
     user, _ = identity(db, request)
     service.require_broker(user)
     case = service.get_case(db, case_id)
@@ -291,7 +293,7 @@ def case_action(
     ],
     body: Action,
     request: Request,
-    db=Depends(database),
+    db=Depends(database, scope="function"),
 ):
     user, session = identity(db, request)
     if action == "selection" and body.survey is None:
@@ -300,7 +302,9 @@ def case_action(
 
 
 @app.put("/api/v1/cases/{case_id}/suitability")
-def edit_suitability(case_id: str, body: SuitabilityEdit, request: Request, db=Depends(database)):
+def edit_suitability(
+    case_id: str, body: SuitabilityEdit, request: Request, db=Depends(database, scope="function")
+):
     user, _ = identity(db, request)
     service.require_broker(user)
     case = service.get_case(db, case_id)
@@ -324,7 +328,7 @@ def edit_suitability(case_id: str, body: SuitabilityEdit, request: Request, db=D
 
 
 @app.get("/api/v1/cases/{case_id}/evidence")
-def export_evidence(case_id: str, request: Request, db=Depends(database)):
+def export_evidence(case_id: str, request: Request, db=Depends(database, scope="function")):
     user, _ = identity(db, request)
     case = service.get_case(db, case_id)
     from app.evidence import generate, pdf_bytes
@@ -341,7 +345,7 @@ def export_evidence(case_id: str, request: Request, db=Depends(database)):
 
 
 @app.get("/api/v1/cases/{case_id}/stream")
-async def stream(case_id: str, request: Request, after: int = 0, db=Depends(database)):
+async def stream(case_id: str, request: Request, after: int = 0, db=Depends(database, scope="function")):
     identity(db, request)
     service.get_case(db, case_id)
     db.rollback()
@@ -375,7 +379,7 @@ async def stream(case_id: str, request: Request, after: int = 0, db=Depends(data
 
 
 @app.get("/api/v1/models")
-def models(request: Request, db=Depends(database)):
+def models(request: Request, db=Depends(database, scope="function")):
     identity(db, request)
     return [
         {"id": m.id, "created_at": m.created_at, **m.body, "status": m.status}
@@ -384,7 +388,7 @@ def models(request: Request, db=Depends(database)):
 
 
 @app.post("/api/v1/models/evaluate")
-def evaluate(request: Request, db=Depends(database)):
+def evaluate(request: Request, db=Depends(database, scope="function")):
     user, _ = identity(db, request)
     if user.role not in ("authorised_broker", "compliance_officer"):
         raise DomainError("Only advisers and compliance may run an evaluation", 403)

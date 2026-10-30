@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/v1")
 
 
 @router.post("/cases/{case_id}/ranking", status_code=202)
-def enqueue_ranking(case_id: str, request: Request, db=Depends(database)):
+def enqueue_ranking(case_id: str, request: Request, db=Depends(database, scope="function")):
     user, _ = identity(db, request)
     service.require_broker(user)
     case = service.get_case(db, case_id)
@@ -35,7 +35,9 @@ class ComplaintResolution(Model):
 
 
 @router.post("/cases/{case_id}/complaints/resolve")
-def resolve_complaint(case_id: str, body: ComplaintResolution, request: Request, db=Depends(database)):
+def resolve_complaint(
+    case_id: str, body: ComplaintResolution, request: Request, db=Depends(database, scope="function")
+):
     user, _ = identity(db, request)
     case = service.get_case(db, case_id)
     complaint = db.scalar(select(Complaint).where(Complaint.case_id == case_id).with_for_update())

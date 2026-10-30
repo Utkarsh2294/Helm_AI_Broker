@@ -11,7 +11,7 @@ router = APIRouter(prefix="/api/v1")
 
 
 @router.get("/governance")
-def dashboard(request: Request, db=Depends(database)):
+def dashboard(request: Request, db=Depends(database, scope="function")):
     identity(db, request)
     return {
         "models": [
@@ -34,7 +34,7 @@ def dashboard(request: Request, db=Depends(database)):
 
 
 @router.post("/mcr/{proposal_id}/{action}")
-def decide(proposal_id: str, action: str, request: Request, db=Depends(database)):
+def decide(proposal_id: str, action: str, request: Request, db=Depends(database, scope="function")):
     user, _ = identity(db, request)
     if action == "approve":
         return governance.approve_shadow(db, proposal_id, user)
@@ -44,13 +44,13 @@ def decide(proposal_id: str, action: str, request: Request, db=Depends(database)
 
 
 @router.post("/engine-models/{model_id}/rollback")
-def rollback(model_id: str, request: Request, db=Depends(database)):
+def rollback(model_id: str, request: Request, db=Depends(database, scope="function")):
     user, _ = identity(db, request)
     return governance.rollback(db, model_id, user)
 
 
 @router.get("/edge-cases")
-def notebook(request: Request, db=Depends(database)):
+def notebook(request: Request, db=Depends(database, scope="function")):
     identity(db, request)
     return [
         {"id": row.id, "case_id": row.case_id, "status": row.status, "created_at": row.created_at, **row.body}
@@ -63,7 +63,7 @@ class NotebookReview(Model):
 
 
 @router.patch("/edge-cases/{edge_id}")
-def review_edge(edge_id: str, body: NotebookReview, request: Request, db=Depends(database)):
+def review_edge(edge_id: str, body: NotebookReview, request: Request, db=Depends(database, scope="function")):
     user, _ = identity(db, request)
     governance.governance_role(user)
     row = db.get(EdgeCase, edge_id)
@@ -80,7 +80,7 @@ class PlaybookDraft(Model):
 
 
 @router.get("/playbooks")
-def playbooks(request: Request, db=Depends(database)):
+def playbooks(request: Request, db=Depends(database, scope="function")):
     identity(db, request)
     return [
         {"id": p.id, "scope": p.scope, "version": p.version, "approved_by": p.approved_by, **p.body}
@@ -89,7 +89,7 @@ def playbooks(request: Request, db=Depends(database)):
 
 
 @router.post("/playbooks")
-def create_playbook(body: PlaybookDraft, request: Request, db=Depends(database)):
+def create_playbook(body: PlaybookDraft, request: Request, db=Depends(database, scope="function")):
     user, _ = identity(db, request)
     if user.role not in ("authorised_broker", "compliance_officer"):
         raise DomainError("Only advisers and compliance may draft guidance", 403)
@@ -102,7 +102,7 @@ def create_playbook(body: PlaybookDraft, request: Request, db=Depends(database))
 
 
 @router.post("/playbooks/{playbook_id}/approve")
-def approve_playbook(playbook_id: str, request: Request, db=Depends(database)):
+def approve_playbook(playbook_id: str, request: Request, db=Depends(database, scope="function")):
     user, _ = identity(db, request)
     row = db.get(Playbook, playbook_id)
     if not row:
