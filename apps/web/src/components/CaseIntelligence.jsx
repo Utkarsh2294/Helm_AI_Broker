@@ -107,7 +107,9 @@ export function AgentWork({ data, detailed = false }) {
                     {event.payload.code ? ` · ${event.payload.code}` : ''}
                   </p>
                 )}
-                {event.payload.decision && <p>Human decision {event.payload.decision} of 2</p>}
+                {[1, 2].includes(event.payload.decision) && (
+                  <p>Human decision {event.payload.decision} of 2</p>
+                )}
                 <small>
                   Event #{event.seq} · <code>{event.hash}</code>
                 </small>

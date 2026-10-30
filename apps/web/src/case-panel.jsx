@@ -1329,34 +1329,7 @@ export default function CasePanel({ id, user, onClose }) {
                   )}
                 </>
               )}
-              {tab === 'activity' && (
-                <>
-                  <CaseIntelligence item={c} view="audit" onNavigate={setTab} />
-                  <div className="section-header">
-                    <h3>Every step, in view.</h3>
-                    <span className="subtle-badge">HASH-CHAINED</span>
-                  </div>
-                  <div className="timeline">
-                    {c.events.map((e) => (
-                      <div key={e.seq}>
-                        <span className="timeline-dot" />
-                        <div>
-                          <strong>{label(e.type)}</strong>
-                          <p>
-                            {e.actor.startsWith('agent')
-                              ? label(e.actor.replace(':', ' '))
-                              : e.actor.startsWith('broker')
-                                ? 'Broker action'
-                                : 'System'}
-                          </p>
-                          <small>{new Date(e.created_at).toLocaleString('en-GB')}</small>
-                          <code>{e.hash.slice(0, 18)}…</code>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
+              {tab === 'activity' && <CaseIntelligence item={c} view="audit" onNavigate={setTab} />}
               {['file', 'assistant'].includes(tab) && (
                 <CaseIntelligence
                   item={c}
