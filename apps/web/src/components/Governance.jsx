@@ -1,4 +1,5 @@
 import Insights from './Insights';
+import OutcomeDetails from './OutcomeDetails';
 import React, { useEffect, useState } from 'react';
 import { api, label } from '../api';
 import BottomSheet from './BottomSheet';
@@ -52,6 +53,7 @@ export default function Governance({ user }) {
   return (
     <>
       <Insights />
+      <OutcomeDetails />
       <div className="learning-summary">
         <div>
           <h2>Learn carefully. Improve deliberately.</h2>
