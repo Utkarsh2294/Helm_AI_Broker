@@ -57,5 +57,29 @@
   "bandit_medium": 0,
   "bandit_high": 0,
   "live_release_security_clear": false,
-  "mitigation": "No ChromaDB server is exposed; CrewAI uses a local model fixture with memory disabled. Advisory triage or a supported fix remains a release gate; CI is not configured to ignore these findings."
+  "mitigation": "No ChromaDB server is exposed; CrewAI uses a local model fixture with memory disabled. Advisory triage or a supported fix remains a release gate; CI is not configured to ignore these findings.",
+  "trivy_ci": {
+    "version": "0.76.1",
+    "os_high_findings": 44,
+    "os_critical_findings": 0,
+    "python_high_findings": 2,
+    "python_critical_findings": 2,
+    "distinct_cve_ids": [
+      "CVE-2025-69720",
+      "CVE-2026-16742",
+      "CVE-2026-45829",
+      "CVE-2026-45830",
+      "CVE-2026-45831",
+      "CVE-2026-45833",
+      "CVE-2026-54369",
+      "CVE-2026-76642",
+      "CVE-2026-78408",
+      "CVE-2026-78409",
+      "CVE-2026-78410",
+      "CVE-2026-9538"
+    ],
+    "scan_result": "completed; release blocked",
+    "fixed_versions_listed": false
+  },
+  "ci_evidence": "main-plan-ci.json"
 }

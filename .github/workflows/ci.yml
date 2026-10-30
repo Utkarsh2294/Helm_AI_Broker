@@ -41,6 +41,11 @@ jobs:
         with:
           version: v0.76.1
           image-ref: helmaibroker-api:latest
+          format: json
+          output: trivy-report.json
           severity: HIGH,CRITICAL
           exit-code: '1'
           ignore-unfixed: false
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: api-image-security, path: trivy-report.json}

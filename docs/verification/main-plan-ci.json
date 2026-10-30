@@ -1,0 +1,40 @@
+{
+  "verified_on": "2026-10-30",
+  "source_commit": "2c7c3e0df2d7608e046b41194a3cc5f26630ab06",
+  "verify_workflow": "https://github.com/Utkarsh2294/Helm_AI_Broker/actions/runs/41045013440",
+  "security_workflow": "https://github.com/Utkarsh2294/Helm_AI_Broker/actions/runs/41045013343",
+  "api_job": "success",
+  "web_job": "success",
+  "uncached_container_build": "success",
+  "dependency_audit": "failure: unresolved Python advisories",
+  "trivy": {
+    "version": "0.76.1",
+    "os_high_findings": 44,
+    "os_critical_findings": 0,
+    "python_high_findings": 2,
+    "python_critical_findings": 2,
+    "distinct_cve_ids": [
+      "CVE-2025-69720",
+      "CVE-2026-16742",
+      "CVE-2026-45829",
+      "CVE-2026-45830",
+      "CVE-2026-45831",
+      "CVE-2026-45833",
+      "CVE-2026-54369",
+      "CVE-2026-76642",
+      "CVE-2026-78408",
+      "CVE-2026-78409",
+      "CVE-2026-78410",
+      "CVE-2026-9538"
+    ],
+    "scan_result": "completed; release blocked",
+    "fixed_versions_listed": false
+  },
+  "semgrep": {
+    "version": "1.183.0",
+    "initial_run": "configuration error: auto config requires metrics",
+    "correction": "Explicit p/ci and p/python profiles; metrics disabled",
+    "corrected_run": "pending"
+  },
+  "release_approved": false
+}

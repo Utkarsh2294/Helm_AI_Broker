@@ -23,7 +23,7 @@ The local model fixture, fictional ToBAs, demo adviser identifiers and MockCore 
 |---|---|---|
 | Compliance lead | Real adviser authorisation, advice/underwriting rules, IPIDs, ToBAs, cancellation/search-basis/remuneration wording, complaints policy and representative outcomes | Unassigned; unsigned |
 | Legal/DPO | DPIA, lawful/special-category bases, supplier contracts and regions, consent policy, retention period, legal holds and a lawful deletion design | Unassigned; unsigned |
-| Security owner | Triage unresolved optional CrewAI/ChromaDB advisories, deployment-specific authenticated penetration test and accepted medium findings | Unassigned; unsigned |
+| Security owner | Triage unresolved CrewAI/ChromaDB and base-image advisories, deployment-specific authenticated penetration test and accepted medium findings | Unassigned; unsigned |
 | Accessibility reviewer | Manual NVDA/VoiceOver and real-device acceptance in addition to automated WCAG checks | Unassigned; unsigned |
 | Operations owner | TLS/secure cookies, external secrets/KMS, least-privilege database access, backup-and-key restore, external immutable audit anchors, paging and recovery exercise | Unassigned; unsigned |
 | Consumer/Core owner | Real OAuth/webhook contracts, delivery/expiry/revocation and binding acknowledgements, with approved notification channels | Unassigned; unsigned |
