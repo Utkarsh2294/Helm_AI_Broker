@@ -129,7 +129,7 @@ test('fictional documents flow reaches two independent demo reviews through G0 G
   await panel.getByLabel('Confirm your password').fill('HelmDemo!2026');
   await panel.getByRole('button', { name: 'Approve demo recommendation' }).click();
   await expect(panel.getByText('Approved. Ready for the next step.')).toBeVisible();
-  for (const tab of ['Fact-find', 'Compare (5)', 'Recommendation', 'Activity']) {
+  for (const tab of ['Fact-find', 'Compare (5)', 'Recommendation', 'Audit trail']) {
     await panel.getByRole('tab', { name: tab, exact: true }).click();
     await scan(page, 'published case ' + tab);
   }

@@ -40,7 +40,7 @@ test('WCAG automated checks cover authentication, all workspace routes and an op
   await expect(
     page.getByRole('heading', { name: 'Good advice starts with clarity.' }),
   ).toBeVisible();
-  for (const path of ['/queue', '/agents', '/partners', '/learning', '/audit', '/security']) {
+  for (const path of ['/queue', '/partners', '/learning', '/security']) {
     await page.goto(path);
     await expect(page.locator('main h1, main h2').first()).toBeVisible();
     await scan(page, path);

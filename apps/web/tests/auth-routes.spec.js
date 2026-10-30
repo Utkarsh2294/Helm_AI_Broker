@@ -17,10 +17,10 @@ for (const [reason, title] of [
 test('login preserves a safe destination and never accepts external navigation', async ({
   page,
 }) => {
-  await page.goto('/login?next=%2Fagents');
+  await page.goto('/login?next=%2Fpartners');
   await page.getByRole('button', { name: 'Fill demo credentials' }).click();
   await page.getByRole('button', { name: 'Sign in to your workspace' }).click();
-  await expect(page).toHaveURL(/\/agents$/);
+  await expect(page).toHaveURL(/\/partners$/);
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page).toHaveURL(/\/signed-out\/voluntary$/);
   await page.goto('/login?next=https%3A%2F%2Fevil.invalid');

@@ -11,7 +11,6 @@ import {
   Workflow,
   Building2,
   ChartNoAxesCombined,
-  History,
   Compass,
   HelpCircle,
   X,
@@ -21,13 +20,14 @@ import './styles.css';
 import './design/tokens.css';
 import './design/semantic.css';
 import './design/light.css';
-import ThemeToggle from './design/theme';
 const SecuritySettings = lazy(() => import('./security-settings'));
 import { Settings } from 'lucide-react';
 import { MotionConfig } from 'framer-motion';
 import { BrowserRouter, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Login, SignedOut, safeNext } from './auth-pages';
 import './design/components.css';
+
+document.documentElement.dataset.theme = 'light';
 
 export function Brand({ light = false }) {
   return (
@@ -45,10 +45,8 @@ export function Brand({ light = false }) {
 
 const navigation = [
   ['workspace', 'Workspace', LayoutDashboard],
-  ['agents', 'Agent team', Workflow],
   ['partners', 'Partners', Building2],
   ['learning', 'Learning & insights', ChartNoAxesCombined],
-  ['audit', 'Activity & audit', History],
   ['security', 'Security & devices', Settings],
   ['demo', 'Pilot showcase', Workflow],
 ];
@@ -60,10 +58,8 @@ function App() {
     location = useLocation();
   const routes = {
     workspace: '/queue',
-    agents: '/agents',
     partners: '/partners',
     learning: '/learning',
-    audit: '/audit',
     security: '/security',
     demo: '/demo',
   };
@@ -117,6 +113,7 @@ function App() {
   if (!user) return <Login onLogin={setUser} />;
   if (location.pathname === '/' || location.pathname === '/login')
     return <Navigate replace to={safeNext(new URLSearchParams(location.search).get('next'))} />;
+  if (['/agents', '/audit'].includes(location.pathname)) return <Navigate replace to="/queue" />;
   return (
     <div className="app-layout">
       <a className="skip-link" href="#main">
@@ -141,7 +138,6 @@ function App() {
             >
               <Icon size={18} />
               {title}
-              {key === 'agents' && <span className="nav-count">5</span>}
             </button>
           ))}
         </nav>
@@ -183,7 +179,6 @@ function App() {
             <strong>{navigation.find((n) => n[0] === page)[1]}</strong>
           </span>
           <div className="topbar-actions">
-            <ThemeToggle />
             <span className="demo-badge">
               <span className="status-dot" /> Demo environment
             </span>
@@ -227,14 +222,14 @@ function App() {
               <X />
             </button>
             <span className="eyebrow">A QUICK INTRODUCTION</span>
-            <h2>Your five-agent team.</h2>
+            <h2>Your case workspace.</h2>
             <p>
-              Open a case, review the fact-find and sign it off. Release a demo RFQ to five
-              fictional partners. Quotes arrive in about six seconds with the default demo clock.
+              Choose Start automatic demo. Agents prepare the fictional case, quotations and
+              ranking. Select and order three policies, then review and sign off the recommendation.
             </p>
             <p>
-              Compare the top five policies, select three, give feedback, and review the suitability
-              statement. Re-enter your password to approve simulated delivery.
+              Each case row has an Audit trail button. It shows that case’s agent work, reasons and
+              saved events. The client file and case assistant are available inside the case.
             </p>
             <p>
               Learning produces proposals only. No real insurers, emails or medical interpretation

@@ -67,7 +67,7 @@ test('automatic demo needs only policy selection and authenticated final sign-of
   await panel.getByRole('button', { name: 'What are the client’s preferences?' }).click();
   await expect(panel.locator('.assistant-message.assistant')).toContainText('£1,800.00');
   await scan(page, 'case assistant');
-  await panel.getByRole('button', { name: 'Agent work & audit', exact: true }).click();
+  await panel.getByRole('button', { name: 'Audit trail', exact: true }).click();
   await expect(panel.getByText('Audit chain verified', { exact: false })).toBeVisible();
   await expect(panel.locator('.agent-work-item details[open]')).toHaveCount(5);
   await scan(page, 'readable agent audit');
@@ -106,7 +106,7 @@ test('automatic demo needs only policy selection and authenticated final sign-of
     'No model change was applied',
   );
   await scan(page, 'delivered and learning complete');
-  await panel.getByRole('button', { name: 'Agent work & audit', exact: true }).click();
+  await panel.getByRole('button', { name: 'Audit trail', exact: true }).click();
   await expect(
     panel.getByText('Automatic delivery after broker approval', { exact: true }),
   ).toBeVisible();

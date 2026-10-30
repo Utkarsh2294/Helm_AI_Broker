@@ -4,6 +4,17 @@
   margin-block: 1rem;
   min-width: 0;
 }
+.case-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+.case-row-actions .button,
+.case-row-actions .open-case {
+  min-height: 44px;
+  min-width: 44px;
+}
 .case-controls-trigger {
   min-height: 44px;
   justify-content: flex-start;
@@ -50,6 +61,7 @@
   line-height: 1.7;
 }
 .agentic-case code,
+.agent-work code,
 .digital-client-file code,
 .readable-audit code {
   overflow-wrap: anywhere;

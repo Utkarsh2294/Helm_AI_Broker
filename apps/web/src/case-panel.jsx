@@ -43,7 +43,7 @@ import CaseControls from './components/CaseControls';
 import AgenticCase from './components/AgenticCase';
 import CaseIntelligence from './components/CaseIntelligence';
 
-export default function CasePanel({ id, user, onClose }) {
+export default function CasePanel({ id, user, onClose, initialView = 'journey' }) {
   const dialog = useRef(null),
     historicalRef = useRef(false),
     medicalRevealed = useRef(false),
@@ -58,7 +58,7 @@ export default function CasePanel({ id, user, onClose }) {
   const [historical, setHistorical] = useState(false),
     [liveCase, setLiveCase] = useState(null);
   const [c, setCaseState] = useState(null),
-    [tab, setTab] = useState('overview'),
+    [tab, setTab] = useState(initialView === 'audit' ? 'activity' : 'overview'),
     [error, setError] = useState('');
   function setCase(value) {
     mutationEpoch.current += 1;
@@ -315,7 +315,7 @@ export default function CasePanel({ id, user, onClose }) {
                 ['overview', 'Fact-find'],
                 ['quotes', `Compare${comparison.length ? ` (${comparison.length})` : ''}`],
                 ['pack', 'Recommendation'],
-                ['activity', 'Activity'],
+                ['activity', 'Audit trail'],
                 ['file', 'Digital client file'],
                 ['assistant', 'Case assistant'],
               ].map(([key, name]) => (
@@ -335,7 +335,9 @@ export default function CasePanel({ id, user, onClose }) {
           </>
         )}
         <div className="panel-body">
-          {c?.demo_workflow && <AgenticCase item={c} user={user} onSaved={setCase} />}
+          {c?.demo_workflow && (
+            <AgenticCase item={c} user={user} onSaved={setCase} initialView={initialView} />
+          )}
           {liveCase && !c?.demo_workflow && (
             <ReplayScrubber
               item={liveCase}

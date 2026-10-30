@@ -171,38 +171,7 @@ select {
 .button.primary {
   color: var(--helm-on-accent);
 }
-[data-theme='dark'] .surface,
-[data-theme='dark'] .case-section,
-[data-theme='dark'] .quote-card,
-[data-theme='dark'] .panel-header,
-[data-theme='dark'] .panel-tabs,
-[data-theme='dark'] .metric,
-[data-theme='dark'] .agent-card,
-[data-theme='dark'] .modal,
-[data-theme='dark'] .case-table tbody tr,
-[data-theme='dark'] .audit-row,
-[data-theme='dark'] .pack-plans,
-[data-theme='dark'] .facts-grid,
-[data-theme='dark'] .coverage-list {
-  background: var(--helm-bg-secondary);
-}
-[data-theme='dark'] .sidebar,
-[data-theme='dark'] .login-story {
-  background: var(--helm-tone-1c3029);
-}
-[data-theme='dark'] .button {
-  background: var(--helm-bg-tertiary);
-}
-[data-theme='dark'] .button.primary {
-  background: var(--helm-tone-2c6251);
-  color: var(--helm-text-primary);
-}
-[data-theme='dark'] .nav-item.active {
-  color: var(--helm-text-primary);
-}
-[data-theme='dark'] .case-panel {
-  background: var(--helm-bg-primary);
-}
+
 .command-trigger {
   position: fixed;
   right: 235px;

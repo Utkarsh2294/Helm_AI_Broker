@@ -5,7 +5,7 @@ test('light workspace remains readable even when the device prefers dark mode', 
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.addInitScript(() => {
     localStorage.setItem('helm-theme', 'dark');
-    localStorage.removeItem('helm-theme-policy');
+    localStorage.setItem('helm-theme-policy', 'light-default-v2');
   });
   await page.setViewportSize({ width: 1440, height: 1050 });
   await page.goto('/');
@@ -15,6 +15,10 @@ test('light workspace remains readable even when the device prefers dark mode', 
     page.getByRole('heading', { name: 'Good advice starts with clarity.' }),
   ).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expect(page.getByRole('button', { name: /Switch to .* mode/ })).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expect(page.getByRole('button', { name: 'Start automatic demo' })).toBeVisible();
   const colours = await page.evaluate(() => {
     const style = (el) => {
       const c = getComputedStyle(el);

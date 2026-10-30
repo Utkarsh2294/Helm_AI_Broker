@@ -354,9 +354,9 @@ function FinalSignoff({ item, user, busy, onSubmit }) {
   );
 }
 
-export default function AgenticCase({ item, user, onSaved }) {
+export default function AgenticCase({ item, user, onSaved, initialView = 'journey' }) {
   const { data, error: loadError } = useCaseWorkspace(item);
-  const [view, setView] = useState('journey'),
+  const [view, setView] = useState(initialView),
     [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   const decision = useRef(null),
@@ -425,7 +425,7 @@ export default function AgenticCase({ item, user, onSaved }) {
           Digital client file
         </button>
         <button className="button small" onClick={() => setView('audit')}>
-          Agent work & audit
+          Audit trail
         </button>
         <button className="button small" onClick={() => setView('assistant')}>
           Case assistant

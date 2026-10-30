@@ -1,11 +1,9 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useState, useRef, lazy, Suspense } from 'react';
-const AuditSearch = lazy(() => import('./components/AuditSearch'));
 const Governance = lazy(() => import('./components/Governance'));
 const DemoShowcase = lazy(() => import('./components/DemoShowcase'));
 import {
-  ArrowRight,
   ArrowUpRight,
   Search,
   SlidersHorizontal,
@@ -14,14 +12,9 @@ import {
   ClipboardCheck,
   Clock3,
   CheckCheck,
-  Sparkles,
   ShieldCheck,
   FileSearch,
-  Send,
-  ChartNoAxesCombined,
-  BookOpenCheck,
   BrainCircuit,
-  ChevronRight,
 } from 'lucide-react';
 import { api, label } from './api';
 const CasePanel = lazy(() => import('./case-panel'));
@@ -29,21 +22,6 @@ import CommandPalette from './components/CommandPalette';
 import QuickLook from './components/QuickLook';
 import { CaseAssistant } from './components/CaseIntelligence';
 
-const icons = [FileSearch, Send, ChartNoAxesCombined, BookOpenCheck, BrainCircuit];
-const names = [
-  'Research & fact-find',
-  'Partner quotations',
-  'Policy ranking',
-  'Review & compliance',
-  'Learning & insights',
-];
-const descriptions = [
-  'Builds a sourced demands-and-needs record. Preserves medical statements verbatim and flags missing information.',
-  'Requests quotes from all eligible fictional partners. Tracks replies, declines and requests for human clarification.',
-  'Computes scores, exclusions, tie bands, stability and weight-shift analysis. Commission is excluded from ranking.',
-  'Checks your selections, collects feedback and drafts a suitability pack. Approval always requires a broker.',
-  'Evaluates undisputed choices on held-out cases. Produces bounded proposals and never activates them.',
-];
 const states = {
   FACTFIND_REVIEW: 'Fact-find review',
   AWAIT_BROKER_RELEASE: 'Ready for RFQ',
@@ -166,11 +144,6 @@ export default function Workspace({ page, user, setPage }) {
       'Good advice starts with clarity.',
       'A little less admin. A little more time for your clients.',
     ],
-    agents: [
-      'INTELLIGENCE, WITH DIRECTION',
-      'Meet your supporting cast.',
-      'Five specialists. One connected workflow. You make the final call.',
-    ],
     partners: [
       'YOUR DEMO PANEL',
       'A wider view of the market.',
@@ -180,11 +153,6 @@ export default function Workspace({ page, user, setPage }) {
       'BETTER, WITH EVERY DECISION',
       'Your judgement makes us better.',
       'Turn broker feedback into measured, human-reviewed improvements.',
-    ],
-    audit: [
-      'EVERY STEP, ACCOUNTED FOR',
-      'A clear trail of every decision.',
-      'Follow the facts, approvals and hand-offs behind each case.',
     ],
     demo: [
       'THE COMPLETE DEMONSTRATION',
@@ -253,54 +221,6 @@ export default function Workspace({ page, user, setPage }) {
               </div>
             ))}
           </div>
-          <section className="pipeline-section">
-            <div className="section-header">
-              <div>
-                <Sparkles size={15} />
-                <h2>Your team, working in sync</h2>
-                <span className="subtle-badge">5 SPECIALIST AGENTS</span>
-              </div>
-              <button className="text-button" onClick={() => setPage('agents')}>
-                Meet the team
-                <ArrowUpRight size={14} />
-              </button>
-            </div>
-            <div className="pipeline-steps">
-              {names.map((name, i) => {
-                const Icon = icons[i];
-                return (
-                  <React.Fragment key={name}>
-                    <button
-                      className="pipeline-step"
-                      onClick={() => setPage(i === 4 ? 'learning' : 'agents')}
-                    >
-                      <span className="pipeline-icon">
-                        <Icon size={20} strokeWidth={1.5} />
-                      </span>
-                      <div>
-                        <small>AGENT 0{i + 1}</small>
-                        <strong>
-                          {['Research', 'Quotation', 'Ranking', 'Review', 'Learning'][i]}
-                        </strong>
-                        <span>
-                          {
-                            [
-                              'Facts, with sources',
-                              'All eligible partners',
-                              'Explain every score',
-                              'Your final decision',
-                              'Feedback, thoughtfully',
-                            ][i]
-                          }
-                        </span>
-                      </div>
-                    </button>
-                    {i < 4 && <ChevronRight className="pipeline-chevron" size={14} />}
-                  </React.Fragment>
-                );
-              })}
-            </div>
-          </section>
           <section className="case-section">
             <div className="section-header">
               <div>
@@ -406,12 +326,12 @@ export default function Workspace({ page, user, setPage }) {
                     <th>COVER TYPE</th>
                     <th>STATUS</th>
                     <th>REQUEST</th>
-                    <th aria-label="Open case" />
+                    <th>CASE ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody>
                   {visible.map((c, i) => (
-                    <tr key={c.id}>
+                    <tr key={c.id} data-case-id={c.id}>
                       <td>
                         <button
                           className="client-button"
@@ -464,13 +384,22 @@ export default function Workspace({ page, user, setPage }) {
                         <small>{c.assigned_to ? 'Assigned' : 'Unassigned'}</small>
                       </td>
                       <td>
-                        <button
-                          className="open-case"
-                          aria-label={`Open ${c.name}`}
-                          onClick={() => setSelected(c.id)}
-                        >
-                          <ArrowUpRight size={16} />
-                        </button>
+                        <div className="case-row-actions">
+                          <button
+                            className="button small case-audit-button"
+                            aria-label={`Audit trail for ${c.name}`}
+                            onClick={() => navigate(`/case/${encodeURIComponent(c.id)}?view=audit`)}
+                          >
+                            Audit trail
+                          </button>
+                          <button
+                            className="open-case"
+                            aria-label={`Open ${c.name}`}
+                            onClick={() => setSelected(c.id)}
+                          >
+                            <ArrowUpRight size={16} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -529,38 +458,6 @@ export default function Workspace({ page, user, setPage }) {
           </div>
         </>
       )}
-      {page === 'agents' && (
-        <>
-          <div className="agent-grid">
-            {names.map((name, i) => {
-              const Icon = icons[i];
-              return (
-                <article className="agent-card" key={name}>
-                  <div className="agent-card-top">
-                    <span className="pipeline-icon">
-                      <Icon size={25} strokeWidth={1.4} />
-                    </span>
-                    <span className="eyebrow">AGENT 0{i + 1}</span>
-                  </div>
-                  <h2>{name}</h2>
-                  <p className="agent-description">{descriptions[i]}</p>
-                  <button
-                    className="text-button"
-                    onClick={() => setPage(i === 4 ? 'learning' : 'workspace')}
-                  >
-                    {i === 4 ? 'View learning' : 'View casework'}
-                    <ArrowRight size={15} />
-                  </button>
-                </article>
-              );
-            })}
-          </div>
-          <p className="footnote">
-            <ShieldCheck size={14} /> Demo agents run grounded local code. No consumer medical text
-            is sent to a language model.
-          </p>
-        </>
-      )}
       {page === 'partners' && (
         <section className="surface">
           <div className="section-header">
@@ -613,11 +510,6 @@ export default function Workspace({ page, user, setPage }) {
           <DemoShowcase user={user} />
         </Suspense>
       )}
-      {page === 'audit' && (
-        <Suspense fallback={<p role="status">Loading audit search…</p>}>
-          <AuditSearch onCase={setSelected} />
-        </Suspense>
-      )}
       <CommandPalette cases={cases} onCase={setSelected} onPage={setPage} />
       {quick && (
         <QuickLook
@@ -632,7 +524,11 @@ export default function Workspace({ page, user, setPage }) {
       {selected && (
         <Suspense fallback={<p role="status">Opening case…</p>}>
           <CasePanel
+            key={`${selected}:${location.search}`}
             id={selected}
+            initialView={
+              new URLSearchParams(location.search).get('view') === 'audit' ? 'audit' : 'journey'
+            }
             user={user}
             onClose={() => {
               setSelected(null);

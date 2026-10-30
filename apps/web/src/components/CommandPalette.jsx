@@ -46,7 +46,6 @@ export default function CommandPalette({ cases, onCase, onPage }) {
       ).values(),
       ...[
         ['security', 'Security & devices'],
-        ['audit', 'Activity & audit'],
         ['learning', 'Learning & insights'],
       ].map(([key, name]) => ({ key, label: name, kind: 'Page' })),
     ],
