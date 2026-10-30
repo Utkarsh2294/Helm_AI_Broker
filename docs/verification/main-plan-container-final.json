@@ -1,0 +1,21 @@
+{
+  "verified": true,
+  "health": {
+    "status": "ok",
+    "db_backend": "postgresql+psycopg",
+    "db": "ok",
+    "redis": "ok"
+  },
+  "case_id": "eb23f0c4-acb6-4ed4-bc80-b0cc28f2aff3",
+  "quotes": 30,
+  "final_state": "PUBLISHED",
+  "delivery": "demo_delivered",
+  "worker_advanced_without_detail_polling": true,
+  "audit_chain_verified": true,
+  "magic_link_single_use_verified": true,
+  "seconds_waiting_for_broker_review": 27.156,
+  "seconds_waiting_for_publication": 2.969,
+  "functional_timeout_seconds": 300,
+  "performance_target_verified": false,
+  "real_emails_sent": false
+}

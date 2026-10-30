@@ -20,5 +20,9 @@ export default defineConfig({
     },
     proxy: { '/api': process.env.HELM_API_PROXY || 'http://127.0.0.1:8010' },
   },
-  preview: { headers: { ...baseHeaders, 'Content-Security-Policy': csp } },
+  preview: {
+    allowedHosts: ['web'],
+    headers: { ...baseHeaders, 'Content-Security-Policy': csp },
+    proxy: { '/api': process.env.HELM_API_PROXY || 'http://127.0.0.1:8010' },
+  },
 });

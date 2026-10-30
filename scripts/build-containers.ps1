@@ -20,7 +20,21 @@ if ($PrepareWheelhouse) {
     if ($LASTEXITCODE) { throw 'Wheel verification failed; retained downloads can be resumed' }
 }
 $brokerOverride = Join-Path $brokerBuildDirectory 'dns.json'
-$brokerDefinition = @{context='.'}
+# Hydrate source bytes outside OneDrive; cloud placeholders are not valid BuildKit files.
+$brokerContext = Join-Path $brokerBuildDirectory ('context-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $brokerContext | Out-Null
+$brokerFiles = & git -C $brokerBuildRoot ls-files --cached --others --exclude-standard
+if ($LASTEXITCODE) { throw 'Could not enumerate the project build sources' }
+foreach ($brokerRelative in ($brokerFiles | Select-Object -Unique)) {
+    if ($brokerRelative -notmatch '^(services/|tools/|packages/engine/|apps/web/|Dockerfile$|pyproject.toml$|uv.lock$|alembic.ini$|\.dockerignore$)') { continue }
+    $brokerSource = [IO.Path]::GetFullPath((Join-Path $brokerBuildRoot $brokerRelative))
+    $brokerTarget = [IO.Path]::GetFullPath((Join-Path $brokerContext $brokerRelative))
+    if (-not $brokerSource.StartsWith($brokerBuildRoot + '\', [StringComparison]::OrdinalIgnoreCase) -or -not $brokerTarget.StartsWith($brokerContext + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Unexpected build source path' }
+    if (-not [IO.File]::Exists($brokerSource)) { continue }
+    [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($brokerTarget)) | Out-Null
+    [IO.File]::WriteAllBytes($brokerTarget, [IO.File]::ReadAllBytes($brokerSource))
+}
+$brokerDefinition = @{context=$brokerContext}
 if ($BaseImage) { $brokerDefinition.args = @{BASE_IMAGE=$BaseImage} }
 if (-not $UseDefaultDns) {
     # Resolve on Windows when Docker Desktop's upstream resolver is unreliable.
@@ -41,8 +55,8 @@ if ($Wheelhouse) {
     $brokerDefinition.dockerfile = $brokerOfflineDockerfile
     $brokerDefinition.additional_contexts = @{wheelhouse=$brokerWheelPath}
 }
-if (-not $UseDefaultDns -or $Wheelhouse -or $BaseImage) {
-    @{services=@{api=@{build=$brokerDefinition};worker=@{build=$brokerDefinition};'mock-core'=@{build=$brokerDefinition};'partner-sim'=@{build=$brokerDefinition}}} | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $brokerOverride
+if ($brokerContext) {
+    @{services=@{api=@{build=$brokerDefinition};worker=@{build=$brokerDefinition};'mock-core'=@{build=$brokerDefinition};'partner-sim'=@{build=$brokerDefinition};web=@{build=@{context=(Join-Path $brokerContext 'apps/web')}}}} | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $brokerOverride
     $brokerArguments += @('-f', $brokerOverride)
 }
 $brokerArguments += 'build'
