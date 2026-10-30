@@ -57,17 +57,19 @@ app = FastAPI(
 
 @app.middleware("http")
 async def request_boundary(request, call_next):
+    from app.security import secure_headers
+
     if request.method not in ("GET", "HEAD", "OPTIONS"):
         origin = request.headers.get("origin")
         # Browser requests require the configured same-origin proxy. CLI/worker requests use cookies+CSRF.
         if origin and origin not in settings().trusted_origins:
-            return JSONResponse({"detail": "Unapproved request origin"}, status_code=403)
+            return secure_headers(JSONResponse({"detail": "Unapproved request origin"}, status_code=403))
     if request.method not in ("GET", "HEAD", "OPTIONS"):
         chunks, length = [], 0
         async for chunk in request.stream():
             length += len(chunk)
             if length > 2_000_000:
-                return JSONResponse({"detail": "Request body too large"}, status_code=413)
+                return secure_headers(JSONResponse({"detail": "Request body too large"}, status_code=413))
             chunks.append(chunk)
         request._body = b"".join(chunks)
     response = await call_next(request)
@@ -79,17 +81,7 @@ async def request_boundary(request, call_next):
         route=getattr(request.scope.get("route"), "path", "unmatched"),
         status=response.status_code,
     )
-    from app.security import CSP
-
-    response.headers["Content-Security-Policy"] = CSP
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
-    if settings().cookie_secure:
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["Referrer-Policy"] = "same-origin"
-    response.headers["Cache-Control"] = "no-store"
-    return response
+    return secure_headers(response)
 
 
 @app.exception_handler(DomainError)
