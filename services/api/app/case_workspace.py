@@ -8,7 +8,7 @@ from app.auth import identity
 from app.agents.runtime import AGENTS
 from app.case_access import visible_cases
 from app.compliance.medical_firewall import safe_case
-from app.db.models import Activity, Case, Snapshot
+from app.db.models import Activity, Case, Snapshot, Publication
 from app.db.store import verify_chain
 from app.demo_documents import database
 from app.schemas import Model
@@ -144,6 +144,21 @@ def workspace_data(db, case, user):
             }
         )
     source = last.get("request")
+    publication = data.get("publication")
+    if not publication and data.get("pack"):
+        receipt = db.scalar(
+            select(Publication).where(
+                Publication.case_id == case.id, Publication.pack_hash == data["pack"]["pack_hash"]
+            )
+        )
+        if receipt:
+            publication = {
+                "status": receipt.status,
+                "pack_hash": receipt.pack_hash,
+                "approval_id": receipt.approval_id,
+                "created_at": receipt.created_at,
+                "source": "publication_receipt",
+            }
     result = {
         "case_id": case.id,
         "state": case.state,
@@ -214,7 +229,7 @@ def workspace_data(db, case, user):
                 }
                 for row in (data.get("pack") or {}).get("plans", [])
             ],
-            "publication": data.get("publication"),
+            "publication": publication,
             "consumer_response": data.get("consumer_response"),
         },
     }

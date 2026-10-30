@@ -126,6 +126,9 @@ def test_final_signature_is_explicit_current_authenticated_and_one_use_then_lear
     current = client.get(f"/api/v1/cases/{case_id}").json()
     assert current["demo_learning"]["auto_applied"] is False
     assert current["demo_learning"]["status"] == "insufficient_evidence"
+    receipt = client.get(f"/api/v1/cases/{case_id}/workspace").json()["client_file"]["publication"]
+    assert receipt["status"] == "demo_delivered"
+    assert receipt["pack_hash"] == current["pack"]["pack_hash"]
     with main.SessionLocal() as db:
         approvals = db.scalars(select(Approval).where(Approval.case_id == case_id)).all()
         assert [a.gate for a in approvals] == ["G2"]
