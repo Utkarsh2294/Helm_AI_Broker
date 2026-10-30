@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openManualCase } from './manual-case';
 import { createHmac } from 'node:crypto';
 
 async function login(page, email = 'broker@helm.demo') {
@@ -61,7 +62,7 @@ for (const [scenario, state, count] of [
 ]) {
   test(`partner scenario ${scenario} reaches its guarded outcome`, async ({ page }) => {
     await login(page);
-    await page.getByRole('button', { name: 'New demo request' }).click();
+    await openManualCase(page);
     const panel = page.getByRole('dialog', { name: 'Case workspace' });
     await panel.getByRole('checkbox', { name: 'I reviewed this fact-find', exact: false }).check();
     await panel.getByRole('button', { name: 'Sign off fact-find' }).click();

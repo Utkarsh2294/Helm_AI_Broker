@@ -27,6 +27,7 @@ import { api, label } from './api';
 const CasePanel = lazy(() => import('./case-panel'));
 import CommandPalette from './components/CommandPalette';
 import QuickLook from './components/QuickLook';
+import { CaseAssistant } from './components/CaseIntelligence';
 
 const icons = [FileSearch, Send, ChartNoAxesCombined, BookOpenCheck, BrainCircuit];
 const names = [
@@ -88,6 +89,7 @@ export default function Workspace({ page, user, setPage }) {
   const [creating, setCreating] = useState(false),
     [partners, setPartners] = useState([]);
   const [quick, setQuick] = useState(null);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const listing = useInfiniteQuery({
     queryKey: ['cases', user.id, query, filter, sort, assignee, priority],
     initialPageParam: '',
@@ -147,17 +149,8 @@ export default function Workspace({ page, user, setPage }) {
     setCreating(true);
     setError('');
     try {
-      const c = await api('/demo/requests', {
+      const c = await api('/demo/journeys', {
         method: 'POST',
-        body: {
-          id: `demo-${crypto.randomUUID()}`,
-          name: `Demo applicant ${totalCases + 1}`,
-          cover_type: 'individual',
-          needs: {
-            budget_annual_pence: 180000,
-            coverage: { cancer: { level: 3, must_have: true }, outpatient: { level: 3 } },
-          },
-        },
       });
       await refresh();
       setSelected(c.id);
@@ -211,7 +204,7 @@ export default function Workspace({ page, user, setPage }) {
         {page === 'workspace' && user.role === 'authorised_broker' && (
           <button className="button primary" onClick={newRequest} disabled={creating}>
             <Plus size={16} />
-            {creating ? 'Creating…' : 'New demo request'}
+            {creating ? 'Starting agents…' : 'Start automatic demo'}
           </button>
         )}
       </div>
@@ -230,6 +223,19 @@ export default function Workspace({ page, user, setPage }) {
       )}
       {page === 'workspace' && (
         <>
+          <div className="workspace-assistant-toggle">
+            <button
+              className="button small"
+              aria-expanded={assistantOpen}
+              onClick={() => setAssistantOpen((value) => !value)}
+            >
+              Workspace assistant
+            </button>
+            <span className="muted">
+              Open a case to see its digital file, agent work and reasons.
+            </span>
+          </div>
+          {assistantOpen && <CaseAssistant onOpenCase={setSelected} />}
           <div className="metrics-grid">
             {[
               [Users, 'Open cases', openCases, 'People, not paperwork', 'neutral'],
@@ -436,6 +442,17 @@ export default function Workspace({ page, user, setPage }) {
                       </td>
                       <td>
                         <Status state={c.state} />
+                        {c.workflow === 'fictional-two-decisions-v1' && (
+                          <small className="block case-agent-summary">
+                            {c.state === 'BROKER_REVIEW'
+                              ? 'Your decision 1: choose and rank'
+                              : c.state === 'AWAIT_APPROVAL'
+                                ? 'Your decision 2: final sign-off'
+                                : c.state === 'PUBLISHED'
+                                  ? 'Signed demo · learning runs automatically'
+                                  : 'Agents prepare automatically · open for reasons'}
+                          </small>
+                        )}
                       </td>
                       <td className="request-date">
                         <span>

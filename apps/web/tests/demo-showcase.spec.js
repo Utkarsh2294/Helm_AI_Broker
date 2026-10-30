@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openManualCase } from './manual-case';
 import { readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -195,7 +196,7 @@ test('all excluded plans close without sending advice and generate a closure PDF
 }) => {
   test.setTimeout(90000);
   await login(page);
-  await page.getByRole('button', { name: 'New demo request' }).click();
+  await openManualCase(page);
   const panel = page.getByRole('dialog', { name: 'Case workspace' });
   await comparison(panel);
   await assess(panel, 'Exclude');
@@ -221,7 +222,7 @@ test('broker case controls and underwriter referrals keep human review in place'
 }) => {
   test.setTimeout(90000);
   await login(page);
-  await page.getByRole('button', { name: 'New demo request' }).click();
+  await openManualCase(page);
   const panel = page.getByRole('dialog', { name: 'Case workspace' });
   await panel.getByRole('button', { name: 'Case controls', exact: true }).click();
   const controls = page.getByRole('dialog', { name: 'Case controls', exact: true });

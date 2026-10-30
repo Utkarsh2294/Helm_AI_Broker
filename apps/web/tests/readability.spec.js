@@ -24,7 +24,7 @@ test('light workspace remains readable even when the device prefers dark mode', 
       content: style(document.querySelector('.main-content')),
       action: style(
         [...document.querySelectorAll('button')].find((b) =>
-          b.textContent.includes('New demo request'),
+          b.textContent.includes('Start automatic demo'),
         ),
       ),
       muted: getComputedStyle(document.querySelector('.main-content .muted')).color,

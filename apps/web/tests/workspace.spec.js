@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openManualCase } from './manual-case';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { createHmac } from 'node:crypto';
@@ -18,7 +19,7 @@ test('broker completes the five-agent workflow with real approval and evidence',
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await login(page);
-  await page.getByRole('button', { name: 'New demo request' }).click();
+  await openManualCase(page);
   const panel = page.getByRole('dialog', { name: 'Case workspace' });
   await expect(panel.getByText('Demands & needs record')).toBeVisible();
   await panel.getByRole('checkbox', { name: 'I reviewed this fact-find', exact: false }).check();

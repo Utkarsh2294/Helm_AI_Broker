@@ -40,6 +40,8 @@ import CloseWithoutAdvice from './components/CloseWithoutAdvice';
 import ReferralControls from './components/ReferralControls';
 import CaseDocuments from './components/CaseDocuments';
 import CaseControls from './components/CaseControls';
+import AgenticCase from './components/AgenticCase';
+import CaseIntelligence from './components/CaseIntelligence';
 
 export default function CasePanel({ id, user, onClose }) {
   const dialog = useRef(null),
@@ -92,6 +94,7 @@ export default function CasePanel({ id, user, onClose }) {
       if (historicalRef.current || mutationEpoch.current !== epoch) return;
       setCaseState(current);
       setLiveCase(current);
+      if (current.demo_workflow) setError('');
     } catch (e) {
       if (e.requires_step_up) medicalRevealed.current = false;
       setError(e.message);
@@ -250,7 +253,7 @@ export default function CasePanel({ id, user, onClose }) {
             <X size={21} />
           </button>
         </header>
-        {c && (
+        {c && !c.demo_workflow && (
           <>
             <div className="case-stages">
               {['Fact-find', 'Quotations', 'Comparison', 'Approval', 'Delivery'].map((name, i) => (
@@ -313,6 +316,8 @@ export default function CasePanel({ id, user, onClose }) {
                 ['quotes', `Compare${comparison.length ? ` (${comparison.length})` : ''}`],
                 ['pack', 'Recommendation'],
                 ['activity', 'Activity'],
+                ['file', 'Digital client file'],
+                ['assistant', 'Case assistant'],
               ].map(([key, name]) => (
                 <button
                   role="tab"
@@ -330,7 +335,8 @@ export default function CasePanel({ id, user, onClose }) {
           </>
         )}
         <div className="panel-body">
-          {liveCase && (
+          {c?.demo_workflow && <AgenticCase item={c} user={user} onSaved={setCase} />}
+          {liveCase && !c?.demo_workflow && (
             <ReplayScrubber
               item={liveCase}
               onView={(v) => {
@@ -354,7 +360,7 @@ export default function CasePanel({ id, user, onClose }) {
             </p>
           )}
           {!c && <p className="muted">Loading case details…</p>}
-          {c?.dnr && (
+          {c?.dnr && !c.demo_workflow && (
             <section role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
               {c.state === 'PAUSED_NEEDS_HUMAN' && (
                 <div className="notice warning">
@@ -1325,6 +1331,7 @@ export default function CasePanel({ id, user, onClose }) {
               )}
               {tab === 'activity' && (
                 <>
+                  <CaseIntelligence item={c} view="audit" onNavigate={setTab} />
                   <div className="section-header">
                     <h3>Every step, in view.</h3>
                     <span className="subtle-badge">HASH-CHAINED</span>
@@ -1349,6 +1356,15 @@ export default function CasePanel({ id, user, onClose }) {
                     ))}
                   </div>
                 </>
+              )}
+              {['file', 'assistant'].includes(tab) && (
+                <CaseIntelligence
+                  item={c}
+                  view={tab}
+                  onNavigate={(key) =>
+                    setTab(key === 'journey' ? 'quotes' : key === 'audit' ? 'activity' : key)
+                  }
+                />
               )}
             </section>
           )}
