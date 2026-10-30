@@ -32,6 +32,7 @@ test('assistant can sign off G0 while adviser release stays protected', async ({
   expect(created.ok()).toBe(true);
   const item = await created.json();
   await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page).toHaveURL(/\/signed-out\/voluntary$/);
   await login(page, 'assistant@helm.demo');
   await page.getByRole('textbox', { name: 'Search cases' }).fill(name);
   await page.getByRole('button', { name: `Open ${name}` }).click();
@@ -136,6 +137,7 @@ test('a server-verified resident passkey can register and sign in', async ({ pag
     ).toBeVisible();
     await page.getByRole('button', { name: 'Sign out' }).click();
     await page.getByRole('link', { name: 'Sign back in' }).click();
+    await page.getByRole('button', { name: 'Continue with passkey' }).click();
     await expect(
       page.getByRole('heading', { name: 'Good advice starts with clarity.' }),
     ).toBeVisible();
