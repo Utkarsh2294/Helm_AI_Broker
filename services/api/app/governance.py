@@ -130,15 +130,55 @@ def promote(db, proposal_id, user):
     return {"status": proposal.status, "roles": sorted(roles), "metrics": metrics}
 
 
-def rollback(db, model_id, user):
+def rollback(db, model_id, user, reason=""):
     if user.role != "compliance_officer":
         raise DomainError("Compliance must authorize rollback", 403)
     model = champion(db)
     if model.id != model_id or not model.previous_champion_id:
         raise DomainError("This model has no active promotion to roll back")
+    if len(reason.strip()) < 20:
+        raise DomainError("Record a rollback reason of at least 20 characters", 422)
     previous = db.get(EngineModel, model.previous_champion_id)
     model.status = "retired"
     db.flush()
     previous.status = "champion"
-    event(db, user, "model_rolled_back", {"from": model.id, "to": previous.id})
+    from app.agents.review import canonical_hash
+
+    proposal = db.get(ModelProposal, model.proposal_id)
+    if proposal:
+        proposal.status = "rolled_back"
+        proposal.body = {**proposal.body, "rollback": {"reason": reason.strip(), "by": user.id}}
+    event(
+        db,
+        user,
+        "model_rolled_back",
+        {"from": model.id, "to": previous.id, "reason_hash": canonical_hash(reason.strip())},
+    )
     return {"champion": previous.version}
+
+
+def reject(db, proposal_id, user, reason):
+    governance_role(user)
+    proposal = db.scalar(select(ModelProposal).where(ModelProposal.id == proposal_id).with_for_update())
+    if not proposal:
+        raise DomainError("Model change request not found", 404)
+    if proposal.status not in {"proposed", "shadow_mode"}:
+        raise DomainError("This proposal cannot be rejected at its current stage", 409)
+    if len(reason.strip()) < 20:
+        raise DomainError("Record a rejection reason of at least 20 characters", 422)
+    model = db.scalar(
+        select(EngineModel).where(EngineModel.proposal_id == proposal_id, EngineModel.status == "challenger")
+    )
+    if model:
+        model.status = "retired"
+    proposal.status = "rejected"
+    proposal.body = {**proposal.body, "rejection": {"reason": reason.strip(), "by": user.id}}
+    from app.agents.review import canonical_hash
+
+    event(
+        db,
+        user,
+        "model_rejected",
+        {"proposal_id": proposal.id, "reason_hash": canonical_hash(reason.strip())},
+    )
+    return {"status": "rejected"}

@@ -35,8 +35,18 @@ def dashboard(request: Request, db=Depends(database, scope="function")):
     }
 
 
+class DecisionReason(Model):
+    reason: str = Field(default="", max_length=2000)
+
+
 @router.post("/mcr/{proposal_id}/{action}")
-def decide(proposal_id: str, action: str, request: Request, db=Depends(database, scope="function")):
+def decide(
+    proposal_id: str,
+    action: str,
+    request: Request,
+    body: DecisionReason | None = None,
+    db=Depends(database, scope="function"),
+):
     from app.auth.router import credential_access
 
     user, proof = credential_access(db, request)
@@ -46,16 +56,23 @@ def decide(proposal_id: str, action: str, request: Request, db=Depends(database,
         return governance.approve_shadow(db, proposal_id, user)
     if action == "promote":
         return governance.promote(db, proposal_id, user)
+    if action == "reject":
+        return governance.reject(db, proposal_id, user, body.reason if body else "")
     raise DomainError("Unknown governance action", 404)
 
 
 @router.post("/engine-models/{model_id}/rollback")
-def rollback(model_id: str, request: Request, db=Depends(database, scope="function")):
+def rollback(
+    model_id: str,
+    request: Request,
+    body: DecisionReason | None = None,
+    db=Depends(database, scope="function"),
+):
     from app.auth.router import credential_access
 
     user, proof = credential_access(db, request)
     proof.consumed = True
-    return governance.rollback(db, model_id, user)
+    return governance.rollback(db, model_id, user, body.reason if body else "")
 
 
 @router.get("/edge-cases")

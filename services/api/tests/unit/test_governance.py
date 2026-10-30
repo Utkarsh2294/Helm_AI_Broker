@@ -5,7 +5,6 @@ from app.auth import hasher
 from app.db.models import Base, User, Case, ModelProposal
 from app.db.platform import EngineModel, ShadowEvaluation, ModelApproval
 from app.db.store import make_engine, save_snapshot
-from app.engine.ranking import user_weights
 from app.schemas import DomainError
 from app import governance
 from review_governance_fixtures import eligible_proposal
@@ -76,7 +75,9 @@ def test_independent_g5_shadow_metrics_promotion_and_rollback(tmp_path, monkeypa
         db.flush()
         assert governance.champion(db).id == model.id
         assert len(db.scalars(select(ModelApproval)).all()) == 4
-        governance.rollback(db, model.id, compliance)
+        governance.rollback(
+            db, model.id, compliance, "Restore the earlier champion after a fictional review."
+        )
         db.flush()
         assert governance.champion(db).version == "user-v1"
     engine.dispose()

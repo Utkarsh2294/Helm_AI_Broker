@@ -3,12 +3,14 @@ import React, { useEffect, useState } from 'react';
 import { api, label } from '../api';
 import BottomSheet from './BottomSheet';
 import Reauthenticate from './Reauthenticate';
+import TextArea from './TextArea';
 export default function Governance({ user }) {
   const [models, setModels] = useState([]),
     [data, setData] = useState({ models: [], events: [] }),
     [edges, setEdges] = useState([]),
     [playbooks, setPlaybooks] = useState([]);
   const [pendingDecision, setPendingDecision] = useState(null);
+  const [decisionReason, setDecisionReason] = useState('');
   const [tab, setTab] = useState('models'),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
@@ -144,6 +146,15 @@ export default function Governance({ user }) {
                   >
                     Approve promotion · G5
                   </button>
+                  {['proposed', 'shadow_mode'].includes(m.status) && (
+                    <button
+                      className="button"
+                      disabled={busy}
+                      onClick={() => setPendingDecision(`/mcr/${m.id}/reject`)}
+                    >
+                      Reject model change
+                    </button>
+                  )}
                 </div>
               )}
             </article>
@@ -266,15 +277,29 @@ export default function Governance({ user }) {
         title="Verify model decision"
         description="Confirm your own decision with a fresh, single-use verification. A different authorised reviewer is still required for the second approval."
       >
-        <Reauthenticate
-          title="Re-authenticate for G5"
-          actionLabel="Verify and record decision"
-          onVerified={async (proof) => {
-            const url = pendingDecision;
-            setPendingDecision(null);
-            await change(url, {}, 'POST', proof);
-          }}
-        />
+        {(pendingDecision?.endsWith('/reject') || pendingDecision?.endsWith('/rollback')) && (
+          <TextArea
+            label="Reason for model decision"
+            required
+            minLength={20}
+            maxLength={2000}
+            value={decisionReason}
+            onChange={(event) => setDecisionReason(event.target.value)}
+          />
+        )}
+        {(!pendingDecision?.match(/\/(reject|rollback)$/) ||
+          decisionReason.trim().length >= 20) && (
+          <Reauthenticate
+            title="Re-authenticate for G5"
+            actionLabel="Verify and record decision"
+            onVerified={async (proof) => {
+              const url = pendingDecision;
+              setPendingDecision(null);
+              await change(url, { reason: decisionReason.trim() }, 'POST', proof);
+              setDecisionReason('');
+            }}
+          />
+        )}
       </BottomSheet>
     </>
   );
