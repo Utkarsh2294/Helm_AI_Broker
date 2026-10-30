@@ -1,0 +1,2 @@
+# Build bootstrap for the supported Linux x86_64 image; digest from PyPI release metadata.
+uv==0.13.6 --hash=sha256:22759b8895e1103578de6fb4cd27e94b4399d021023378d29f01333717751fba

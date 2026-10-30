@@ -1,7 +1,8 @@
 ARG BASE_IMAGE=python:3.12-slim-bookworm@sha256:e697c81897302a4c4333bade000d98038fbb21eb064f8ee1fd42d02ebcd9d337
 FROM ${BASE_IMAGE}
 WORKDIR /app
-RUN pip install --no-cache-dir uv==0.13.6
+COPY tools/bootstrap-linux.txt /tmp/bootstrap-linux.txt
+RUN pip install --no-cache-dir --require-hashes --no-deps -r /tmp/bootstrap-linux.txt
 COPY pyproject.toml uv.lock ./
 COPY packages/engine ./packages/engine
 RUN --mount=type=cache,target=/root/.cache/uv \

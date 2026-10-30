@@ -39,7 +39,8 @@ def plan(tags_path, requirements_path):
             (Path(__file__).resolve().parents[1] / "uv.lock").read_text(encoding="utf8")
         )["package"]
     }
-    selected, unavailable = [], []
+    bootstrap = json.loads((Path(__file__).with_name("bootstrap-wheel.json")).read_text(encoding="utf8"))
+    selected, unavailable = [bootstrap], []
     for line in Path(requirements_path).read_text(encoding="utf8").splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
