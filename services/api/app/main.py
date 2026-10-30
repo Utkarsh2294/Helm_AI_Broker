@@ -1,6 +1,6 @@
 import asyncio
 import json
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from typing import Literal
 
 from fastapi import Depends, FastAPI, Request, Response
@@ -44,7 +44,32 @@ async def lifespan(app):
     await asyncio.to_thread(prepare_runtime, settings().agent_runtime)
     with SessionLocal() as db:
         seed_demo(db)
-    yield
+
+    async def demo_jobs():
+        from app.agentic_demo import poll_agentic
+
+        while True:
+            try:
+                await asyncio.to_thread(poll_agentic, SessionLocal)
+            except Exception:
+                # Never log encrypted case content or exception messages here.
+                import logging
+
+                logging.getLogger("helm.jobs").warning("demo_poll_retry")
+            await asyncio.sleep(1)
+
+    task = (
+        asyncio.create_task(demo_jobs())
+        if settings().demo_background_jobs and settings().clock_mode == "demo"
+        else None
+    )
+    try:
+        yield
+    finally:
+        if task:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
 
 
 app = FastAPI(
@@ -270,7 +295,12 @@ def case_detail(
 ):
     user, session = identity(db, request)
     case = service.get_case(db, case_id)
-    service.process_due_jobs(db, case_id)
+    from app.agentic_demo import FLOW
+
+    # Automatic journeys belong to the durable worker. A read must not race it
+    # by executing the same preparation job from a browser poll.
+    if case.profile.get("workflow") != FLOW:
+        service.process_due_jobs(db, case_id)
     if include_medical:
         from app.medical_access import require_medical_access
 
@@ -357,6 +387,11 @@ app.include_router(medical_router)
 from app.plan_ratings import router as ratings_router  # noqa: E402
 
 app.include_router(ratings_router)
+from app.case_workspace import router as case_workspace_router  # noqa: E402
+from app.agentic_demo import router as agentic_demo_router  # noqa: E402
+
+app.include_router(case_workspace_router)
+app.include_router(agentic_demo_router)
 
 
 @app.post("/api/v1/cases/{case_id}/{action}")

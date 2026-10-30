@@ -26,6 +26,10 @@ GRAPH = {
 
 
 def permits(source, target, event):
+    if event == "demo_automation_held":
+        return target == "PAUSED_NEEDS_HUMAN" and source not in {"PUBLISHED", "CLOSED", "COMPLAINT_FLAGGED"}
+    if event == "demo_quotation_started":
+        return source == "FACTFIND_REVIEW" and target == "QUOTES_PENDING"
     if event == "consumer_requirements_updated":
         return source not in {"PUBLISHED", "CLOSED", "COMPLAINT_FLAGGED"} and target == "INTAKE_RUNNING"
     if event == "core_request_withdrawn":

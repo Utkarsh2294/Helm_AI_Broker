@@ -44,8 +44,17 @@ def build_rfq(
     medical_released: bool = False,
     now: datetime | None = None,
     partner_ids: list[str] | None = None,
+    demo_preparation: bool = False,
 ) -> RFQ:
-    if not signed_off or dnr.missing or not dnr.consent_to_share:
+    prepared_demo = (
+        demo_preparation
+        and settings().clock_mode == "demo"
+        and settings().partner_mode in {"simulator", "http_simulator"}
+        and dnr.request_id.startswith("agentic-demo-")
+        and not dnr.medical_items
+        and not dnr.vulnerability_flags
+    )
+    if (not signed_off and not prepared_demo) or dnr.missing or not dnr.consent_to_share:
         raise DomainError("Complete and sign off the fact-find before releasing quotations")
     if dnr.medical_items and not medical_released:
         raise DomainError("Medical text requires explicit broker release", 403)

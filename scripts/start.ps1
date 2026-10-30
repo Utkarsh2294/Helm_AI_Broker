@@ -18,6 +18,7 @@ if ($Install -or -not (Test-Path -LiteralPath 'apps\web\node_modules')) {
 }
 New-Item -ItemType Directory -Force '.runtime' | Out-Null
 $env:PYTHONUTF8 = '1'
+$env:HELM_DEMO_BACKGROUND_JOBS = 'true'
 if ($CrewAI) { $env:HELM_AGENT_RUNTIME = 'crewai' }
 & $brokerPython -m alembic upgrade head
 if ($LASTEXITCODE -ne 0) { throw 'Database migration failed' }

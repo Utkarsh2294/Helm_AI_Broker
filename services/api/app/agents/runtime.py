@@ -75,6 +75,7 @@ def execute_step(kind, payload):
             Survey.model_validate(payload["survey"]),
             payload["acknowledgements"],
             payload.get("suitability"),
+            feedback_required=not payload.get("two_touchpoint_demo", False),
         )
     if kind == "learning":
         return propose_improvement(

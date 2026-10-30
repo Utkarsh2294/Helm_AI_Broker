@@ -22,13 +22,19 @@ def assemble_pack(
     survey: Survey,
     acknowledgements: list[str],
     suitability: str | None = None,
+    *,
+    feedback_required: bool = True,
 ) -> dict:
     available = {r["plan"]["id"]: r for r in ranking["top"]}
     if len(selected) != 3 or len(set(selected)) != 3 or set(selected) - set(available):
         raise DomainError("Select three distinct plans from this ranking's top five", 422)
-    if set(survey.thumbs) != set(selected):
+    if feedback_required and set(survey.thumbs) != set(selected):
         raise DomainError("Give thumbs up or down for each selected plan", 422)
-    if ranking["top"][0]["plan"]["id"] not in selected and not survey.omitted_first_reason.strip():
+    if (
+        feedback_required
+        and ranking["top"][0]["plan"]["id"] not in selected
+        and not survey.omitted_first_reason.strip()
+    ):
         raise DomainError("Explain why the engine's first plan was omitted", 422)
     for plan_id in selected:
         row = available[plan_id]

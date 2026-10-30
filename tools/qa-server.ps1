@@ -35,6 +35,7 @@ $env:HELM_ALLOWED_ORIGIN = 'http://127.0.0.1:5182'
 # QA only: shared login traffic deliberately exceeds the live five-attempt policy.
 $env:HELM_AUTH_RATE_LIMIT = '500'
 $env:HELM_CORE_DELIVERY_ENABLED = 'false'
+$env:HELM_DEMO_BACKGROUND_JOBS = 'true'
 $env:HELM_PARTNER_MODE = if ($HttpPartners) { 'http_simulator' } else { 'simulator' }
 $env:HELM_PARTNER_SIMULATOR_URL = 'http://127.0.0.1:8015'
 $env:HELM_API_PROXY = 'http://127.0.0.1:8012'

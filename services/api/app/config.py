@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     min_new_comparisons: int = 30
     demo_clock_multiplier: int = 3600
     agents_paused: bool = False
+    demo_background_jobs: bool = False
     audit_anchor_directory: str = str(ROOT / ".runtime/audit-anchors")
     rp_id: str = "localhost"
     auth_rate_limit: int = 5

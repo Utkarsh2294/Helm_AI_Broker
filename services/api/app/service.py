@@ -32,6 +32,12 @@ def get_case(db, case_id):
 def transition(db, case, expected, target, event_type, actor, payload=None):
     if case.state not in expected:
         raise DomainError(f"Action unavailable while case is {case.state}")
+    if event_type == "demo_quotation_started":
+        from app.agentic_demo import require_preparation
+
+        require_preparation(db, case)
+        if actor != "demo-automation":
+            raise DomainError("Only the fictional demo coordinator can prepare this step", 403)
     if actor.startswith("agent:") and target in (
         State.RFQ_DRAFTING,
         State.PUBLISHED,
@@ -69,10 +75,7 @@ def transition(db, case, expected, target, event_type, actor, payload=None):
     audit(db, case.id, event_type, actor, {"from": before, "to": target, **(payload or {})})
 
 
-def import_request(db, request: QuoteRequest):
-    from app.compliance.medical_ambiguity import check_medical_ambiguity
-    from app.agents.intake import research_request
-
+def import_request(db, request: QuoteRequest, *, defer_intake=False):
     existing = db.scalar(select(Case).where(Case.core_request_id == request.id))
     if existing:
         return existing
@@ -89,6 +92,15 @@ def import_request(db, request: QuoteRequest):
     save_snapshot(db, case.id, "request", request.model_dump())
     audit(db, case.id, "request_received", "system")
     transition(db, case, [State.RECEIVED], State.INTAKE_RUNNING, "intake_started", "system")
+    if not defer_intake:
+        finish_intake(db, case, request)
+    return case
+
+
+def finish_intake(db, case, request):
+    from app.compliance.medical_ambiguity import check_medical_ambiguity
+    from app.agents.intake import research_request
+
     medical_halt = check_medical_ambiguity(request.model_dump())
     result = (
         research_request(request).model_dump(mode="json")
@@ -355,9 +367,14 @@ def act(db, case_id, action, user, session, body):
         ranking_snapshot = latest(db, case.id, "ranking")
         if not ranking_snapshot or not pack.get("selected"):
             raise DomainError("Incomplete advice evidence cannot be approved", 403)
-        reviews = validate_reviews(db, case.id, ranking_snapshot.body, user, pack["selected"])
-        if pack.get("ratings_broker_id") != user.id or pack.get("ratings_hash") != reviews_hash(reviews):
-            raise DomainError("Assessments changed. Rebuild and review the recommendation pack.", 409)
+        from app.agentic_demo import is_agentic_demo, validate_selection
+
+        if is_agentic_demo(db, case):
+            validate_selection(db, case, user, pack)
+        else:
+            reviews = validate_reviews(db, case.id, ranking_snapshot.body, user, pack["selected"])
+            if pack.get("ratings_broker_id") != user.id or pack.get("ratings_hash") != reviews_hash(reviews):
+                raise DomainError("Assessments changed. Rebuild and review the recommendation pack.", 409)
         if not session.step_up_at or utcnow() - datetime.fromisoformat(session.step_up_at) > timedelta(
             minutes=5
         ):
@@ -391,7 +408,10 @@ def act(db, case_id, action, user, session, body):
                 Approval.payload_hash == dnr_snapshot.body_hash,
             )
         ):
-            raise DomainError("The current fact-find requires broker sign-off", 422, error="DNR_NOT_APPROVED")
+            if not (is_agentic_demo(db, case) and pack.get("final_review_declaration")):
+                raise DomainError(
+                    "The current fact-find requires broker sign-off", 422, error="DNR_NOT_APPROVED"
+                )
         if set(pack.get("dnr_sections_confirmed", [])) != {
             "priorities",
             "coverage",
@@ -483,6 +503,33 @@ def process_due_jobs(db, case_id=None):
     ).all()
     for job in jobs:
         case = get_case(db, job.case_id)
+        if job.kind.startswith("demo_"):
+            from app.agentic_demo import process_job
+
+            try:
+                process_job(db, case, job)
+            except (DomainError, ValueError):
+                job.status = "needs_human"
+                if case.state not in {State.PUBLISHED, State.CLOSED, State.COMPLAINT_FLAGGED}:
+                    case.previous_state = case.state
+                    transition(
+                        db,
+                        case,
+                        [case.state],
+                        State.PAUSED_NEEDS_HUMAN,
+                        "demo_automation_held",
+                        "demo-automation",
+                        {"code": "H1", "job_kind": job.kind},
+                    )
+                else:
+                    audit(
+                        db,
+                        case.id,
+                        "demo_job_needs_attention",
+                        "demo-automation",
+                        {"job_kind": job.kind, "code": "H1"},
+                    )
+            continue
         if job.kind == "revoke":
             from app.publication import process_revocation
 
@@ -642,6 +689,12 @@ def process_due_jobs(db, case_id=None):
         dnr = latest(db, case.id, "dnr").body
         transition(db, case, [State.QUOTES_PENDING], State.QUOTES_COLLECTED, "quotes_collected", "agent:2")
         transition(db, case, [State.QUOTES_COLLECTED], State.RANKING, "ranking_started", "system")
+        from app.agentic_demo import is_agentic_demo, enqueue
+
+        if is_agentic_demo(db, case):
+            enqueue(db, case.id, "demo_rank")
+            job.status = "completed"
+            continue
         from app.shadow import rank_with_models
 
         ranking = rank_with_models(
@@ -742,6 +795,8 @@ def detail(db, case):
         "consumer_link",
         "policy_bound",
         "broker_referral",
+        "demo_workflow",
+        "demo_learning",
     )
     versions = (
         select(Snapshot.kind, func.max(Snapshot.version).label("version"))
