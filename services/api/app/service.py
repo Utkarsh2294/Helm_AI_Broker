@@ -189,7 +189,27 @@ def act(db, case_id, action, user, session, body):
         owner = db.scalar(select(User).where(User.role == "compliance_officer"))
         if not owner:
             raise DomainError("Designate a compliance owner before opening a complaint")
-        db.add(Complaint(case_id=case.id, owner_id=owner.id, due_at=utcnow() + timedelta(days=56)))
+        from app.clock import get_clock
+
+        db.add(
+            Complaint(
+                case_id=case.id,
+                owner_id=owner.id,
+                due_at=utcnow() + get_clock().wall_delay(timedelta(days=56)),
+            )
+        )
+        save_snapshot(
+            db,
+            case.id,
+            "complaint_received",
+            {
+                "reason": body.get("reason", ""),
+                "owner_id": owner.id,
+                "by": user.id,
+                "at": utcnow().isoformat(),
+                "business_deadline_days": 56,
+            },
+        )
         transition(db, case, [case.state], State.COMPLAINT_FLAGGED, "complaint_flagged", actor)
     elif action == "assign":
         case.assigned_to = user.id
@@ -300,14 +320,33 @@ def act(db, case_id, action, user, session, body):
         dnr, ranking = latest(db, case.id, "dnr"), latest(db, case.id, "ranking")
         if body.get("ranking_id") != ranking.body["id"]:
             raise DomainError("The ranking changed; refresh before selecting")
+        from app.plan_ratings import validate_reviews, reviews_hash, public
+
+        reviews = validate_reviews(db, case.id, ranking.body, user, body["selected"])
         transition(db, case, [State.BROKER_REVIEW], State.SUITABILITY_DRAFT, "review_started", actor)
         pack = invoke("review", {"dnr": dnr.body, "ranking": ranking.body, **body})
+        from app.agents.review import canonical_hash
+
+        pack = {key: value for key, value in pack.items() if key != "pack_hash"}
+        pack.update(
+            {
+                "broker_ratings": [public(row) for row in reviews],
+                "ratings_hash": reviews_hash(reviews),
+                "ratings_broker_id": user.id,
+            }
+        )
+        pack["pack_hash"] = canonical_hash(pack)
         save_snapshot(db, case.id, "pack", pack)
         save_snapshot(
             db,
             case.id,
             "selection",
-            {"selected": body["selected"], "survey": body["survey"], "ranking_id": ranking.body["id"]},
+            {
+                "selected": body["selected"],
+                "survey": body["survey"],
+                "ranking_id": ranking.body["id"],
+                "broker_ratings": [public(row) for row in reviews],
+            },
         )
         if any(value == "down" for value in body["survey"]["thumbs"].values()):
             from app.db.platform import EdgeCase
@@ -330,10 +369,21 @@ def act(db, case_id, action, user, session, body):
     elif action == "approve":
         if not user.can_approve or user.role != "authorised_broker" or not user.fca_irn:
             raise DomainError("Only an authorised adviser may approve advice", 403)
+        if case.state != State.AWAIT_APPROVAL:
+            raise DomainError("No pack is awaiting approval")
+        pack = latest(db, case.id, "pack").body
+        from app.plan_ratings import validate_reviews, reviews_hash
+
+        ranking_snapshot = latest(db, case.id, "ranking")
+        if not ranking_snapshot or not pack.get("selected"):
+            raise DomainError("Incomplete advice evidence cannot be approved", 403)
+        reviews = validate_reviews(db, case.id, ranking_snapshot.body, user, pack["selected"])
+        if pack.get("ratings_broker_id") != user.id or pack.get("ratings_hash") != reviews_hash(reviews):
+            raise DomainError("Assessments changed. Rebuild and review the recommendation pack.", 409)
         if not session.step_up_at or utcnow() - datetime.fromisoformat(session.step_up_at) > timedelta(
             minutes=5
         ):
-            raise DomainError("Re-authenticate before approval", 401, requires_step_up=True)
+            raise DomainError("Re-authenticate before approval", 403, requires_step_up=True)
         from app.auth.mfa import load_challenge
 
         step_up = load_challenge(db, body.get("step_up_token", ""), "step-up")
@@ -347,6 +397,23 @@ def act(db, case_id, action, user, session, body):
         from app.compliance.pack_validator import validate_pack
 
         validate_pack(pack)
+        if set(pack.get("suitability_confirmed_plans", [])) != set(pack["selected"]) or not pack.get(
+            "overall_suitability_confirmed"
+        ):
+            raise DomainError(
+                "Confirm suitability for all three plans and the overall declaration",
+                422,
+                error="SUITABILITY_NOT_CONFIRMED",
+            )
+        dnr_snapshot = latest(db, case.id, "dnr")
+        if not db.scalar(
+            select(Approval).where(
+                Approval.case_id == case.id,
+                Approval.gate == "G0",
+                Approval.payload_hash == dnr_snapshot.body_hash,
+            )
+        ):
+            raise DomainError("The current fact-find requires broker sign-off", 422, error="DNR_NOT_APPROVED")
         if set(pack.get("dnr_sections_confirmed", [])) != {
             "priorities",
             "coverage",
@@ -377,6 +444,21 @@ def act(db, case_id, action, user, session, body):
         )
         db.add(approval)
         db.flush()
+        import hashlib
+
+        audit(
+            db,
+            case.id,
+            "G2_APPROVED",
+            actor,
+            {
+                "broker_id": user.id,
+                "approval_id": approval.id,
+                "step_up_token_hash": hashlib.sha256(body["step_up_token"].encode()).hexdigest(),
+                "selected_plan_ids": pack["selected"],
+                "pack_hash": pack["pack_hash"],
+            },
+        )
         if pack.get("commission_deviation"):
             audit(db, case.id, "commission_deviation", actor, pack["commission_diagnostic"])
         if settings().core_delivery_enabled:
@@ -425,6 +507,10 @@ def process_due_jobs(db):
             continue
         if job.kind == "publish":
             process_publication(db, case, job)
+            continue
+        if job.kind == "retention_review":
+            audit(db, case.id, "retention_policy_review_required", "system", {"destruction_performed": False})
+            job.status = "needs_human"
             continue
         if job.kind == "rerank":
             if case.state != State.BROKER_REVIEW:
@@ -665,6 +751,9 @@ def detail(db, case):
         "publication",
         "medical_triage",
         "medical_review",
+        "consumer_response",
+        "consumer_link",
+        "policy_bound",
     ):
         snapshot = latest(db, case.id, kind)
         data[kind] = snapshot.body if snapshot else None
@@ -674,6 +763,14 @@ def detail(db, case):
     ]
     data["delivery_pending"] = bool(
         db.scalar(select(Job).where(Job.case_id == case.id, Job.kind == "publish", Job.status == "pending"))
+    )
+    from app.db.platform import Complaint
+
+    complaint = db.scalar(select(Complaint).where(Complaint.case_id == case.id))
+    data["complaint"] = (
+        {key: getattr(complaint, key) for key in ("id", "owner_id", "due_at", "status")}
+        if complaint
+        else None
     )
     return data
 

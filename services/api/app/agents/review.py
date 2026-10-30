@@ -116,5 +116,25 @@ def assemble_pack(
     body["rule_pack_version"] = RULE_PACK["version"]
     body["dnr_sections_confirmed"] = []
     body["unmet_needs_addressed"] = []
+    body["suitability_assessments"] = []
+    for row in chosen:
+        plan = row["plan"]
+        gaps = [
+            f"{key}: recorded level {plan['coverage'].get(key, 0)} below requested {need.level}"
+            for key, need in dnr.needs.coverage.items()
+            if plan["coverage"].get(key, 0) < need.level
+        ]
+        if plan["annualPremiumPence"] > dnr.needs.budget_annual_pence:
+            gaps.append("Annual premium exceeds the stated budget")
+        body["suitability_assessments"].append(
+            {
+                "plan_id": plan["id"],
+                "is_suitable": not gaps,
+                "explanation_for_consumer": f"{plan['name']} is compared against the recorded benefit levels, annual budget and hospital preference. The broker must review its gaps and insurer terms before recommending it.",
+                "gaps": gaps,
+            }
+        )
+    body["suitability_confirmed_plans"] = []
+    body["overall_suitability_confirmed"] = False
     validate_pack(body)
     return {**body, "pack_hash": canonical_hash(body)}

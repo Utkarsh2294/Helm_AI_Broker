@@ -161,6 +161,8 @@ class SuitabilityEdit(Model):
     text: str = Field(min_length=20, max_length=20000)
     dnr_sections_confirmed: list[str] = Field(default_factory=list)
     unmet_needs_addressed: list[str] = Field(default_factory=list)
+    suitability_confirmed_plans: list[str] = Field(default_factory=list, max_length=3)
+    overall_suitability_confirmed: bool = False
 
 
 # shortcut: per-process login throttle for a local demo; replace with shared Redis limits before live use.
@@ -351,6 +353,9 @@ app.include_router(case_operations_router)
 from app.medical_access import router as medical_router  # noqa: E402
 
 app.include_router(medical_router)
+from app.plan_ratings import router as ratings_router  # noqa: E402
+
+app.include_router(ratings_router)
 
 
 @app.post("/api/v1/cases/{case_id}/{action}")
@@ -361,6 +366,7 @@ def case_action(
         "release",
         "selection",
         "approve",
+        "publish",
         "pause",
         "resume",
         "assign",
@@ -375,7 +381,12 @@ def case_action(
     user, session = identity(db, request)
     if action == "selection" and body.survey is None:
         raise DomainError("Selection requires the short survey", 422)
-    return safe_case(service.act(db, case_id, action, user, session, body.model_dump()), user)
+    return safe_case(
+        service.act(
+            db, case_id, "approve" if action == "publish" else action, user, session, body.model_dump()
+        ),
+        user,
+    )
 
 
 @app.put("/api/v1/cases/{case_id}/suitability")
@@ -393,6 +404,8 @@ def edit_suitability(
     revised["review_saved_at"] = utcnow().isoformat()
     revised["dnr_sections_confirmed"] = body.dnr_sections_confirmed
     revised["unmet_needs_addressed"] = body.unmet_needs_addressed
+    revised["suitability_confirmed_plans"] = body.suitability_confirmed_plans
+    revised["overall_suitability_confirmed"] = body.overall_suitability_confirmed
     import difflib
 
     revised["suitability_diff"] = list(

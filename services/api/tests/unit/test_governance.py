@@ -10,7 +10,7 @@ from app.schemas import DomainError
 from app import governance
 
 
-def test_independent_g5_shadow_metrics_promotion_and_rollback(tmp_path):
+def test_independent_g5_shadow_metrics_promotion_and_rollback(tmp_path, monkeypatch):
     engine = make_engine(f"sqlite:///{tmp_path / 'governance.db'}")
     Base.metadata.create_all(engine)
     with Session(engine) as db:
@@ -43,9 +43,9 @@ def test_independent_g5_shadow_metrics_promotion_and_rollback(tmp_path):
         db.flush()
         model = db.scalar(select(EngineModel).where(EngineModel.status == "challenger"))
         assert governance.champion(db).version == "user-v1"
-        with pytest.raises(DomainError, match="20 new"):
+        with pytest.raises(DomainError, match="30 new"):
             governance.promote(db, proposal.id, compliance)
-        for i in range(20):
+        for i in range(30):
             case = Case(core_request_id=f"shadow-{i}", profile={"name": "Test"})
             db.add(case)
             db.flush()
@@ -62,6 +62,14 @@ def test_independent_g5_shadow_metrics_promotion_and_rollback(tmp_path):
                 )
             )
         db.flush()
+        with monkeypatch.context() as patch:
+            patch.setattr(
+                governance,
+                "shadow_metrics",
+                lambda *args: {"labelled_cases": 30, "champion_ndcg3": 0.8, "challenger_ndcg3": 0.81},
+            )
+            with pytest.raises(DomainError, match="0.02"):
+                governance.promote(db, proposal.id, compliance)
         governance.promote(db, proposal.id, compliance)
         db.flush()
         assert governance.champion(db).version == "user-v1"

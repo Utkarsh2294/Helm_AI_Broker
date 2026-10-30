@@ -12,6 +12,24 @@ from app import service
 router = APIRouter(prefix="/api/v1")
 
 
+@router.get("/cases/{case_id}/closure.pdf")
+def closure(case_id: str, request: Request, db=Depends(database, scope="function")):
+    import base64
+    from fastapi.responses import Response
+    from app.db.store import latest
+
+    identity(db, request)
+    service.get_case(db, case_id)
+    record = latest(db, case_id, "closure_pdf")
+    if not record:
+        raise DomainError("No closure record is available", 404)
+    return Response(
+        base64.b64decode(record.body["base64"]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="helm-closure-{case_id}.pdf"'},
+    )
+
+
 @router.post("/cases/{case_id}/ranking", status_code=202)
 def enqueue_ranking(case_id: str, request: Request, db=Depends(database, scope="function")):
     user, _ = identity(db, request)
@@ -93,6 +111,8 @@ def resolve_complaint(
     user, _ = identity(db, request)
     case = service.get_case(db, case_id)
     complaint = db.scalar(select(Complaint).where(Complaint.case_id == case_id).with_for_update())
+    if len(body.resolution.strip()) < 20:
+        raise DomainError("Record the complaint resolution in at least 20 characters", 422)
     if not complaint or case.state != State.COMPLAINT_FLAGGED:
         raise DomainError("No open complaint")
     if user.role != "compliance_officer" or complaint.owner_id != user.id:
@@ -101,6 +121,9 @@ def resolve_complaint(
         "closed",
         {"text": body.resolution, "by": user.id, "at": utcnow().isoformat()},
     )
+    from app.db.store import save_snapshot
+
+    save_snapshot(db, case_id, "complaint_resolution", complaint.resolution)
     service.transition(
         db,
         case,

@@ -26,10 +26,11 @@ def test_totp_recovery_and_replay(tmp_path):
         db.add(user)
         db.flush()
         data = setup_totp(db, user)
-        codes = enable_totp(db, user.id, pyotp.TOTP(data["secret"]).now())
+        token = pyotp.TOTP(data["secret"]).now()
+        codes = enable_totp(db, user.id, token)
         assert len(codes) == 10
         with pytest.raises(DomainError):
-            verify_totp(db, user.id, pyotp.TOTP(data["secret"]).now())
+            verify_totp(db, user.id, token)
         consume_recovery(db, user.id, codes[0])
         with pytest.raises(DomainError):
             consume_recovery(db, user.id, codes[0])

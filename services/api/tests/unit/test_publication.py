@@ -61,6 +61,9 @@ def test_committed_approval_precedes_idempotent_core_delivery(tmp_path, monkeypa
         db.flush()
         service.process_due_jobs(db)
         ranking = latest(db, case.id, "ranking").body
+        from review_fixtures import record_reviews
+
+        record_reviews(db, case.id, user, ranking)
         selected = [r["plan"]["id"] for r in ranking["top"][:3]]
         service.act(
             db,
@@ -77,6 +80,8 @@ def test_committed_approval_precedes_idempotent_core_delivery(tmp_path, monkeypa
         )
         pack = {
             **latest(db, case.id, "pack").body,
+            "suitability_confirmed_plans": selected,
+            "overall_suitability_confirmed": True,
             "dnr_sections_confirmed": ["priorities", "coverage", "budget", "household", "medical_flag"],
         }
         pack["unmet_needs_addressed"] = [f"{n['plan_id']}:{n['need']}" for n in pack["unmet_needs"]]

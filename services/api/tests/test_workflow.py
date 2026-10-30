@@ -66,6 +66,9 @@ def test_full_journey_binds_human_approval_to_latest_pack(workspace):
     with pytest.raises(DomainError):
         service.act(db, case.id, "approve", user, session, {})
     ranking = ready_for_selection(db, case, user, session).body
+    from review_fixtures import record_reviews
+
+    record_reviews(db, case.id, user, ranking)
     selected = [r["plan"]["id"] for r in ranking["top"][:3]]
     body = {
         "ranking_id": ranking["id"],
@@ -84,6 +87,8 @@ def test_full_journey_binds_human_approval_to_latest_pack(workspace):
 
     pack = {
         **pack,
+        "suitability_confirmed_plans": selected,
+        "overall_suitability_confirmed": True,
         "dnr_sections_confirmed": ["priorities", "coverage", "budget", "household", "medical_flag"],
         "unmet_needs_addressed": [f"{n['plan_id']}:{n['need']}" for n in pack["unmet_needs"]],
     }

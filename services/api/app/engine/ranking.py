@@ -49,7 +49,17 @@ def utilities(p: Plan, n: Needs) -> dict[str, float]:
 
 
 def aggregate(u, w):
-    return reference.aggregate(u, w)
+    # Monte Carlo needs only the three scalars; the reference also rounds seven
+    # presentation contributions on every call. Avoid that work in the hot loop.
+    fit = positive = negative = 0.0
+    for criterion in CRITERIA:
+        weight, value = w[criterion], u[criterion]
+        fit += weight * value
+        positive += weight * (1 - value) ** 2
+        negative += weight * value**2
+    plus, minus = math.sqrt(positive), math.sqrt(negative)
+    balance = minus / (plus + minus) if plus + minus else 0
+    return 100 * (0.7 * fit + 0.3 * balance), 100 * fit, 100 * balance
 
 
 def gate(p: Plan, n: Needs, rate: Decimal) -> tuple[str | None, list[str]]:
@@ -96,7 +106,7 @@ def rank_plans(
             )
             continue
         u = utilities(p, needs)
-        score, fit, balance = aggregate(u, weights)
+        score, fit, balance = reference.aggregate(u, weights)
         blockers = []
         if p.docsUnavailable > 0:
             blockers.append("documents_unavailable")

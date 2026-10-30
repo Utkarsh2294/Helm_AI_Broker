@@ -54,6 +54,34 @@ event.listen(CasePlan, "before_update", immutable)
 event.listen(CasePlan, "before_delete", immutable)
 
 
+class BrokerRating(Base):
+    __tablename__ = "broker_ratings"
+    __table_args__ = (
+        UniqueConstraint("case_id", "ranking_id", "plan_id", "broker_id", "version"),
+        CheckConstraint("stars >= 1 AND stars <= 5"),
+        CheckConstraint("decision IN ('YES','NO','REFER')"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    case_id: Mapped[str] = mapped_column(ForeignKey("cases.id"), index=True)
+    ranking_id: Mapped[str] = mapped_column(String(100))
+    ranking_snapshot_id: Mapped[str] = mapped_column(ForeignKey("snapshots.id"))
+    plan_id: Mapped[str] = mapped_column(String(100))
+    plan_record_id: Mapped[str] = mapped_column(ForeignKey("plans.id"))
+    broker_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    stars: Mapped[int]
+    decision: Mapped[str] = mapped_column(String(10))
+    body: Mapped[dict] = mapped_column(SecretJSON)
+    is_edited: Mapped[bool]
+    chars_changed: Mapped[int]
+    version: Mapped[int]
+    body_hash: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[str] = mapped_column(String(40), default=stamp)
+
+
+event.listen(BrokerRating, "before_update", immutable)
+event.listen(BrokerRating, "before_delete", immutable)
+
+
 class LoginAttempt(Base):
     __tablename__ = "login_attempts"
     identity_hash: Mapped[str] = mapped_column(String(64), primary_key=True)

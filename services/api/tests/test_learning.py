@@ -28,3 +28,21 @@ def test_learning_has_evidence_gate_holdout_and_no_auto_activation():
     assert len(proposal["holdout_case_ids"]) >= 1
     assert all(0.7 * base[c] <= proposal["weights"][c] <= 1.3 * base[c] for c in CRITERIA)
     assert abs(sum(proposal["weights"].values()) - 1) < 1e-12
+
+
+def test_detailed_ratings_weight_training_and_referred_plans_are_held_out():
+    from app.agents.learning import preference_pairs
+
+    record = records()[0]
+    baseline, _ = preference_pairs([record])
+    record["broker_ratings"] = [
+        {"plan_id": str(i), "stars": 4, "decision": "REFER" if i == 0 else "YES", "is_edited": True}
+        for i in range(5)
+    ]
+    rated, _ = preference_pairs([record])
+    assert len(rated) < len(baseline)
+    assert all(pair["weight"] in (0.4, 0.8) for pair in rated)
+    for rating in record["broker_ratings"]:
+        rating["is_edited"] = False
+    reduced, _ = preference_pairs([record])
+    assert [p["weight"] for p in reduced] == [p["weight"] * 0.5 for p in rated]

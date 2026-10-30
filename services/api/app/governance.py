@@ -104,8 +104,9 @@ def promote(db, proposal_id, user):
     metrics = shadow_metrics(db, model)
     if metrics["labelled_cases"] < settings().shadow_case_minimum:
         raise DomainError(f"At least {settings().shadow_case_minimum} new labelled shadow cases are required")
-    if metrics["challenger_ndcg3"] <= metrics["champion_ndcg3"]:
-        raise DomainError("Shadow NDCG@3 must strictly improve before promotion")
+    improvement = metrics["challenger_ndcg3"] - metrics["champion_ndcg3"]
+    if improvement + 1e-12 < settings().shadow_minimum_improvement:
+        raise DomainError("Shadow NDCG@3 must improve by at least 0.02 before promotion")
     proposal, roles = approval(db, proposal_id, "promote", user)
     if len(roles) == 2:
         previous = champion(db)

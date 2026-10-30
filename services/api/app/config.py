@@ -37,7 +37,8 @@ class Settings(BaseSettings):
     agents_paused: bool = False
     rp_id: str = "localhost"
     auth_rate_limit: int = 5
-    shadow_case_minimum: int = 20
+    shadow_case_minimum: int = Field(default=30, ge=30)
+    shadow_minimum_improvement: float = Field(default=0.02, ge=0.02, le=1)
     db_pool_size: int = 20
     db_pool_overflow: int = 20
     otlp_endpoint: str = ""

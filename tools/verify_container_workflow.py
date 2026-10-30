@@ -61,6 +61,18 @@ def verify(base_url, output, timeout_seconds=300):
         case = checked(client.get(f"/api/v1/cases/{case_id}"))
         assert len(case["quotes"]["quotes"]) == 30
         selected = [r["plan"]["id"] for r in case["ranking"]["top"][:3]]
+        for row in case["ranking"]["top"]:
+            checked(
+                client.post(
+                    f"/api/v1/cases/{case_id}/plans/{row['plan']['id']}/rating",
+                    json={
+                        "ranking_id": case["ranking"]["id"],
+                        "stars": 4,
+                        "decision": "YES",
+                        "reason_text": "Fictional broker reviewed this plan against the stated benefits, cost and hospital requirements.",
+                    },
+                )
+            )
         case = checked(
             client.post(
                 f"/api/v1/cases/{case_id}/selection",
@@ -77,6 +89,8 @@ def verify(base_url, output, timeout_seconds=300):
                 f"/api/v1/cases/{case_id}/suitability",
                 json={
                     "text": case["pack"]["suitability_final"],
+                    "suitability_confirmed_plans": selected,
+                    "overall_suitability_confirmed": True,
                     "dnr_sections_confirmed": [
                         "priorities",
                         "coverage",

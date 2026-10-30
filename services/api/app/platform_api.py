@@ -77,10 +77,22 @@ async def receive_webhook(request: Request, db=Depends(database, scope="function
             raise ValueError("id too long")
     except (ValueError, KeyError, TypeError):
         raise DomainError("Invalid event envelope", 422)
-    if db.get(InboxEvent, event_id):
+    existing = db.get(InboxEvent, event_id)
+    if existing:
+        if existing.body != event:
+            raise DomainError("Event identity was reused with different content", 409)
         return {"received": True, "duplicate": True}
     if event_type in ("quote_request.submitted", "case.created"):
         case = service.import_request(db, QuoteRequest.model_validate(event.get("request")))
+    elif event_type in {
+        "consumer.responded",
+        "consumer.magic_link_opened",
+        "consumer.magic_link_expired",
+        "consumer.bound",
+    }:
+        from app.consumer_events import handle
+
+        case = handle(db, event)
     elif event_type.startswith("recommendation."):
         case = db.scalar(select(Case).where(Case.id == event.get("case_id")))
         if not case:

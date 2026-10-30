@@ -18,16 +18,25 @@ def preference_pairs(records: list[dict]) -> tuple[list[dict], list[str]]:
             continue
         rows = {r["plan"]["id"]: r for r in record["ranking"]["top"]}
         selected = record["selected"]
+        ratings = {r["plan_id"]: r for r in record.get("broker_ratings", [])}
         for i, preferred in enumerate(selected):
             for other in rows:
                 if other == preferred or other in selected[:i]:
                     continue
+                if ratings and (
+                    ratings[preferred]["decision"] != "YES" or ratings[other]["decision"] == "REFER"
+                ):
+                    continue
+                signal = 1.0
+                if ratings:
+                    signal = (ratings[preferred]["stars"] + ratings[other]["stars"]) / 10
+                    signal *= 1 if ratings[preferred]["is_edited"] and ratings[other]["is_edited"] else 0.5
                 pairs.append(
                     {
                         "case_id": record["case_id"],
                         "preferred": rows[preferred]["utilities"],
                         "other": rows[other]["utilities"],
-                        "weight": 0.5 if other in selected else 1.0,
+                        "weight": (0.5 if other in selected else 1.0) * signal,
                     }
                 )
     return pairs, disputed
