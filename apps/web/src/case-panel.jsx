@@ -34,6 +34,7 @@ import BottomSheet from './components/BottomSheet';
 import Reauthenticate from './components/Reauthenticate';
 import DnrEditor from './components/DnrEditor';
 import MedicalReview from './components/MedicalReview';
+import TextArea from './components/TextArea';
 
 export default function CasePanel({ id, user, onClose }) {
   const dialog = useRef(null),
@@ -41,6 +42,8 @@ export default function CasePanel({ id, user, onClose }) {
     medicalRevealed = useRef(false),
     mutationEpoch = useRef(0);
   const [medicalPrompt, setMedicalPrompt] = useState(false);
+  const [pausePrompt, setPausePrompt] = useState(false),
+    [pauseReason, setPauseReason] = useState('');
   const [historical, setHistorical] = useState(false),
     [liveCase, setLiveCase] = useState(null);
   const [c, setCaseState] = useState(null),
@@ -259,7 +262,9 @@ export default function CasePanel({ id, user, onClose }) {
                 <button
                   className="text-button"
                   disabled={busy}
-                  onClick={() => action(c.state === 'PAUSED_NEEDS_HUMAN' ? 'resume' : 'pause')}
+                  onClick={() =>
+                    c.state === 'PAUSED_NEEDS_HUMAN' ? action('resume') : setPausePrompt(true)
+                  }
                 >
                   {c.state === 'PAUSED_NEEDS_HUMAN' ? <Play size={14} /> : <Pause size={14} />}{' '}
                   {c.state === 'PAUSED_NEEDS_HUMAN' ? 'Resume' : 'Pause'}
@@ -589,7 +594,8 @@ export default function CasePanel({ id, user, onClose }) {
                       <Clock3 size={27} />
                       <h3>Your quotation agent is on it.</h3>
                       <p>
-                        The six-hour live window is compressed to about eight seconds in this demo.
+                        The six-hour business window is compressed to about six seconds by the
+                        default demo clock.
                       </p>
                       <span className="state-badge amber">
                         <span />
@@ -1111,6 +1117,37 @@ export default function CasePanel({ id, user, onClose }) {
               setMedicalPrompt(false);
             }}
           />
+        </BottomSheet>
+        <BottomSheet
+          open={pausePrompt}
+          onClose={() => setPausePrompt(false)}
+          container={dialog.current}
+          title="Pause this case"
+          description={
+            c?.state === 'AWAIT_BROKER_RELEASE'
+              ? 'Record why RFQ release should pause. Resume and release when ready.'
+              : 'Queued work pauses while you review the case. Existing partner requests remain recorded.'
+          }
+          detent="auto"
+        >
+          <TextArea
+            label="Reason for pausing"
+            minLength={10}
+            value={pauseReason}
+            onChange={(event) => setPauseReason(event.target.value)}
+          />
+          <button
+            className="button primary"
+            disabled={busy || pauseReason.trim().length < 10}
+            onClick={async () => {
+              if (await action('pause', { reason: pauseReason.trim() })) {
+                setPausePrompt(false);
+                setPauseReason('');
+              }
+            }}
+          >
+            Confirm pause
+          </button>
         </BottomSheet>
         <footer className="panel-footer">
           <ShieldCheck size={13} />

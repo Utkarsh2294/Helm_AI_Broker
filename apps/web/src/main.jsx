@@ -226,7 +226,7 @@ function App() {
             <h2>Your five-agent team.</h2>
             <p>
               Open a case, review the fact-find and sign it off. Release a demo RFQ to five
-              fictional partners. Quotes arrive in about eight seconds.
+              fictional partners. Quotes arrive in about six seconds with the default demo clock.
             </p>
             <p>
               Compare the top five policies, select three, give feedback, and review the suitability

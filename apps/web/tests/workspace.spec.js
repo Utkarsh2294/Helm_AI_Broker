@@ -91,6 +91,54 @@ test('broker completes the five-agent workflow with real approval and evidence',
   expect(errors).toEqual([]);
 });
 
+test('broker can pause release with a reason and resume before sending RFQs', async ({ page }) => {
+  await login(page);
+  const csrf = await page.evaluate(() =>
+    decodeURIComponent(
+      document.cookie
+        .split('; ')
+        .find((c) => c.startsWith('helm_csrf='))
+        .split('=')
+        .slice(1)
+        .join('='),
+    ),
+  );
+  const headers = { 'X-CSRF-Token': csrf };
+  const created = await page.request.post('/api/v1/demo/requests', {
+    headers,
+    data: {
+      id: 'release-pause-' + Date.now(),
+      name: 'Fictional release pause',
+      needs: { coverage: { outpatient: { level: 2 } } },
+    },
+  });
+  expect(created.ok()).toBeTruthy();
+  const item = await created.json();
+  expect(
+    (
+      await page.request.post('/api/v1/cases/' + item.id + '/sign-off', {
+        headers,
+        data: { dnr_acknowledged: true },
+      })
+    ).ok(),
+  ).toBeTruthy();
+  await page.goto('/case/' + item.id);
+  const panel = page.getByRole('dialog', { name: 'Case workspace' });
+  await panel.getByRole('button', { name: 'Pause', exact: true }).click();
+  const sheet = page.getByRole('dialog', { name: 'Pause this case' });
+  await expect(sheet.getByRole('button', { name: 'Confirm pause' })).toBeDisabled();
+  await sheet
+    .getByLabel('Reason for pausing')
+    .fill('Verify the stated hospital network with the consumer before release.');
+  await sheet.getByRole('button', { name: 'Confirm pause' }).click();
+  await expect(sheet).not.toBeVisible();
+  await panel.getByRole('button', { name: 'Resume', exact: true }).click();
+  await expect(panel.getByRole('heading', { name: 'Ready to explore the panel.' })).toBeVisible();
+  const current = await (await page.request.get('/api/v1/cases/' + item.id)).json();
+  expect(current.state).toBe('AWAIT_BROKER_RELEASE');
+  expect(current.quotes).toBeNull();
+});
+
 test('workspace counts include cases beyond the loaded page', async ({ page }) => {
   await login(page);
   const listing = await (await page.request.get('/api/v1/cases?limit=50')).json();

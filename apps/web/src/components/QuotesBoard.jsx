@@ -11,13 +11,15 @@ export default function QuotesBoard({ item }) {
     return () => clearInterval(timer);
   }, []);
   const remaining = Math.max(0, Math.round((new Date(item.rfq?.deadline).getTime() - now) / 1000));
-  const simulated = remaining * 2700;
+  const multiplier = item.rfq?.clock_multiplier || 1;
+  const simulated = remaining * multiplier;
   return (
     <section className="quotes-board">
       <div className="section-header">
         <h3>Partner response board</h3>
         <span className="subtle-badge">
-          {Math.floor(simulated / 3600)}h {Math.floor((simulated % 3600) / 60)}m · demo ×2700
+          {Math.floor(simulated / 3600)}h {Math.floor((simulated % 3600) / 60)}m · demo ×
+          {multiplier}
         </span>
       </div>
       {partners.map((p) => {
