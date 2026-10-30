@@ -13,8 +13,14 @@ from functools import lru_cache
 
 def make_engine(url=None):
     url = url or settings().database_url
-    pool = {} if url.startswith("sqlite") else {"pool_size": settings().db_pool_size, "max_overflow": settings().db_pool_overflow}
-    engine = create_engine(url, connect_args={"check_same_thread": False} if url.startswith("sqlite") else {}, **pool)
+    pool = (
+        {}
+        if url.startswith("sqlite")
+        else {"pool_size": settings().db_pool_size, "max_overflow": settings().db_pool_overflow}
+    )
+    engine = create_engine(
+        url, connect_args={"check_same_thread": False} if url.startswith("sqlite") else {}, **pool
+    )
     if url.startswith("sqlite"):
 
         @event.listens_for(engine, "connect")
