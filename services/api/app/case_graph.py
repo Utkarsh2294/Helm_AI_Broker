@@ -42,6 +42,10 @@ def permits(source, target, event):
         return source == "PUBLISHED" and target == "CLOSED"
     if event == "no_suitable_plans":
         return source == "BROKER_REVIEW" and target == "CLOSED"
+    if event == "broker_referral_requested":
+        return source == "BROKER_REVIEW" and target == "UW_REFERRAL"
+    if event == "broker_referral_resolved":
+        return source == "UW_REFERRAL" and target == "BROKER_REVIEW"
     if event == "medical_review_recorded":
         return source in {"PAUSED_NEEDS_HUMAN", "NEEDS_INFO", "FACTFIND_REVIEW"} and target in {
             "FACTFIND_REVIEW",

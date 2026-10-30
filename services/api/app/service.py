@@ -756,9 +756,12 @@ def detail(db, case):
         "consumer_response",
         "consumer_link",
         "policy_bound",
+        "broker_referral",
     ):
         snapshot = latest(db, case.id, kind)
         data[kind] = snapshot.body if snapshot else None
+        if kind == "broker_referral" and snapshot:
+            data["broker_referral_hash"] = snapshot.body_hash
     data["events"] = [
         {k: getattr(row, k) for k in ("seq", "actor", "type", "payload", "created_at", "hash")}
         for row in db.scalars(select(Activity).where(Activity.case_id == case.id).order_by(Activity.seq))
