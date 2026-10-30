@@ -9,6 +9,27 @@ async function login(page, email = 'broker@helm.demo') {
   await expect(page.getByRole('heading', { name: 'Good advice starts with clarity.' })).toBeVisible();
 }
 
+test('assistant can sign off G0 while adviser release stays protected', async ({ page }) => {
+  await login(page);
+  const csrf = () => page.evaluate(() => decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('helm_csrf=')).split('=').slice(1).join('=')));
+  const name = `Fictional assistant gate ${Date.now()}`;
+  const created = await page.request.post('/api/v1/demo/requests', { headers: { 'X-CSRF-Token': await csrf() }, data: { id: name, name, needs: { coverage: { cancer: { level: 3 } } } } });
+  expect(created.ok()).toBe(true);
+  const item = await created.json();
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await login(page, 'assistant@helm.demo');
+  await page.getByRole('textbox', { name: 'Search cases' }).fill(name);
+  await page.getByRole('button', { name: `Open ${name}` }).click();
+  const panel = page.getByRole('dialog', { name: 'Case workspace' });
+  await panel.getByRole('checkbox', { name: 'I reviewed this fact-find', exact: false }).check();
+  const signed = page.waitForResponse(r => r.url().endsWith('/sign-off'));
+  await panel.getByRole('button', { name: 'Sign off fact-find' }).click();
+  expect((await (await signed).json()).state).toBe('AWAIT_BROKER_RELEASE');
+  await expect(panel.getByRole('button', { name: 'Release demo RFQ' })).toHaveCount(0);
+  const release = await page.request.post(`/api/v1/cases/${item.id}/release`, { headers: { 'X-CSRF-Token': await csrf() }, data: {} });
+  expect(release.status()).toBe(403);
+});
+
 for (const [scenario, state, count] of [['happy', 'BROKER_REVIEW', 30], ['decline', 'BROKER_REVIEW', 24], ['late', 'BROKER_REVIEW', 24], ['arithmetic', 'PAUSED_NEEDS_HUMAN', 30], ['medical', 'PAUSED_NEEDS_HUMAN', 24], ['duplicate', 'BROKER_REVIEW', 30], ['referral', 'UW_REFERRAL', 24], ['injection', 'BROKER_REVIEW', 30]]) {
   test(`partner scenario ${scenario} reaches its guarded outcome`, async ({ page }) => {
     await login(page);
