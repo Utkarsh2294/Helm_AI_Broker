@@ -350,6 +350,9 @@ def edit_dnr(case_id: str, body: EditDNR, request: Request, db=Depends(database,
 from app.case_operations import router as case_operations_router  # noqa: E402
 
 app.include_router(case_operations_router)
+from app.case_documents import router as case_documents_router  # noqa: E402
+
+app.include_router(case_documents_router)
 from app.referrals import router as referrals_router  # noqa: E402
 
 app.include_router(referrals_router)

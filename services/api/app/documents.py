@@ -22,5 +22,11 @@ def extract_document(raw: bytes, mime: str):
         except Exception:
             raise DomainError("Unreadable PDF document", 422)
     if mime == "text/plain":
-        return {"text": raw.decode("utf-8", errors="strict"), "pages": 1, "source": "uploaded-text"}
+        try:
+            text = raw.decode("utf-8", errors="strict")
+        except UnicodeDecodeError:
+            raise DomainError("Text documents must use UTF-8 encoding", 422)
+        if not text.strip():
+            raise DomainError("The document has no readable text", 422)
+        return {"text": text, "pages": 1, "source": "uploaded-text"}
     raise DomainError("Supported document types are PDF and UTF-8 text", 422)

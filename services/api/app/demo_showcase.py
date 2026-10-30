@@ -5,7 +5,7 @@ from pydantic import Field
 from sqlalchemy import select
 from app.auth import identity
 from app.agents.review import canonical_hash
-from app.db.models import Approval, Case, Publication, Activity, Snapshot, User, utcnow
+from app.db.models import Approval, Case, Publication, Activity, User, utcnow
 from app.db.store import latest, save_snapshot, verify_chain, audit
 from app.demo_documents import database, demo_only, manifest, DISCLAIMER
 from app.demo_documents import document_pdf
