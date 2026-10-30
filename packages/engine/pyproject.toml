@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "helm-engine"
+version = "1.0.0"
+requires-python = ">=3.12"
+description = "Deterministic Helm recommendation mathematics"
+dependencies = []
+
+[tool.setuptools.packages.find]
+include = ["helm_engine*"]

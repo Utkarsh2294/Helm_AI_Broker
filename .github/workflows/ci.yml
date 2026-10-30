@@ -26,6 +26,7 @@ jobs:
       - run: pnpm --filter helm-broker-web run lint
       - run: pnpm run format:check
       - run: pnpm --filter helm-broker-web run test:unit
+      - run: node --test packages/engine/js/engine.test.mjs
       - run: pnpm exec spectral lint packages/contracts/core.yaml packages/contracts/broker.yaml
       - run: pnpm --filter helm-broker-web run build
   containers:

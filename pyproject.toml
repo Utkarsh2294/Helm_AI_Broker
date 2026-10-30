@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Human-approved UK PMI broker workspace"
 requires-python = ">=3.12,<3.14"
 dependencies = [
+  "helm-engine==1.0.0",
   "fastapi>=0.162,<1",
   "uvicorn>=0.34,<1",
   "pydantic>=2.10,<3",
@@ -30,6 +31,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+build = ["setuptools==80.9.0"]
 agents = ["crewai>=1.8,<2"]
 dev = [
     "fakeredis[lua]>=2,<3",
@@ -41,7 +43,10 @@ dev = [
 
 [tool.pytest.ini_options]
 pythonpath = ["services/api"]
-testpaths = ["services/api/tests"]
+testpaths = ["services/api/tests", "packages/engine/tests"]
+
+[tool.uv.sources]
+helm-engine = {path = "packages/engine", editable = true}
 
 [tool.ruff]
 target-version = "py312"

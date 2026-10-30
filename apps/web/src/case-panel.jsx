@@ -668,7 +668,11 @@ export default function CasePanel({ id, user, onClose }) {
                                 {money(plan.annualPremiumPence)}
                                 <small> / year, including IPT</small>
                               </div>
-                              <p className="muted quote-description">{row.explanation}</p>
+                              <p className="muted quote-description">
+                                {typeof row.explanation === 'string'
+                                  ? row.explanation
+                                  : row.explanation?.overall}
+                              </p>
                               <div className="quote-keyfacts">
                                 <span>
                                   Excess <b>{money(plan.excessPence)}</b>
@@ -732,6 +736,27 @@ export default function CasePanel({ id, user, onClose }) {
                                   IPID reference: {plan.ipidVersion} · Synthetic document
                                 </p>
                               </details>
+                              {typeof row.explanation === 'object' && (
+                                <details className="score-details">
+                                  <summary>Why these scores</summary>
+                                  {Object.entries(row.explanation)
+                                    .filter(([key]) => key !== 'overall')
+                                    .map(([key, text]) => (
+                                      <div key={key} className="criterion-explanation">
+                                        <strong>
+                                          {label(key)} · {(c.ranking.weights[key] * 100).toFixed(1)}
+                                          %
+                                        </strong>
+                                        <progress
+                                          aria-label={`${label(key)} utility for ${plan.name}`}
+                                          max="1"
+                                          value={row.utilities[key]}
+                                        />
+                                        <p>{text}</p>
+                                      </div>
+                                    ))}
+                                </details>
+                              )}
                               {broker && c.state === 'BROKER_REVIEW' && (
                                 <>
                                   <button

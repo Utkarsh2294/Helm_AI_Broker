@@ -1,0 +1,11 @@
+# Helm engine 1.0.0
+
+`helm_engine/engine.py` is the pure standard-library Python engine supplied in Appendix A of `docs/spec/HELM_BROKER_PORTAL_PROJECT_PLAN main.md`. `tests/` contains its 14 invariant and four parity test methods from Appendix B; only the golden-vector file path is adapted to this repository. `js/engine.reference.js` and its 16 tests come from Appendix C.
+
+The plan did not attach `vectors.json`. `node packages/engine/js/generate-vectors.mjs` deterministically generates the committed 40 scenarios from the supplied JavaScript oracle, using an independent LCG seed of 208991. They cover weights, utilities, gates, ordering, diversification, Monte Carlo, flips, learning, shrinkage, caps and NDCG. Python never generates expected outputs. The supplied parity tests use 1e-9 relative tolerance for unrounded values and their explicit 0.011 allowance for two-decimal contribution rounding.
+
+Install through the root uv project (`uv sync --extra dev --extra agents --extra build`), then run `uv run python -m pytest packages/engine/tests -q` and `node --test packages/engine/js/engine.test.mjs`. The package has no runtime dependencies. The pinned setuptools extra supports reproducible editable/offline builds. Docker installs registry wheels with frozen hashes before building the local package without isolation; `scripts/build-containers.ps1 -PrepareWheelhouse` includes the build wheel in its persistent verified cache.
+
+The API adapter in `services/api/app/engine/reference.py` uses this package for ROC weights, utilities and aggregation while retaining the broker boundary's existing safeguards: input validation, normalised uniform weights for an empty priority order, neutral unknown-coverage utility, stricter integer-pence arithmetic checks, recorded human halts and insurer diversification during Monte Carlo. The supplied reference gives only 0.15 total weight to an empty order; the API does not adopt that behaviour. Published snapshots are never recomputed or replaced. The API engine version records this adapter policy.
+
+The existing line-search learning implementation and its held-out evaluation remain separate from the supplied reference's fixed-step comparison routine. Neither algorithm activates weights without the recorded human governance gates.

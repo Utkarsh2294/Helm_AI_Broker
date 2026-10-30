@@ -14,7 +14,7 @@ if ($PrepareWheelhouse) {
     $brokerRequirements = Join-Path $brokerBuildDirectory 'requirements.txt'
     & docker run --rm --entrypoint python $brokerTagImage -c 'import json,platform; from pip._internal.utils.compatibility_tags import get_supported; print(json.dumps(dict(python=platform.python_version(),tags=[str(t) for t in get_supported()])))' | Set-Content -LiteralPath $brokerTags -Encoding UTF8
     if ($LASTEXITCODE) { throw 'Could not read Linux wheel compatibility tags' }
-    & uv export --project $brokerBuildRoot --frozen --extra agents --no-dev --no-hashes --format requirements-txt --output-file $brokerRequirements
+    & uv export --project $brokerBuildRoot --frozen --extra agents --extra build --no-emit-package helm-engine --no-dev --no-hashes --format requirements-txt --output-file $brokerRequirements
     if ($LASTEXITCODE) { throw 'Could not export the frozen requirements' }
     & $brokerPython (Join-Path $brokerBuildRoot 'tools\cache_linux_wheels.py') --tags $brokerTags --requirements $brokerRequirements --directory $Wheelhouse
     if ($LASTEXITCODE) { throw 'Wheel verification failed; retained downloads can be resumed' }

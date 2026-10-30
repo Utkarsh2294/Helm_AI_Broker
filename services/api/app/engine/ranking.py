@@ -8,8 +8,9 @@ from decimal import Decimal
 
 from app.agents.quotation import premium_with_tax
 from app.schemas import CRITERIA, Needs, Plan
+from app.engine import reference
 
-ENGINE_VERSION = "helm-pmi-0.1"
+ENGINE_VERSION = "helm-engine-1.0.0+broker-policy-v2"
 
 
 def clamp(x):
@@ -19,13 +20,7 @@ def clamp(x):
 def user_weights(priorities: list[str]) -> dict[str, float]:
     if len(set(priorities)) != len(priorities) or set(priorities) - set(CRITERIA):
         raise ValueError("Invalid priorities")
-    m = len(priorities)
-    if not m:
-        return dict.fromkeys(CRITERIA, 1 / len(CRITERIA))
-    mass = 1 if m == len(CRITERIA) else 0.85
-    weights = dict.fromkeys(CRITERIA, (1 - mass) / max(1, len(CRITERIA) - m))
-    weights.update({c: mass * sum(1 / k for k in range(i + 1, m + 1)) / m for i, c in enumerate(priorities)})
-    return weights
+    return reference.weights(priorities)
 
 
 def combine_weights(base: dict, learned: dict | None = None, blend=0.25) -> dict:
@@ -50,41 +45,11 @@ def combine_weights(base: dict, learned: dict | None = None, blend=0.25) -> dict
 
 
 def utilities(p: Plan, n: Needs) -> dict[str, float]:
-    teco = p.annualPremiumPence + 0.25 * min(p.excessPence, 300000)
-    exponent = max(-700, min(700, 6 * (teco / n.budget_annual_pence - 1)))
-    budget = 1 / (1 + math.exp(exponent))
-    reference = clamp((n.reference_high_pence - teco) / (n.reference_high_pence - n.reference_low_pence))
-    importance = sum(v.importance for v in n.coverage.values())
-    coverage = (
-        sum(v.importance * clamp(p.coverage.get(k, 0) / max(v.level, 1)) for k, v in n.coverage.items())
-        / importance
-        if importance
-        else 0.5
-    )
-    stats = p.insurerStats
-    upheld = (stats.n * stats.upheldRate + 30 * 0.25) / (stats.n + 30)
-    return {
-        "affordability": 0.5 * budget + 0.5 * reference,
-        "coverage": coverage,
-        "network": 0.6 * clamp(p.hospitalListLevel / n.hospital_level) + 0.4 * p.preferredHospitalShare,
-        "underwriting": 0.7 * (1 - clamp(sum(p.exclusionSeverities) / 10))
-        + 0.3 * (1 if p.underwritingType == n.preferred_underwriting else 0.5),
-        "insurer_quality": 0.5 * (1 - upheld) + 0.3 * stats.finStrength + 0.2 * stats.slaScore,
-        "process_ease": clamp(
-            1 - 0.6 * p.docsUnavailable / max(p.docsRequired, 1) - 0.4 * min(p.turnaroundDays / 14, 1)
-        ),
-        "terms_clarity": clamp(
-            0.5 * p.ipidCompleteness + 0.3 * p.plainLanguage + 0.2 * (1 - min(p.exclusionsCount / 20, 1))
-        ),
-    }
+    return reference.utilities(p, n)
 
 
 def aggregate(u, w):
-    fit = sum(w[c] * u[c] for c in CRITERIA)
-    positive = math.sqrt(sum(w[c] * (1 - u[c]) ** 2 for c in CRITERIA))
-    negative = math.sqrt(sum(w[c] * u[c] ** 2 for c in CRITERIA))
-    balance = negative / (positive + negative) if positive + negative else 0
-    return 100 * (0.7 * fit + 0.3 * balance), 100 * fit, 100 * balance
+    return reference.aggregate(u, w)
 
 
 def gate(p: Plan, n: Needs, rate: Decimal) -> tuple[str | None, list[str]]:
@@ -133,7 +98,7 @@ def rank_plans(
         u = utilities(p, needs)
         score, fit, balance = aggregate(u, weights)
         blockers = []
-        if p.docsUnavailable / max(p.docsRequired, 1) > 0.5:
+        if p.docsUnavailable > 0:
             blockers.append("documents_unavailable")
         if p.ipidCompleteness < 0.6:
             blockers.append("incomplete_ipid")
@@ -201,12 +166,20 @@ def rank_plans(
                 break
     for i, row in enumerate(top):
         row["rank"] = 1 if tied and i < 2 else i + 1
-        row["explanation"] = (
+        overall = (
             f"Fit {row['fit']:.1f}/100; balance {row['balance']:.1f}/100; "
             f"overall {row['score']:.1f}/100. "
             + ("Effectively tied with the other leading plan. " if tied and i < 2 else "")
             + "Terms remain subject to insurer underwriting and broker review."
         )
+        if row["blockers"]:
+            overall += " Review the recorded document and process blockers before selecting."
+        from app.engine.explanations import explain
+
+        row["explanation"] = explain(Plan.model_validate(row["plan"]), needs, overall)
+        row["ai_draft_text"] = overall
+        gap = row["score"] - top[i + 1]["score"] if i + 1 < len(top) else None
+        row["stability"].update({"gap_to_next": gap, "is_statistical_tie": gap is not None and gap < 1})
     return {
         "engine_version": ENGINE_VERSION,
         "weights_version": "user-v1" if not learned else "approved-model",

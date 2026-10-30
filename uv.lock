@@ -987,6 +987,7 @@ dependencies = [
     { name = "cryptography" },
     { name = "fastapi" },
     { name = "filelock" },
+    { name = "helm-engine" },
     { name = "httpx" },
     { name = "litellm" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
@@ -1010,6 +1011,9 @@ dependencies = [
 agents = [
     { name = "crewai" },
 ]
+build = [
+    { name = "setuptools" },
+]
 dev = [
     { name = "fakeredis", extra = ["lua"] },
     { name = "freezegun" },
@@ -1029,6 +1033,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.162,<1" },
     { name = "filelock", specifier = ">=4.2.1,<5" },
     { name = "freezegun", marker = "extra == 'dev'", specifier = ">=1.5,<2" },
+    { name = "helm-engine", editable = "packages/engine" },
     { name = "httpx", specifier = ">=0.28,<1" },
     { name = "hypothesis", marker = "extra == 'dev'", specifier = ">=6,<7" },
     { name = "litellm", specifier = ">=1.80,<2" },
@@ -1044,13 +1049,19 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8,<10" },
     { name = "reportlab", specifier = ">=4,<5" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.11,<1" },
+    { name = "setuptools", marker = "extra == 'build'", specifier = "==80.9.0" },
     { name = "sqlalchemy", specifier = ">=2.0,<3" },
     { name = "structlog", specifier = ">=25,<27" },
     { name = "tzdata", specifier = ">=2025,<2028" },
     { name = "uvicorn", specifier = ">=0.34,<1" },
     { name = "webauthn", specifier = ">=2,<3" },
 ]
-provides-extras = ["agents", "dev"]
+provides-extras = ["build", "agents", "dev"]
+
+[[package]]
+name = "helm-engine"
+version = "1.0.0"
+source = { editable = "packages/engine" }
 
 [[package]]
 name = "hf-xet"
@@ -3007,6 +3018,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/49/c5/0a5ce655109cb96b8dfad36908a4e108d15f5dc2eff8fbc3146c4312e704/s3transfer-0.19.3.tar.gz", hash = "sha256:8326acc3d056d7f7b8a37110c7d2aea41f67e83f6ae79cd3b5fbcca34c726406", size = 166087, upload-time = "2026-10-19T19:19:49.751Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e2/a4/88f9e10498759121060b8050a1554753dfc04df39bbbcc7aad9ecc8d9440/s3transfer-0.19.3-py3-none-any.whl", hash = "sha256:24eb7535804306355e31c952a90022bf5b2f9d760f9a11062c7493a217c08553", size = 90252, upload-time = "2026-10-19T19:19:48.309Z" },
+]
+
+[[package]]
+name = "setuptools"
+version = "80.9.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/18/5d/3bf57dcd21979b887f014ea83c24ae194cfcd12b9e0fda66b957c69d1fca/setuptools-80.9.0.tar.gz", hash = "sha256:f36b47402ecde768dbfafc46e8e4207b4360c654f1f3bb84475f0a28628fb19c", size = 1319958, upload-time = "2025-05-27T00:56:51.443Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a3/dc/17031897dae0efacfea57dfd3a82fdd2a2aeb58e0ff71b77b87e44edc772/setuptools-80.9.0-py3-none-any.whl", hash = "sha256:062d34222ad13e0cc312a4c02d73f059e86a4acbfbdea8f8f76b28c99f306922", size = 1201486, upload-time = "2025-05-27T00:56:49.664Z" },
 ]
 
 [[package]]

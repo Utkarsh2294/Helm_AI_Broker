@@ -17,7 +17,7 @@ def rank_quotes(
     result["base_weights"] = user_weights(dnr.needs.priorities)
     for row in result["top"]:
         row["consumer_draft"] = consumer_draft(row["plan"])
-        row["explanation_grounded"] = grounded(row["explanation"], row)
+        row["explanation_grounded"] = grounded(row["explanation"]["overall"], row)
         row["consumer_draft_grounded"] = grounded(row["consumer_draft"], row)
     result.update(
         {
