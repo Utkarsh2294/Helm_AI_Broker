@@ -2,8 +2,10 @@
 
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
+from functools import lru_cache
 
 
+@lru_cache(maxsize=1)
 def configure():
     from app.config import settings
 

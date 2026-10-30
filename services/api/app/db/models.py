@@ -4,7 +4,6 @@ import base64
 import json
 import os
 from functools import lru_cache
-from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
@@ -14,6 +13,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import TypeDecorator
 
 from app.config import ROOT, settings
+from app.clock import wall_now
 
 
 def uid():
@@ -21,7 +21,7 @@ def uid():
 
 
 def utcnow():
-    return datetime.now(timezone.utc)
+    return wall_now()
 
 
 def stamp():

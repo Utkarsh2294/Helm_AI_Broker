@@ -5,7 +5,7 @@ from typing import Literal
 
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
-from pydantic import Field
+from pydantic import Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import StaleDataError
@@ -36,7 +36,9 @@ def database():
 @asynccontextmanager
 async def lifespan(app):
     from app.agents.runtime import prepare_runtime
+    from app.logging_setup import configure_logging
 
+    configure_logging()
     await asyncio.to_thread(prepare_runtime, settings().agent_runtime)
     with SessionLocal() as db:
         seed_demo(db)
@@ -67,6 +69,14 @@ async def request_boundary(request, call_next):
             chunks.append(chunk)
         request._body = b"".join(chunks)
     response = await call_next(request)
+    import structlog
+
+    structlog.get_logger("helm.http").info(
+        "http_request",
+        method=request.method,
+        route=getattr(request.scope.get("route"), "path", "unmatched"),
+        status=response.status_code,
+    )
     from app.security import CSP
 
     response.headers["Content-Security-Policy"] = CSP
@@ -102,6 +112,17 @@ async def domain_error(request, error):
 @app.exception_handler(IntegrityError)
 async def conflict(request, error):
     return JSONResponse({"detail": "Data changed concurrently; refresh and retry"}, status_code=409)
+
+
+@app.exception_handler(ValidationError)
+async def invalid_structured_data(request, error):
+    return JSONResponse(
+        {
+            "detail": "Invalid structured input",
+            "errors": [{"loc": item["loc"], "type": item["type"]} for item in error.errors()],
+        },
+        status_code=422,
+    )
 
 
 class Credentials(Model):
@@ -144,8 +165,15 @@ attempts = {}
 
 
 @app.get("/health")
-def health():
-    return {"status": "ok", "mode": settings().mode, "agent_runtime": settings().agent_runtime}
+def health(db=Depends(database, scope="function")):
+    from app.platform_api import readiness
+
+    response = readiness(db)
+    body = json.loads(response.body)
+    return JSONResponse(
+        {**body, "version": "0.1.0", "mode": settings().mode, "agent_runtime": settings().agent_runtime},
+        status_code=response.status_code,
+    )
 
 
 @app.post("/api/v1/auth/password")
@@ -421,7 +449,6 @@ from app.insights_api import router as insights_router  # noqa: E402
 app.include_router(insights_router)
 from app.observability import instrument  # noqa: E402
 
-instrument(app)
 from app.case_queries import router as case_queries_router  # noqa: E402
 
 app.router.routes = [
@@ -430,3 +457,29 @@ app.router.routes = [
     if not (getattr(r, "path", "") == "/api/v1/cases" and "GET" in getattr(r, "methods", set()))
 ]
 app.include_router(case_queries_router)
+
+
+_application_template = app
+
+
+def create_app():
+    """Build an independent ASGI stack from the registered, stateless route definitions."""
+    documentation_paths = {"/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc"}
+    application = FastAPI(
+        title=_application_template.title,
+        version=_application_template.version,
+        description=_application_template.description,
+        lifespan=lifespan,
+        routes=[
+            route
+            for route in _application_template.routes
+            if getattr(route, "path", None) not in documentation_paths
+        ],
+        middleware=list(_application_template.user_middleware),
+        exception_handlers=dict(_application_template.exception_handlers),
+    )
+    instrument(application)
+    return application
+
+
+app = create_app()

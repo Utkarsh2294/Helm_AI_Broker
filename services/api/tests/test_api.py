@@ -23,6 +23,40 @@ def login(client, email="broker@helm.demo"):
     return {"X-CSRF-Token": response.json()["csrf"]}
 
 
+def test_factory_builds_independent_application_state():
+    other = main.create_app()
+    assert other is not main.app
+    other.state.factory_probe = True
+    assert not hasattr(main.app.state, "factory_probe")
+    assert set(other.openapi()["paths"]) == set(main.app.openapi()["paths"])
+
+
+def test_root_readiness_checks_the_database_and_redis(client, monkeypatch):
+    import fakeredis
+
+    monkeypatch.setattr("app.platform_api.Redis.from_url", lambda *a, **kw: fakeredis.FakeRedis())
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json()["db"] == response.json()["redis"] == "ok"
+    assert response.json()["version"] == "0.1.0"
+
+
+def test_readiness_reports_an_unavailable_dependency(client, monkeypatch):
+    def unavailable(*args, **kwargs):
+        raise ConnectionError("Fictional Redis failure")
+
+    monkeypatch.setattr("app.platform_api.Redis.from_url", unavailable)
+    assert client.get("/health").status_code == 503
+
+
+def test_request_logging_excludes_query_text(client, capsys):
+    response = client.get("/api/v1/cases?q=PHI_CANARY_QUERY_3291")
+    assert response.status_code == 401
+    captured = capsys.readouterr()
+    assert "http_request" in captured.out
+    assert "PHI_CANARY_QUERY_3291" not in captured.out + captured.err
+
+
 def test_auth_csrf_origin_and_logout(client):
     assert client.get("/api/v1/cases").status_code == 401
 
