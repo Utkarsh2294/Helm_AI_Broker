@@ -30,6 +30,7 @@ jobs:
       - run: node --test packages/engine/js/engine.test.mjs
       - run: pnpm exec spectral lint packages/contracts/core.yaml packages/contracts/broker.yaml
       - run: pnpm --filter helm-broker-web run build
+      - run: node --test apps/web/tests/server.test.mjs
   containers:
     runs-on: ubuntu-latest
     steps:

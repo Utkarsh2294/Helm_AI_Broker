@@ -51,7 +51,7 @@ try {
     & $qaPython -m alembic upgrade head
     if ($LASTEXITCODE) { throw 'QA migration failed' }
     $qaApi = Start-Process -FilePath $qaPython -ArgumentList '-m uvicorn app.main:app --app-dir services/api --host 127.0.0.1 --port 8012' -WorkingDirectory $qaRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput "$qaDirectory\api.log" -RedirectStandardError "$qaDirectory\api.err.log"
-    $qaWebArgs = if ($ProductionWeb) { 'node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 5182 --strictPort' } else { 'node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5182 --strictPort' }
+    $qaWebArgs = if ($ProductionWeb) { 'server.mjs --host 127.0.0.1 --port 5182' } else { 'node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5182 --strictPort' }
     $qaWeb = Start-Process -FilePath (Get-Command node.exe).Source -ArgumentList $qaWebArgs -WorkingDirectory "$qaRoot\apps\web" -WindowStyle Hidden -PassThru -RedirectStandardOutput "$qaDirectory\web.log" -RedirectStandardError "$qaDirectory\web.err.log"
     $qaApi.Id | Set-Content "$qaDirectory\api.pid"
     $qaWeb.Id | Set-Content "$qaDirectory\web.pid"
