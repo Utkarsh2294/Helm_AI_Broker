@@ -725,6 +725,7 @@ def detail(db, case):
         **case.profile,
         "state": case.state,
         "assigned_to": case.assigned_to,
+        "priority": case.priority,
         "created_at": case.created_at,
         "version": case.version,
     }

@@ -217,7 +217,12 @@ def review_showcase(body: DemoReview, request: Request, db=Depends(database, sco
     case = showcase_case(db)
     if not case:
         raise DomainError("Create the fictional showcase first", 409)
-    case = service.get_case(db, case.id)
+    if user.role == "legal_reviewer":
+        # This role can review only this fixed fictional showcase's metadata,
+        # even when assigned; it receives no general case or medical access.
+        db.refresh(case, with_for_update=True)
+    else:
+        case = service.get_case(db, case.id)
     current = status(db)
     if body.review_hash != current["review_hash"]:
         raise DomainError("Documents or advice changed. Review the current version.", 409)

@@ -17,6 +17,7 @@ def test_case_controls_are_versioned_role_scoped_and_preserve_human_gates(client
     changed = client.post(url + "/controls", headers=headers, json=body)
     assert changed.status_code == 200 and changed.json()["priority"] == "urgent"
     assert changed.json()["state"] == original["state"]
+    assert client.get(url).json()["priority"] == "urgent"
     assert client.post(url + "/controls", headers=headers, json=body).status_code == 409
     with main.SessionLocal() as db:
         other = db.query(User).filter_by(email="pilot@helm.demo").one()
