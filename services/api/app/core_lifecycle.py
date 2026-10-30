@@ -43,7 +43,10 @@ def handle(db, raw):
             return case
         for job in db.scalars(select(Job).where(Job.case_id == case.id, Job.status == "pending")):
             job.status = "cancelled"
-        if case.state == State.PUBLISHED and settings().core_delivery_enabled:
+        delivered = case.state == State.PUBLISHED or (
+            case.state == State.COMPLAINT_FLAGGED and case.previous_state == State.PUBLISHED
+        )
+        if delivered and settings().core_delivery_enabled:
             publication = latest(db, case.id, "publication")
             rec_id = publication.body.get("recommendation_id") if publication else None
             if not rec_id:
