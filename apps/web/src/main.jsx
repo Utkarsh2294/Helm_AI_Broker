@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useSessionStore } from './session-store';
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1 } } });
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   ArrowRight,
@@ -22,7 +22,7 @@ import './design/tokens.css';
 import './design/semantic.css';
 import './design/light.css';
 import ThemeToggle from './design/theme';
-import SecuritySettings from './security-settings';
+const SecuritySettings = lazy(() => import('./security-settings'));
 import { Settings } from 'lucide-react';
 import { MotionConfig } from 'framer-motion';
 import { BrowserRouter, Navigate, useLocation, useNavigate } from 'react-router-dom';
@@ -193,11 +193,13 @@ function App() {
           </p>
         )}
         <main id="main" className="main-content">
-          {page === 'security' ? (
-            <SecuritySettings />
-          ) : (
-            <Workspace page={page} user={user} setPage={setPage} />
-          )}
+          <Suspense fallback={<p role="status">Loading workspace…</p>}>
+            {page === 'security' ? (
+              <SecuritySettings />
+            ) : (
+              <Workspace page={page} user={user} setPage={setPage} />
+            )}
+          </Suspense>
         </main>
         <footer className="app-footer">
           <span>
@@ -248,7 +250,7 @@ function App() {
 }
 
 // Workspace is kept separate so the authenticated shell remains small.
-import Workspace from './workspace';
+const Workspace = lazy(() => import('./workspace'));
 createRoot(document.getElementById('root')).render(
   <QueryClientProvider client={queryClient}>
     <MotionConfig reducedMotion="user">

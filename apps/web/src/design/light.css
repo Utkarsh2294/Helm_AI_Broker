@@ -1,4 +1,9 @@
 [data-theme='light'] {
+  --helm-tone-69806d: #52645a;
+  --helm-tone-6a7b6a: #52645a;
+  --helm-tone-7a8678: #52645a;
+  --helm-tone-87947e: #52645a;
+  --helm-tone-82917b: #52645a;
   color-scheme: light;
   --helm-bg-primary: var(--helm-light-canvas);
   --helm-bg-secondary: var(--helm-light-paper);
@@ -48,6 +53,28 @@
 [data-theme='light'] textarea::placeholder {
   color: var(--helm-text-secondary);
   opacity: 1;
+}
+[data-theme='light'] .client-avatar,
+[data-theme='light'] .cover-type,
+[data-theme='light'] .state-badge,
+[data-theme='light'] .human-banner p,
+[data-theme='light'] .learning-link small {
+  color: var(--helm-light-ink);
+}
+[data-theme='light'] .agent-card .eyebrow,
+[data-theme='light'] .agent-description,
+[data-theme='light'] .surface-note,
+[data-theme='light'] .learning-summary p,
+[data-theme='light'] .panel-meta span,
+[data-theme='light'] .case-stages small,
+[data-theme='light'] .panel-tabs button {
+  color: var(--helm-light-muted);
+}
+[data-theme='light'] .state-badge.amber {
+  color: #75500d;
+}
+[data-theme='light'] .state-badge.red {
+  color: #8b302b;
 }
 [data-theme='light'] .button.primary {
   background: var(--helm-tone-2c6251);

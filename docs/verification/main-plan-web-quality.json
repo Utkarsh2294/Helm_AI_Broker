@@ -1,0 +1,68 @@
+{
+  "measured_at": "2026-10-30T10:40:35.845Z",
+  "environment": "Local production Vite preview, Edge desktop; fictional authenticated PostgreSQL QA data",
+  "lighthouse_version": "13.6.0",
+  "scores": {
+    "performance": 100,
+    "accessibility": 100,
+    "best-practices": 100
+  },
+  "metrics": {
+    "first-contentful-paint": {
+      "value": 218.985,
+      "unit": "millisecond"
+    },
+    "largest-contentful-paint": {
+      "value": 429.9775,
+      "unit": "millisecond"
+    },
+    "total-blocking-time": {
+      "value": 59.99999999999994,
+      "unit": "millisecond"
+    },
+    "cumulative-layout-shift": {
+      "value": 0.012865793932230104,
+      "unit": "unitless"
+    }
+  },
+  "fid_measured": false,
+  "field_inp_measured": false,
+  "axe_version": "4.14.0",
+  "axe_screens": [
+    {
+      "screen": "login",
+      "violations": []
+    },
+    {
+      "screen": "/queue",
+      "violations": []
+    },
+    {
+      "screen": "/agents",
+      "violations": []
+    },
+    {
+      "screen": "/partners",
+      "violations": []
+    },
+    {
+      "screen": "/learning",
+      "violations": []
+    },
+    {
+      "screen": "/audit",
+      "violations": []
+    },
+    {
+      "screen": "/security",
+      "violations": []
+    },
+    {
+      "screen": "case fact-find",
+      "violations": []
+    }
+  ],
+  "manual_screen_reader_acceptance": false,
+  "initial_js_gzip_kb": 198.59,
+  "bundle_note": "Main 177.29 KB plus initial workspace 21.30 KB; case, audit, governance and security chunks lazy-loaded. CSS is measured separately."
+}

@@ -1,8 +1,8 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
-import AuditSearch from './components/AuditSearch';
-import Governance from './components/Governance';
-import React, { useCallback, useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef, lazy, Suspense } from 'react';
+const AuditSearch = lazy(() => import('./components/AuditSearch'));
+const Governance = lazy(() => import('./components/Governance'));
 import {
   ArrowRight,
   ArrowUpRight,
@@ -23,7 +23,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { api, label } from './api';
-import CasePanel from './case-panel';
+const CasePanel = lazy(() => import('./case-panel'));
 import CommandPalette from './components/CommandPalette';
 import QuickLook from './components/QuickLook';
 
@@ -245,7 +245,7 @@ export default function Workspace({ page, user, setPage }) {
             <div className="section-header">
               <div>
                 <Sparkles size={15} />
-                <h3>Your team, working in sync</h3>
+                <h2>Your team, working in sync</h2>
                 <span className="subtle-badge">5 SPECIALIST AGENTS</span>
               </div>
               <button className="text-button" onClick={() => setPage('agents')}>
@@ -292,7 +292,7 @@ export default function Workspace({ page, user, setPage }) {
           <section className="case-section">
             <div className="section-header">
               <div>
-                <h3>Your casework</h3>
+                <h2>Your casework</h2>
                 <span className="count-badge">{matchedCases}</span>
               </div>
               <span className="table-hint">
@@ -541,7 +541,7 @@ export default function Workspace({ page, user, setPage }) {
       {page === 'partners' && (
         <section className="surface">
           <div className="section-header">
-            <h3>Partner directory</h3>
+            <h2>Partner directory</h2>
             <span className="subtle-badge">FICTIONAL PANEL</span>
           </div>
           <div className="table-scroll">
@@ -580,8 +580,16 @@ export default function Workspace({ page, user, setPage }) {
           </p>
         </section>
       )}
-      {page === 'learning' && <Governance user={user} />}
-      {page === 'audit' && <AuditSearch onCase={setSelected} />}
+      {page === 'learning' && (
+        <Suspense fallback={<p role="status">Loading learning records…</p>}>
+          <Governance user={user} />
+        </Suspense>
+      )}
+      {page === 'audit' && (
+        <Suspense fallback={<p role="status">Loading audit search…</p>}>
+          <AuditSearch onCase={setSelected} />
+        </Suspense>
+      )}
       <CommandPalette cases={cases} onCase={setSelected} onPage={setPage} />
       {quick && (
         <QuickLook
@@ -594,14 +602,16 @@ export default function Workspace({ page, user, setPage }) {
         />
       )}
       {selected && (
-        <CasePanel
-          id={selected}
-          user={user}
-          onClose={() => {
-            setSelected(null);
-            refresh();
-          }}
-        />
+        <Suspense fallback={<p role="status">Opening case…</p>}>
+          <CasePanel
+            id={selected}
+            user={user}
+            onClose={() => {
+              setSelected(null);
+              refresh();
+            }}
+          />
+        </Suspense>
       )}
       <span className="sr-only" aria-live="polite">
         {creating ? 'Creating a demo request' : ''}

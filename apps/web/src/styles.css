@@ -815,7 +815,8 @@ small {
   gap: 10px;
   min-width: 0;
 }
-.section-header h3 {
+.section-header h3,
+.section-header h2 {
   font-size: 14px;
   font-weight: 550;
   margin: 0;
@@ -2469,6 +2470,25 @@ dialog.case-panel {
   .sidebar .nav-item {
     font-size: 12px;
   }
+}
+.plan-assessment {
+  display: grid;
+  gap: 14px;
+  border-top: 1px solid var(--line);
+  margin-top: 18px;
+  padding-top: 18px;
+}
+.plan-assessment textarea {
+  min-height: 130px;
+}
+.criterion-explanation {
+  margin-block: 16px;
+}
+.criterion-explanation progress {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  accent-color: var(--green);
 }
 .dnr-editor,
 .medical-review-form {
