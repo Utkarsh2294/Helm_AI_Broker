@@ -116,7 +116,15 @@ test('fictional documents flow reaches two independent demo reviews through G0 G
   await scan(page, 'recommendation review');
   for (const checkbox of await panel.locator('.review-checklist input[type="checkbox"]').all())
     await checkbox.check();
-  await panel.getByRole('button', { name: 'Save review confirmations' }).click();
+  await panel.getByRole('button', { name: 'Continue to selected plans' }).click();
+  await scan(page, 'guided selected plan review');
+  for (const checkbox of await panel.locator('.review-checklist input[type="checkbox"]').all())
+    await checkbox.check();
+  await panel.getByRole('button', { name: 'Continue to final confirmation' }).click();
+  await scan(page, 'guided final review confirmation');
+  await panel.locator('.review-checklist input[type="checkbox"]').check();
+  await panel.getByRole('button', { name: 'Save review and continue' }).click();
+  await scan(page, 'ready for password approval');
   await panel.getByLabel('Confirm your password').fill('HelmDemo!2026');
   await panel.getByRole('button', { name: 'Approve demo recommendation' }).click();
   await expect(panel.getByText('Approved. Ready for the next step.')).toBeVisible();

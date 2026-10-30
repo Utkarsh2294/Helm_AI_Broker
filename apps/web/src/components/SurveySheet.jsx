@@ -3,7 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { motion, useMotionValue, animate } from 'framer-motion';
 import { useDrag } from '@use-gesture/react';
 import { springNormal } from '../design/motion';
-export default function SurveySheet({ children, container, ready }) {
+export default function SurveySheet({ children, container, ready, id }) {
   const [open, setOpen] = useState(false),
     y = useMotionValue(0);
   const bind = useDrag(
@@ -19,7 +19,7 @@ export default function SurveySheet({ children, container, ready }) {
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
-        <button className="button primary full" disabled={!ready}>
+        <button id={id} className="button primary full" disabled={!ready}>
           Review selections & feedback
         </button>
       </Dialog.Trigger>

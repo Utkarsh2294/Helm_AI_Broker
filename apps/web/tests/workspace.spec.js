@@ -50,22 +50,22 @@ test('broker completes the five-agent workflow with real approval and evidence',
     await card.getByRole('button', { name: 'Save rating', exact: true }).click();
     await expect(card.getByText('Assessment saved · Broker edited')).toBeVisible();
     if (i === 0) {
-      await expect(card.getByRole('button', { name: 'Select this plan' })).toBeDisabled();
-      await expect(
-        card.getByText('This assessment is saved. Save the remaining 4 plan assessments', {
-          exact: false,
-        }),
-      ).toBeVisible();
+      await expect(card.getByRole('button', { name: 'Select this plan' })).toBeEnabled();
+      await card.getByRole('button', { name: 'Select this plan' }).click();
+      await expect(card.getByRole('button', { name: 'Selected · preference 1' })).toBeVisible();
+      await expect(panel.getByRole('button', { name: 'Review selections & feedback' })).toHaveCount(
+        0,
+      );
     }
   }
   await expect(panel.getByText('Rated 5 of 5 plans.', { exact: false })).toBeVisible();
   await expect(
-    panel.locator('.quote-card').first().getByRole('button', { name: 'Select this plan' }),
+    panel.locator('.quote-card').first().getByRole('button', { name: 'Selected · preference 1' }),
   ).toBeEnabled();
   await expect(
     panel.getByText('This assessment is saved. Save the remaining', { exact: false }),
   ).toHaveCount(0);
-  for (let i = 0; i < 3; i++) {
+  for (let i = 1; i < 3; i++) {
     const card = panel.locator('.quote-card').nth(i);
     await card.getByRole('button', { name: 'Select this plan' }).click();
     if (await card.getByRole('checkbox').count()) await card.getByRole('checkbox').check();
@@ -75,13 +75,14 @@ test('broker completes the five-agent workflow with real approval and evidence',
   await expect(
     fourthPlan.getByText('Three plans are already selected.', { exact: false }),
   ).toBeVisible();
-  await panel.getByRole('button', { name: 'Review selections & feedback' }).click();
+  await panel.getByRole('button', { name: 'Continue to recommendation' }).click();
   for (const button of await panel
     .getByRole('button', { name: 'Score looks right for', exact: false })
     .all())
     await button.click();
   await panel.getByRole('button', { name: 'Prepare recommendation pack' }).click();
   await expect(panel.getByText('Your recommendation pack')).toBeVisible();
+  await expect(panel.getByLabel('Confirm your password')).toHaveCount(0);
   const statement = panel.getByLabel('Suitability statement');
   await statement.fill(
     (await statement.inputValue()) + ' Reviewed with the recorded customer priorities.',
@@ -90,7 +91,13 @@ test('broker completes the five-agent workflow with real approval and evidence',
   await expect(panel.getByRole('button', { name: 'Save statement' })).toHaveCount(0);
   for (const checkbox of await panel.locator('.review-checklist input[type="checkbox"]').all())
     await checkbox.check();
-  await panel.getByRole('button', { name: 'Save review confirmations' }).click();
+  await panel.getByRole('button', { name: 'Continue to selected plans' }).click();
+  for (const checkbox of await panel.locator('.review-checklist input[type="checkbox"]').all())
+    await checkbox.check();
+  await panel.getByRole('button', { name: 'Continue to final confirmation' }).click();
+  await panel.locator('.review-checklist input[type="checkbox"]').check();
+  await panel.getByRole('button', { name: 'Save review and continue' }).click();
+  await expect(panel.getByText('Review saved. Ready to approve.')).toBeVisible();
   await panel.getByLabel('Confirm your password').fill('HelmDemo!2026');
   await panel.getByRole('button', { name: 'Approve demo recommendation' }).click();
   await expect(panel.getByText('Approved. Ready for the next step.')).toBeVisible();

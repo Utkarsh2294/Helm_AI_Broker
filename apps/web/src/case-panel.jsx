@@ -1,4 +1,4 @@
-import PasskeyOrigin, { passkeysAvailable } from './components/PasskeyOrigin';
+import { passkeysAvailable } from './components/PasskeyOrigin';
 import SurveySheet from './components/SurveySheet';
 import { startAuthentication } from '@simplewebauthn/browser';
 import ReplayScrubber from './components/ReplayScrubber';
@@ -28,7 +28,7 @@ import useSSE from './hooks/useSSE';
 import AgentPill from './components/AgentPill';
 import QuotesBoard from './components/QuotesBoard';
 import RankingTools from './components/RankingTools';
-import ReviewChecklist from './components/ReviewChecklist';
+import ReviewChecklist, { reviewComplete } from './components/GuidedReview';
 import BottomSheet from './components/BottomSheet';
 import Reauthenticate from './components/Reauthenticate';
 import DnrEditor from './components/DnrEditor';
@@ -76,6 +76,7 @@ export default function CasePanel({ id, user, onClose }) {
   const [password, setPassword] = useState(''),
     [suitability, setSuitability] = useState('');
   const [editing, setEditing] = useState(false);
+  const [reviewEditing, setReviewEditing] = useState(false);
   const broker = user.role === 'authorised_broker' && !historical;
   const canRevealMedical =
     !historical && ['authorised_broker', 'compliance_officer'].includes(user.role);
@@ -109,6 +110,9 @@ export default function CasePanel({ id, user, onClose }) {
     if (!c?.ranking?.id) return;
     let active = true;
     setDirtyRatings([]);
+    setSelected([]);
+    setThumbs({});
+    setAck([]);
     api(`/cases/${id}/ratings`)
       .then((result) => {
         if (active) setRatings(Object.fromEntries(result.ratings.map((r) => [r.plan_id, r])));
@@ -202,6 +206,8 @@ export default function CasePanel({ id, user, onClose }) {
     (row) => ratings[row.plan.id] && !dirtyRatings.includes(row.plan.id),
   ).length;
   const allReviewed = comparison.length > 0 && reviewedCount === comparison.length;
+  const approvalReady =
+    reviewComplete(c?.pack) && !reviewEditing && suitability === c?.pack?.suitability_final;
   const stage = !c
     ? 0
     : ['FACTFIND_REVIEW', 'NEEDS_INFO'].includes(c.state)
@@ -688,7 +694,7 @@ export default function CasePanel({ id, user, onClose }) {
                         <span className="subtle-badge">{c.ranking.engine_version}</span>
                       </div>
                       <p className="muted">
-                        Select three in your preferred order. Scores are commission-blind.
+                        Review each plan and choose three as you go. Scores are commission-blind.
                       </p>
                       {c.ranking.joint_first && (
                         <div className="notice">
@@ -704,10 +710,42 @@ export default function CasePanel({ id, user, onClose }) {
                       )}
                       <div className="quote-list">
                         {broker && c.state === 'BROKER_REVIEW' && (
-                          <p className="notice" role="status">
-                            Rated {reviewedCount} of {comparison.length} plans. Save an assessment
-                            for every plan before selecting three.
-                          </p>
+                          <div className="comparison-guide">
+                            <p role="status">
+                              Rated {reviewedCount} of {comparison.length} plans. Selected{' '}
+                              {selected.length} of 3.
+                            </p>
+                            <p className="muted">
+                              Save each assessment to select that plan. Review all five before
+                              preparing the recommendation.
+                            </p>
+                            {!allReviewed && (
+                              <button
+                                className="button small"
+                                onClick={() => {
+                                  const next = comparison.find(
+                                    (row) =>
+                                      !ratings[row.plan.id] || dirtyRatings.includes(row.plan.id),
+                                  );
+                                  const element = document.getElementById(`plan-${next.plan.id}`);
+                                  element?.focus();
+                                  element?.scrollIntoView({ block: 'start' });
+                                }}
+                              >
+                                Review next unfinished plan
+                              </button>
+                            )}
+                            {allReviewed && selected.length === 3 && (
+                              <button
+                                className="button primary small"
+                                onClick={() =>
+                                  document.getElementById('selection-feedback')?.click()
+                                }
+                              >
+                                Continue to recommendation
+                              </button>
+                            )}
+                          </div>
                         )}
                         {comparison.map((row, i) => {
                           const plan = row.plan,
@@ -717,18 +755,18 @@ export default function CasePanel({ id, user, onClose }) {
                             : dirtyRatings.includes(plan.id)
                               ? 'Save your changes to this assessment before selecting plans.'
                               : !ratings[plan.id]
-                                ? 'Save a star rating, decision and reason for this plan first. All five plans must be assessed before selection.'
+                                ? 'Save a star rating, decision and reason for this plan first. You can then select it while reviewing the other plans.'
                                 : ratings[plan.id].decision !== 'YES'
                                   ? 'Only plans assessed as Recommend can be selected. Change and save your assessment if appropriate.'
-                                  : !allReviewed
-                                    ? `This assessment is saved. Save the remaining ${comparison.length - reviewedCount} plan assessment${comparison.length - reviewedCount === 1 ? '' : 's'} to enable selection. Each plan may be marked Recommend, Exclude or Refer to UW.`
-                                    : !isSelected && selected.length >= 3
-                                      ? 'Three plans are already selected. Deselect one to choose a different plan.'
-                                      : null;
+                                  : !isSelected && selected.length >= 3
+                                    ? 'Three plans are already selected. Deselect one to choose a different plan.'
+                                    : null;
                           return (
                             <article
                               className={`quote-card ${isSelected ? 'selected' : ''}`}
                               key={plan.id}
+                              id={`plan-${plan.id}`}
+                              tabIndex={-1}
                             >
                               <div className="quote-top">
                                 <span className="rank-label">
@@ -845,7 +883,13 @@ export default function CasePanel({ id, user, onClose }) {
                                       setDirtyRatings((old) =>
                                         old.includes(planId) ? old : [...old, planId],
                                       );
-                                      setSelected([]);
+                                      setSelected((old) => old.filter((id) => id !== planId));
+                                      setThumbs((old) =>
+                                        Object.fromEntries(
+                                          Object.entries(old).filter(([id]) => id !== planId),
+                                        ),
+                                      );
+                                      setAck((old) => old.filter((id) => id !== planId));
                                     }}
                                     onSaved={(rating) => {
                                       setRatings((old) => ({ ...old, [plan.id]: rating }));
@@ -944,7 +988,11 @@ export default function CasePanel({ id, user, onClose }) {
                         c.state === 'BROKER_REVIEW' &&
                         allReviewed &&
                         selected.length > 0 && (
-                          <SurveySheet container={dialog.current} ready={selected.length === 3}>
+                          <SurveySheet
+                            container={dialog.current}
+                            ready={selected.length === 3}
+                            id="selection-feedback"
+                          >
                             <div className="feedback-area">
                               <h3>Order your three selected plans</h3>
                               {selected.map((planId, index) => (
@@ -1137,104 +1185,119 @@ export default function CasePanel({ id, user, onClose }) {
                         <ReviewChecklist
                           key={c.pack.pack_hash}
                           item={c}
-                          onSaved={setCase}
+                          onSaved={(value) => {
+                            setReviewEditing(false);
+                            setCase(value);
+                          }}
                           onError={setError}
+                          onEditing={() => setReviewEditing(true)}
+                          statementDirty={suitability !== c.pack.suitability_final}
                         />
                       )}{' '}
-                      {broker && c.state === 'AWAIT_APPROVAL' && !c.delivery_pending && (
-                        <div className="approval-area">
-                          <LockKeyhole size={24} />
-                          <h3>Your decision. Your signature.</h3>
-                          <p>
-                            Verify with your enrolled authenticator, or your demo password when MFA
-                            is not enrolled. Approval is bound to this pack version.
-                          </p>
-                          <button
-                            className="button full"
-                            disabled={
-                              busy ||
-                              !passkeysAvailable() ||
-                              c.pack.dnr_sections_confirmed?.length !== 5
-                            }
-                            onClick={async () => {
-                              setBusy(true);
-                              setError('');
-                              try {
-                                const o = await api('/auth/passkey/options', {
-                                  method: 'POST',
-                                  body: { step_up: true },
-                                });
-                                const credential = await startAuthentication({
-                                  optionsJSON: o.options,
-                                });
-                                const proof = await api('/auth/passkey/verify', {
-                                  method: 'POST',
-                                  body: { challenge_id: o.challenge_id, credential },
-                                });
-                                setCase(
-                                  await api(`/cases/${id}/approve`, {
-                                    method: 'POST',
-                                    body: {
-                                      pack_hash: c.pack.pack_hash,
-                                      step_up_token: proof.step_up_token,
-                                    },
-                                  }),
-                                );
-                              } catch (e) {
-                                setError(e.message);
-                              } finally {
-                                setBusy(false);
-                              }
-                            }}
-                          >
-                            Approve with passkey
-                          </button>
-                          <PasskeyOrigin />
-                          <form
-                            onSubmit={(e) => {
-                              e.preventDefault();
-                              approve();
-                            }}
-                          >
-                            <label>
-                              Confirm your password
-                              <input
-                                type="password"
-                                autoComplete="current-password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                              />
-                            </label>
-                            <label>
-                              Authenticator code (if enrolled)
-                              <input
-                                autoComplete="one-time-code"
-                                inputMode="numeric"
-                                value={otp}
-                                onChange={(e) => setOtp(e.target.value)}
-                              />
-                            </label>
-                            <button
-                              className="button primary full"
-                              disabled={
-                                busy ||
-                                suitability !== c.pack.suitability_final ||
-                                c.pack.dnr_sections_confirmed?.length !== 5
-                              }
+                      {broker &&
+                        c.state === 'AWAIT_APPROVAL' &&
+                        !c.delivery_pending &&
+                        approvalReady && (
+                          <div className="approval-area">
+                            <LockKeyhole size={24} />
+                            <h3 id="approval-title" tabIndex={-1}>
+                              Final step: approve recommendation
+                            </h3>
+                            <p>
+                              Your review is saved. Enter your password to approve this
+                              recommendation. Use your authenticator code too if you enabled one.
+                            </p>
+                            {passkeysAvailable() && (
+                              <details>
+                                <summary>Use a passkey instead</summary>
+                                <button
+                                  className="button full"
+                                  disabled={
+                                    busy ||
+                                    !passkeysAvailable() ||
+                                    c.pack.dnr_sections_confirmed?.length !== 5
+                                  }
+                                  onClick={async () => {
+                                    setBusy(true);
+                                    setError('');
+                                    try {
+                                      const o = await api('/auth/passkey/options', {
+                                        method: 'POST',
+                                        body: { step_up: true },
+                                      });
+                                      const credential = await startAuthentication({
+                                        optionsJSON: o.options,
+                                      });
+                                      const proof = await api('/auth/passkey/verify', {
+                                        method: 'POST',
+                                        body: { challenge_id: o.challenge_id, credential },
+                                      });
+                                      setCase(
+                                        await api(`/cases/${id}/approve`, {
+                                          method: 'POST',
+                                          body: {
+                                            pack_hash: c.pack.pack_hash,
+                                            step_up_token: proof.step_up_token,
+                                          },
+                                        }),
+                                      );
+                                    } catch (e) {
+                                      setError(e.message);
+                                    } finally {
+                                      setBusy(false);
+                                    }
+                                  }}
+                                >
+                                  Approve with passkey
+                                </button>
+                              </details>
+                            )}
+                            <form
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                approve();
+                              }}
                             >
-                              Approve demo recommendation
-                              <ShieldCheck size={16} />
+                              <label>
+                                Confirm your password
+                                <input
+                                  type="password"
+                                  required
+                                  autoComplete="current-password"
+                                  value={password}
+                                  onChange={(e) => setPassword(e.target.value)}
+                                />
+                              </label>
+                              <label>
+                                Authenticator code (if enrolled)
+                                <input
+                                  autoComplete="one-time-code"
+                                  inputMode="numeric"
+                                  value={otp}
+                                  onChange={(e) => setOtp(e.target.value)}
+                                />
+                              </label>
+                              <button
+                                className="button primary full"
+                                disabled={
+                                  busy ||
+                                  suitability !== c.pack.suitability_final ||
+                                  c.pack.dnr_sections_confirmed?.length !== 5
+                                }
+                              >
+                                Approve demo recommendation
+                                <ShieldCheck size={16} />
+                              </button>
+                            </form>
+                            <button
+                              className="text-button"
+                              disabled={busy}
+                              onClick={() => action('request-changes')}
+                            >
+                              Return to comparison
                             </button>
-                          </form>
-                          <button
-                            className="text-button"
-                            disabled={busy}
-                            onClick={() => action('request-changes')}
-                          >
-                            Return to comparison
-                          </button>
-                        </div>
-                      )}
+                          </div>
+                        )}
                       {c.delivery_pending && (
                         <div className="notice">
                           <div>
