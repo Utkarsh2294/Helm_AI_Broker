@@ -31,7 +31,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-build = ["setuptools==80.9.0"]
+build = ["setuptools==84.1.0"]
 agents = ["crewai>=1.8,<2"]
 dev = [
     "fakeredis[lua]>=2,<3",

@@ -1,0 +1,53 @@
+{
+  "scanner": "OWASP ZAP",
+  "version": "2.17.0",
+  "image": "zaproxy/zap-bare@sha256:99575ac0542e9b424177589d70720c0426ca410005812d3c10bd16370bbb4f54",
+  "scope": "Local fictional Compose web and authenticated API; passive traffic inspection only",
+  "requests_exercised": 20,
+  "all_exercised_responses_200": true,
+  "counts_by_risk": {
+    "Medium": 1,
+    "Informational": 3,
+    "Low": 2
+  },
+  "findings": [
+    {
+      "id": "10055",
+      "name": "CSP: style-src unsafe-inline",
+      "risk": "Medium",
+      "confidence": "High"
+    },
+    {
+      "id": "10109",
+      "name": "Modern Web Application",
+      "risk": "Informational",
+      "confidence": "Medium"
+    },
+    {
+      "id": "10010",
+      "name": "Cookie No HttpOnly Flag",
+      "risk": "Low",
+      "confidence": "Medium"
+    },
+    {
+      "id": "10111",
+      "name": "Authentication Request Identified",
+      "risk": "Informational",
+      "confidence": "Low"
+    },
+    {
+      "id": "10112",
+      "name": "Session Management Response Identified",
+      "risk": "Informational",
+      "confidence": "Medium"
+    },
+    {
+      "id": "2",
+      "name": "Private IP Disclosure",
+      "risk": "Low",
+      "confidence": "Medium"
+    }
+  ],
+  "high_critical_clear": true,
+  "independent_penetration_test": false
+}

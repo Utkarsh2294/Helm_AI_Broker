@@ -1,0 +1,61 @@
+{
+  "measured_on": "2026-10-30",
+  "python_scanner": "pip-audit using OSV; frozen shipped agents and build extras; own engine package excluded from PyPI lookup",
+  "python_packages_checked": 173,
+  "python_unresolved": [
+    {
+      "name": "chromadb",
+      "version": "1.5.9",
+      "advisories": [
+        {
+          "id": "PYSEC-2026-3813",
+          "fix_versions": [],
+          "aliases": [
+            "GHSA-2wm9-hf6c-p5cr",
+            "CVE-2026-45830"
+          ]
+        },
+        {
+          "id": "PYSEC-2026-3814",
+          "fix_versions": [],
+          "aliases": [
+            "GHSA-36p7-vc44-83pf",
+            "CVE-2026-45833"
+          ]
+        },
+        {
+          "id": "PYSEC-2026-311",
+          "fix_versions": [],
+          "aliases": [
+            "CVE-2026-45829",
+            "GHSA-f4j7-r4q5-qw2c"
+          ]
+        },
+        {
+          "id": "PYSEC-2026-3815",
+          "fix_versions": [],
+          "aliases": [
+            "CVE-2026-45831",
+            "GHSA-xph7-9rjv-w5fr"
+          ]
+        }
+      ],
+      "raw_advisory_entries": 8
+    }
+  ],
+  "setuptools_fix": "84.1.0 is locked in both root build extra and engine build requirements",
+  "npm_vulnerabilities": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "bandit_version": "1.9.4",
+  "bandit_scope": "services/api/app, severity medium and high",
+  "bandit_medium": 0,
+  "bandit_high": 0,
+  "live_release_security_clear": false,
+  "mitigation": "No ChromaDB server is exposed; CrewAI uses a local model fixture with memory disabled. Advisory triage or a supported fix remains a release gate; CI is not configured to ignore these findings."
+}

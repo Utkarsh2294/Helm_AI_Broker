@@ -13,6 +13,7 @@ jobs:
       - run: uv run ruff check services/api tools
       - run: uv run ruff format --check services/api
       - run: uv run python -m pytest -q
+      - run: uv run python -m pytest packages/engine/tests -q
       - run: uv run alembic upgrade head
   web:
     runs-on: ubuntu-latest
@@ -34,4 +35,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker compose config --quiet
-      - run: docker compose build --no-cache
+      - run: docker compose -p helmaibroker build --no-cache
+      - name: Scan the built API image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.76.1
+          image-ref: helmaibroker-api:latest
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: false
