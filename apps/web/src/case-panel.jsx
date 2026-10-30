@@ -712,6 +712,19 @@ export default function CasePanel({ id, user, onClose }) {
                         {comparison.map((row, i) => {
                           const plan = row.plan,
                             isSelected = selected.includes(plan.id);
+                          const selectionBlocker = busy
+                            ? 'Please wait for the current action to finish.'
+                            : dirtyRatings.includes(plan.id)
+                              ? 'Save your changes to this assessment before selecting plans.'
+                              : !ratings[plan.id]
+                                ? 'Save a star rating, decision and reason for this plan first. All five plans must be assessed before selection.'
+                                : ratings[plan.id].decision !== 'YES'
+                                  ? 'Only plans assessed as Recommend can be selected. Change and save your assessment if appropriate.'
+                                  : !allReviewed
+                                    ? `This assessment is saved. Save the remaining ${comparison.length - reviewedCount} plan assessment${comparison.length - reviewedCount === 1 ? '' : 's'} to enable selection. Each plan may be marked Recommend, Exclude or Refer to UW.`
+                                    : !isSelected && selected.length >= 3
+                                      ? 'Three plans are already selected. Deselect one to choose a different plan.'
+                                      : null;
                           return (
                             <article
                               className={`quote-card ${isSelected ? 'selected' : ''}`}
@@ -843,11 +856,9 @@ export default function CasePanel({ id, user, onClose }) {
                                   />
                                   <button
                                     className={`button full ${isSelected ? 'primary' : ''}`}
-                                    disabled={
-                                      busy ||
-                                      !allReviewed ||
-                                      ratings[plan.id]?.decision !== 'YES' ||
-                                      (!isSelected && selected.length >= 3)
+                                    disabled={Boolean(selectionBlocker)}
+                                    aria-describedby={
+                                      selectionBlocker ? `selection-help-${i}` : undefined
                                     }
                                     onClick={() => togglePlan(plan.id)}
                                   >
@@ -860,6 +871,11 @@ export default function CasePanel({ id, user, onClose }) {
                                       'Select this plan'
                                     )}
                                   </button>
+                                  {selectionBlocker && (
+                                    <p id={`selection-help-${i}`} className="muted">
+                                      {selectionBlocker}
+                                    </p>
+                                  )}
                                   {isSelected && row.blockers.length > 0 && (
                                     <label className="checkbox-label">
                                       <input

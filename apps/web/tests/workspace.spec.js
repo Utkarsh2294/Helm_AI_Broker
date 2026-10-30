@@ -32,6 +32,12 @@ test('broker completes the five-agent workflow with real approval and evidence',
   await panel.getByRole('button', { name: 'Why #2 above #3?' }).click();
   expect((await (await copilotReply).json()).cited_fields.length).toBeGreaterThan(0);
   await expect(panel.getByRole('button', { name: 'Select this plan' }).first()).toBeDisabled();
+  await expect(
+    panel
+      .locator('.quote-card')
+      .first()
+      .getByText('Save a star rating, decision and reason for this plan first.', { exact: false }),
+  ).toBeVisible();
   for (let i = 0; i < 5; i++) {
     const card = panel.locator('.quote-card').nth(i);
     await card.getByRole('slider').fill('4');
@@ -43,13 +49,32 @@ test('broker completes the five-agent workflow with real approval and evidence',
       );
     await card.getByRole('button', { name: 'Save rating', exact: true }).click();
     await expect(card.getByText('Assessment saved · Broker edited')).toBeVisible();
+    if (i === 0) {
+      await expect(card.getByRole('button', { name: 'Select this plan' })).toBeDisabled();
+      await expect(
+        card.getByText('This assessment is saved. Save the remaining 4 plan assessments', {
+          exact: false,
+        }),
+      ).toBeVisible();
+    }
   }
   await expect(panel.getByText('Rated 5 of 5 plans.', { exact: false })).toBeVisible();
+  await expect(
+    panel.locator('.quote-card').first().getByRole('button', { name: 'Select this plan' }),
+  ).toBeEnabled();
+  await expect(
+    panel.getByText('This assessment is saved. Save the remaining', { exact: false }),
+  ).toHaveCount(0);
   for (let i = 0; i < 3; i++) {
     const card = panel.locator('.quote-card').nth(i);
     await card.getByRole('button', { name: 'Select this plan' }).click();
     if (await card.getByRole('checkbox').count()) await card.getByRole('checkbox').check();
   }
+  const fourthPlan = panel.locator('.quote-card').nth(3);
+  await expect(fourthPlan.getByRole('button', { name: 'Select this plan' })).toBeDisabled();
+  await expect(
+    fourthPlan.getByText('Three plans are already selected.', { exact: false }),
+  ).toBeVisible();
   await panel.getByRole('button', { name: 'Review selections & feedback' }).click();
   for (const button of await panel
     .getByRole('button', { name: 'Score looks right for', exact: false })
