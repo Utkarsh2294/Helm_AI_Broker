@@ -12,6 +12,53 @@ from app import service
 router = APIRouter(prefix="/api/v1")
 
 
+class CloseWithoutAdvice(Model):
+    ranking_id: str = Field(min_length=1, max_length=100)
+    reason: str = Field(min_length=20, max_length=2000)
+    confirmed: bool = False
+
+
+@router.post("/cases/{case_id}/close-without-advice")
+def close_without_advice(
+    case_id: str, body: CloseWithoutAdvice, request: Request, db=Depends(database, scope="function")
+):
+    from app.db.store import latest, save_snapshot
+    from app.plan_ratings import validate_reviews, reviews_hash
+
+    user, _ = identity(db, request)
+    service.require_broker(user)
+    case = service.get_case(db, case_id)
+    if case.state != State.BROKER_REVIEW:
+        raise DomainError("Only an open comparison can be closed without advice", 409)
+    ranking = latest(db, case_id, "ranking")
+    if not ranking or body.ranking_id != ranking.body["id"]:
+        raise DomainError("Ranking changed. Review the current comparison.", 409)
+    reviews = validate_reviews(db, case_id, ranking.body, user)
+    if not reviews or any(row.decision != "NO" for row in reviews):
+        raise DomainError("Exclude every shortlisted plan before closing without advice", 422)
+    if not body.confirmed or len(body.reason.strip()) < 20:
+        raise DomainError("Confirm closure and record a reason in at least 20 characters", 422)
+    save_snapshot(
+        db,
+        case_id,
+        "no_advice_closure",
+        {
+            "ranking_id": body.ranking_id,
+            "reason": body.reason.strip(),
+            "by": user.id,
+            "ratings_hash": reviews_hash(reviews),
+            "at": utcnow().isoformat(),
+            "recommendation_sent": False,
+        },
+    )
+    for job in db.scalars(select(Job).where(Job.case_id == case_id, Job.status == "pending")):
+        job.status = "cancelled"
+    service.transition(
+        db, case, [State.BROKER_REVIEW], State.CLOSED, "no_suitable_plans", f"broker:{user.id}"
+    )
+    return {"state": case.state, "recommendation_sent": False}
+
+
 @router.get("/cases/{case_id}/closure.pdf")
 def closure(case_id: str, request: Request, db=Depends(database, scope="function")):
     import base64

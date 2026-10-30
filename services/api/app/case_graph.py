@@ -40,6 +40,8 @@ def permits(source, target, event):
         return source == "COMPLAINT_FLAGGED" and target != "COMPLAINT_FLAGGED"
     if event in {"consumer_declined", "POLICY_BOUND"}:
         return source == "PUBLISHED" and target == "CLOSED"
+    if event == "no_suitable_plans":
+        return source == "BROKER_REVIEW" and target == "CLOSED"
     if event == "medical_review_recorded":
         return source in {"PAUSED_NEEDS_HUMAN", "NEEDS_INFO", "FACTFIND_REVIEW"} and target in {
             "FACTFIND_REVIEW",
