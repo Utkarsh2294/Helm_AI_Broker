@@ -115,7 +115,9 @@ def require_broker(user):
 
 def act(db, case_id, action, user, session, body):
     case = get_case(db, case_id)
-    if action == "sign-off" and user.role == "broker_assistant":
+    if (action == "sign-off" and user.role == "broker_assistant") or (
+        action == "complaint" and user.role == "compliance_officer"
+    ):
         pass
     else:
         require_broker(user)
@@ -180,37 +182,9 @@ def act(db, case_id, action, user, session, body):
             actor,
         )
     elif action == "complaint":
-        if case.state in [State.CLOSED, State.COMPLAINT_FLAGGED]:
-            raise DomainError("Complaint already flagged or case closed")
-        case.previous_state = case.state
-        from app.db.models import User
-        from app.db.platform import Complaint
+        from app.complaints import open_complaint
 
-        owner = db.scalar(select(User).where(User.role == "compliance_officer"))
-        if not owner:
-            raise DomainError("Designate a compliance owner before opening a complaint")
-        from app.clock import get_clock
-
-        db.add(
-            Complaint(
-                case_id=case.id,
-                owner_id=owner.id,
-                due_at=utcnow() + get_clock().wall_delay(timedelta(days=56)),
-            )
-        )
-        save_snapshot(
-            db,
-            case.id,
-            "complaint_received",
-            {
-                "reason": body.get("reason", ""),
-                "owner_id": owner.id,
-                "by": user.id,
-                "at": utcnow().isoformat(),
-                "business_deadline_days": 56,
-            },
-        )
-        transition(db, case, [case.state], State.COMPLAINT_FLAGGED, "complaint_flagged", actor)
+        open_complaint(db, case, actor, body.get("reason", ""))
     elif action == "assign":
         case.assigned_to = user.id
         audit(db, case.id, "case_assigned", actor)
@@ -489,9 +463,9 @@ def act(db, case_id, action, user, session, body):
 
 
 def process_due_jobs(db, case_id=None):
-    if settings().agents_paused:
-        return
     query = select(Job)
+    if settings().agents_paused:
+        query = query.where(Job.kind == "revoke")
     if case_id is not None:
         query = query.where(Job.case_id == case_id)
     if db.info.get("staff_user"):
@@ -505,6 +479,11 @@ def process_due_jobs(db, case_id=None):
     ).all()
     for job in jobs:
         case = get_case(db, job.case_id)
+        if job.kind == "revoke":
+            from app.publication import process_revocation
+
+            process_revocation(db, case, job)
+            continue
         if case.state in (State.PAUSED_NEEDS_HUMAN, State.COMPLAINT_FLAGGED):
             continue
         if job.kind == "publish":

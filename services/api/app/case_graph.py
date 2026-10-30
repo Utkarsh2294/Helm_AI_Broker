@@ -26,6 +26,10 @@ GRAPH = {
 
 
 def permits(source, target, event):
+    if event == "consumer_requirements_updated":
+        return source not in {"PUBLISHED", "CLOSED", "COMPLAINT_FLAGGED"} and target == "INTAKE_RUNNING"
+    if event == "core_request_withdrawn":
+        return source not in {"CLOSED", "COMPLAINT_FLAGGED"} and target == "CLOSED"
     if target in {item[0] for item in GRAPH.get(source, {}).values()}:
         return True
     if event == "broker_paused":

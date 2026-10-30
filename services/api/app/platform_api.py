@@ -84,6 +84,14 @@ async def receive_webhook(request: Request, db=Depends(database, scope="function
         return {"received": True, "duplicate": True}
     if event_type in ("quote_request.submitted", "case.created"):
         case = service.import_request(db, QuoteRequest.model_validate(event.get("request")))
+    elif event_type in {"quote_request.updated", "quote_request.withdrawn"}:
+        from app.core_lifecycle import handle
+
+        case = handle(db, event)
+    elif event_type == "consumer.message_received":
+        from app.consumer_messages import handle
+
+        case = handle(db, event)
     elif event_type in {
         "consumer.responded",
         "consumer.magic_link_opened",

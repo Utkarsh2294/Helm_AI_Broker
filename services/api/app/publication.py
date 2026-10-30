@@ -63,3 +63,36 @@ def process_publication(db, case, job):
         f"broker:{approval.user_id}",
     )
     job.status = "completed"
+
+
+def process_revocation(db, case, job):
+    try:
+        asyncio.run(
+            CoreAPIClient().request(
+                "POST",
+                f"/v1/recommendations/{job.body['recommendation_id']}/revoke",
+                {},
+                key=f"revoke:{case.id}:{job.id}",
+            )
+        )
+    except Exception:
+        attempts = job.body.get("attempts", 0) + 1
+        job.body = {**job.body, "attempts": attempts}
+        job.due_at = (utcnow() + timedelta(seconds=2**attempts)).isoformat()
+        job.status = "needs_human" if attempts >= 3 else "pending"
+        audit(
+            db,
+            case.id,
+            "recommendation_revocation_failed",
+            "system",
+            {"attempt": attempts, "requires_human": attempts >= 3},
+        )
+        return
+    save_snapshot(
+        db,
+        case.id,
+        "revocation",
+        {"recommendation_id": job.body["recommendation_id"], "at": utcnow().isoformat()},
+    )
+    audit(db, case.id, "recommendation_revoked", "system")
+    job.status = "completed"
