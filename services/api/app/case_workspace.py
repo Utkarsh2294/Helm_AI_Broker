@@ -110,6 +110,25 @@ def workspace_data(db, case, user):
             summary = f"Evaluation: {result['status'].replace('_', ' ')}; {result['comparison_count']} comparisons. No model change was applied."
         elif status == "running":
             summary = "Work is queued or running; the saved output will appear here when it completes."
+        elif status in {"on_hold", "needs_attention"}:
+            stop = next(
+                (
+                    e
+                    for e in reversed(events)
+                    if e["payload"].get("to") in {"PAUSED_NEEDS_HUMAN", "UW_REFERRAL", "COMPLAINT_FLAGGED"}
+                ),
+                None,
+            )
+            reason = (
+                (stop["payload"].get("reason") or stop["payload"].get("code") or stop["type"])
+                if stop
+                else "recorded exception"
+            )
+            summary = (
+                "Automation is on hold: "
+                + reason.replace("_", " ")
+                + ". Review the audit entry before resuming."
+            )
         agent_work.append(
             {
                 **agent,

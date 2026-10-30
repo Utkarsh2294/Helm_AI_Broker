@@ -101,6 +101,12 @@ export function AgentWork({ data, detailed = false }) {
                   {new Date(event.created_at).toLocaleString('en-GB')}
                 </time>
                 {event.payload.why && <p>{event.payload.why}</p>}
+                {event.payload.reason && (
+                  <p>
+                    Reason: {label(event.payload.reason)}
+                    {event.payload.code ? ` · ${event.payload.code}` : ''}
+                  </p>
+                )}
                 {event.payload.decision && <p>Human decision {event.payload.decision} of 2</p>}
                 <small>
                   Event #{event.seq} · <code>{event.hash}</code>

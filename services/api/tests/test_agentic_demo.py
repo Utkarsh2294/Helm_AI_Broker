@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import select
 from app import main, service
 from app.config import settings
-from app.db.models import Approval, Case, Job, utcnow
+from app.db.models import Approval, Case, Job, Snapshot, utcnow
 from app.db.platform import BrokerRating
 from app.db.store import latest, save_snapshot, verify_chain
 from app.db.models import Activity
