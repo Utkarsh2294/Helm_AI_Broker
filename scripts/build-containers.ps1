@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $brokerBuildRoot = Split-Path -Parent $PSScriptRoot
 $brokerComposePath = Join-Path $brokerBuildRoot 'docker-compose.yml'
 $brokerArguments = @('compose', '--progress', 'plain', '-f', $brokerComposePath)
-$brokerBuildDirectory = Join-Path $brokerBuildRoot '.runtime\build'
+$brokerBuildDirectory = Join-Path $env:LOCALAPPDATA 'HelmBroker\build'
 New-Item -ItemType Directory -Force $brokerBuildDirectory | Out-Null
 if ($PrepareWheelhouse) {
     if (-not $Wheelhouse) { $Wheelhouse = Join-Path $env:LOCALAPPDATA 'HelmBroker\linux-wheels' }
@@ -42,7 +42,7 @@ if ($Wheelhouse) {
     $brokerDefinition.additional_contexts = @{wheelhouse=$brokerWheelPath}
 }
 if (-not $UseDefaultDns -or $Wheelhouse -or $BaseImage) {
-    @{services=@{api=@{build=$brokerDefinition};worker=@{build=$brokerDefinition};'mock-core'=@{build=$brokerDefinition}}} | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $brokerOverride
+    @{services=@{api=@{build=$brokerDefinition};worker=@{build=$brokerDefinition};'mock-core'=@{build=$brokerDefinition};'partner-sim'=@{build=$brokerDefinition}}} | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $brokerOverride
     $brokerArguments += @('-f', $brokerOverride)
 }
 $brokerArguments += 'build'

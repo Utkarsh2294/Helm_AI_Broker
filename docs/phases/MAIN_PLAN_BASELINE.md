@@ -16,7 +16,7 @@ The active build specification is [the complete main plan](../spec/HELM_BROKER_P
 
 | Phase | Existing foundation | Work to verify or complete against the main plan |
 |---|---|---|
-| P0 | Repository, PostgreSQL/Redis, seven-hundred-plus API/engine assertions across 468 tests, six containers, Core contract, CrewAI Flows and persisted human feedback | Workspace tooling, application factory, injectable clock, mocked Crew spike, standalone partner simulator and contract lint |
+| P0 | Repository, PostgreSQL/Redis, API/engine coverage across 468 tests, six containers, Core contract, CrewAI Flows and persisted human feedback | Workspace tooling, application factory, injectable clock, mocked Crew spike, standalone partner simulator and contract lint |
 | P1 | Real passkeys, TOTP, rotating sessions, step-up, light design system | Explicit routes/logout variants, complete shared controls, account lock policy and signed access tokens |
 | P2 | Queue, pagination, search, SSE replay/pubsub, hash chains | Case access policy, cursor contract, persisted gate-violation evidence and re-authenticated medical access |
 | P3 | Sourced structured DNR, document parsing, curated KB, redaction/provider controls | Medical ambiguity fixture/routing, fuller DNR editing and mocked Crew substeps |

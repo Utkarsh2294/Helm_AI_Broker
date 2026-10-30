@@ -1,7 +1,9 @@
 # Helm Broker
 
 Independent UK PMI broker workspace. React/JavaScript website, five Python agents,
-and an API boundary to the Helm consumer portal. Developed through the P0–P11 prototype phases in the complete project specification.
+and an API boundary to the Helm consumer portal. The active specification is the
+[complete main plan](docs/spec/HELM_BROKER_PORTAL_PROJECT_PLAN%20main.md); current
+acceptance is tracked in the [main-plan phase ledger](docs/phases/MAIN_PHASES.md).
 
 ## Run on Windows
 
@@ -87,7 +89,7 @@ Set `PYTHONPATH=services/api` when starting the Arq worker from the repository r
 The worker polls durable quotation jobs every five seconds and checks for daily
 learning at 02:00 Europe/London (or the next hourly tick after a restart).
 
-`docker compose up --build` runs PostgreSQL, Redis, API, worker, website and MockCore. Container
+`docker compose up --build` runs PostgreSQL, Redis, API, worker, website, MockCore and a standalone fictional partner simulator. Container
 ports bind only to loopback. The API and worker share the encryption-key volume.
 
 If Docker Desktop cannot resolve the package hosts, use `scripts/build-containers.ps1`.

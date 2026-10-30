@@ -1,0 +1,26 @@
+{
+  "measured_at": "2026-10-30T06:25:59.327065+00:00",
+  "verified": true,
+  "api_health": {
+    "status": "ok",
+    "db_backend": "postgresql+psycopg",
+    "db": "ok",
+    "redis": "ok",
+    "version": "0.1.0",
+    "mode": "demo",
+    "agent_runtime": "crewai"
+  },
+  "standalone_simulator": {
+    "status": "ok",
+    "fictional": true,
+    "partners": 5
+  },
+  "quotes_by_fictional_partner": {
+    "northgate": 6,
+    "cedar": 6,
+    "vale": 6,
+    "haven": 6,
+    "alder": 6
+  },
+  "real_insurer_requests": false
+}

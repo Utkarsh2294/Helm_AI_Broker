@@ -10,16 +10,27 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with: {version: "0.13.6"}
       - run: uv sync --frozen --extra dev --extra agents
-      - run: uv run ruff check services/api
+      - run: uv run ruff check services/api tools
+      - run: uv run ruff format --check services/api
       - run: uv run python -m pytest -q
       - run: uv run alembic upgrade head
   web:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: {version: "10.20.0"}
       - uses: actions/setup-node@v4
-        with: {node-version: "22", cache: npm, cache-dependency-path: apps/web/package-lock.json}
-      - run: npm ci
-        working-directory: apps/web
-      - run: npm run build
-        working-directory: apps/web
+        with: {node-version: "22", cache: pnpm}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter helm-broker-web run lint
+      - run: pnpm run format:check
+      - run: pnpm --filter helm-broker-web run test:unit
+      - run: pnpm exec spectral lint packages/contracts/core.yaml packages/contracts/broker.yaml
+      - run: pnpm --filter helm-broker-web run build
+  containers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose config --quiet
+      - run: docker compose build --no-cache

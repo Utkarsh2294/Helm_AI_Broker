@@ -1,4 +1,4 @@
-param([switch]$Stop, [switch]$ReuseDatabase, [switch]$Postgres)
+param([switch]$Stop, [switch]$ReuseDatabase, [switch]$Postgres, [switch]$ProductionWeb)
 $ErrorActionPreference = 'Stop'
 $qaRoot = Split-Path -Parent $PSScriptRoot
 $qaDirectory = Join-Path $qaRoot '.runtime\qa'
@@ -42,7 +42,8 @@ try {
     & $qaPython -m alembic upgrade head
     if ($LASTEXITCODE) { throw 'QA migration failed' }
     $qaApi = Start-Process -FilePath $qaPython -ArgumentList '-m uvicorn app.main:app --app-dir services/api --host 127.0.0.1 --port 8012' -WorkingDirectory $qaRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput "$qaDirectory\api.log" -RedirectStandardError "$qaDirectory\api.err.log"
-    $qaWeb = Start-Process -FilePath (Get-Command node.exe).Source -ArgumentList 'node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5182 --strictPort' -WorkingDirectory "$qaRoot\apps\web" -WindowStyle Hidden -PassThru -RedirectStandardOutput "$qaDirectory\web.log" -RedirectStandardError "$qaDirectory\web.err.log"
+    $qaWebArgs = if ($ProductionWeb) { 'node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 5182 --strictPort' } else { 'node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5182 --strictPort' }
+    $qaWeb = Start-Process -FilePath (Get-Command node.exe).Source -ArgumentList $qaWebArgs -WorkingDirectory "$qaRoot\apps\web" -WindowStyle Hidden -PassThru -RedirectStandardOutput "$qaDirectory\web.log" -RedirectStandardError "$qaDirectory\web.err.log"
     $qaApi.Id | Set-Content "$qaDirectory\api.pid"
     $qaWeb.Id | Set-Content "$qaDirectory\web.pid"
 } finally { Pop-Location }
@@ -51,4 +52,5 @@ for ($qaAttempt = 0; $qaAttempt -lt 30; $qaAttempt++) {
     catch { Start-Sleep -Seconds 1 }
 }
 if ($qaAttempt -eq 30) { throw 'QA API did not become ready' }
-Write-Output 'Isolated QA: http://127.0.0.1:5182 (SQLite fixture database and Redis DB 1)'
+$qaBackendLabel = if ($Postgres) { 'PostgreSQL' } else { 'SQLite' }
+Write-Output "Isolated QA: http://127.0.0.1:5182 ($qaBackendLabel fixture database and Redis DB 1)"

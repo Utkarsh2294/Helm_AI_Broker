@@ -68,6 +68,10 @@ services:
     ports: ["127.0.0.1:5180:5180"]
     depends_on:
       api: {condition: service_healthy}
+  partner-sim:
+    build: .
+    command: ["python", "-m", "uvicorn", "tools.partner_sim:app", "--host", "0.0.0.0", "--port", "8013"]
+    ports: ["127.0.0.1:8013:8013"]
 volumes:
   broker_postgres:
   broker_redis:

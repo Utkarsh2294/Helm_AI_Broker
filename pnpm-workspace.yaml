@@ -1,2 +1,5 @@
 packages:
   - apps/web
+onlyBuiltDependencies:
+  - esbuild
+  - '@tailwindcss/oxide'

@@ -10,7 +10,9 @@ with psycopg.connect(
     "postgresql://helm:helm_local_demo_only@127.0.0.1:55439/postgres", autocommit=True
 ) as db:
     if "--latest" in sys.argv:
-        row = db.execute("SELECT datname FROM pg_database WHERE datname ~ '^helm_qa_[0-9]+$' ORDER BY datname DESC LIMIT 1").fetchone()
+        row = db.execute(
+            "SELECT datname FROM pg_database WHERE datname ~ '^helm_qa_[0-9]+$' ORDER BY datname DESC LIMIT 1"
+        ).fetchone()
         if not row:
             raise RuntimeError("No project QA database exists")
         name = row[0]

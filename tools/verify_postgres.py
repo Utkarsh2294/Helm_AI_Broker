@@ -4,12 +4,15 @@ import os
 import re
 import subprocess
 import sys
+from pathlib import Path
+
 from uuid import uuid4
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import DatabaseError
-from app.db.models import Case
-from app.db.store import audit
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "services/api"))
+from app.db.models import Case  # noqa: E402
+from app.db.store import audit  # noqa: E402
 
 
 def main():
