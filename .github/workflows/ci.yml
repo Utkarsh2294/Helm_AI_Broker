@@ -3,13 +3,15 @@ on: [push, pull_request]
 jobs:
   api:
     runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.12"
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with: {version: "0.13.6"}
       - run: uv sync --frozen --extra dev --extra agents
       - run: uv run ruff check services/api
-      - run: uv run pytest -q
+      - run: uv run python -m pytest -q
       - run: uv run alembic upgrade head
   web:
     runs-on: ubuntu-latest
