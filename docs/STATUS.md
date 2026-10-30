@@ -1,5 +1,13 @@
 # Current build status
 
+The 31 October owner-requested automatic demo now has two human decision stages:
+policy selection/order and authenticated final sign-off. Durable agent jobs handle
+preparation and post-delivery evaluation; the case file, per-agent work/reasons,
+readable audit and scoped local assistant are available from each case. See
+[the walkthrough and control boundaries](TWO_DECISION_DEMO.md). Earlier manual
+showcase evidence below refers to that separate flow. Current automatic-demo
+verification will be recorded separately after its regression checks.
+
 The active specification is [the complete main plan](spec/HELM_BROKER_PORTAL_PROJECT_PLAN%20main.md), supplied on 30 October 2026. See [the main-plan phase ledger](phases/MAIN_PHASES.md) for current acceptance and [the baseline comparison](phases/MAIN_PLAN_BASELINE.md) for the gaps identified against the earlier build.
 
 Main-plan P0–P9 are implemented for the fictional prototype, with the additional gaps tracked in [the full-plan audit](phases/FULL_PLAN_AUDIT.md). The current Python regression passes **560 tests, including the 18 engine-package tests**, plus 7 frontend units, 16 independent JavaScript engine checks and the production web-server check. A single clean production-web browser run passes **31 tests**. Build, Ruff/ESLint/Prettier, Spectral contracts, SQLite/PostgreSQL migrations and immutable SQL evidence guards pass. See [current regression](verification/demo-regression.json), [clean browser run](verification/demo-browser.json) and [container workflow](verification/demo-container.json). Earlier phase reports are historical evidence, not additional tests to double-count.

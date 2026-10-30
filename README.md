@@ -31,14 +31,18 @@ are sent to an LLM**. The framework smoke test exercises all five CrewAI steps.
 
 ## Try a complete case
 
-1. Sign in and open a fictional case (or create a new demo request).
-2. Review the sourced demands-and-needs record; optionally edit the annual budget.
-3. Sign off the fact-find, select a partner scenario, and release the demo RFQ.
-4. Compare the top five, scores, uncertainty and sources. The six-hour RFQ deadline compresses to six seconds; first Crew startup and ranking take longer.
-5. Save stars, Recommend/Exclude/Refer and a written reason for all five plans, then select and order exactly three recommended policies.
-6. Prepare the pack, review/edit the suitability statement and save all per-plan, overall, DNR and unmet-need confirmations.
-7. Re-authenticate with the enrolled method (password for an unenrolled demo account) and approve the exact pack. Delivery is simulated and recorded.
-8. Export fourteen-section JSON/PDF evidence and replay historical states; run Agent 5's feedback evaluation in Learning & insights.
+1. Sign in and press **Start automatic demo**. Agents prepare the fictional case,
+   quotations and ranking, with live saved work and reasons.
+2. **Decision 1:** select and order three policies, review their gaps and confirm
+   the selection. Agent 4 prepares the recommendation automatically.
+3. **Decision 2:** read the recommendation and disclosures, enter your password
+   or enrolled authenticator code, then press **Sign off & deliver demo**.
+4. Inspect **Agent work & audit**, **Digital client file** and **Case assistant**.
+   Agent 5 evaluates the recorded choices automatically after delivery.
+
+See the [complete automatic demo walkthrough](docs/TWO_DECISION_DEMO.md).
+Existing cases and the [manual pilot showcase](docs/DEMO_SHOWCASE.md) keep their
+explicit G0/G1 and guided review flow for exception demonstrations.
 
 Pausing survives reloads. Medical clarification and referral scenarios require
 explicit demo exception resolution. Complaint holds block agent jobs and cannot be
