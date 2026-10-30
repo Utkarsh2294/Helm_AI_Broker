@@ -1,4 +1,5 @@
 import secrets
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, Request, Response
 from pydantic import Field
 from sqlalchemy import select
@@ -38,13 +39,35 @@ class StepUp(Model):
     code: str = ""
 
 
+def credential_access(db, request):
+    user, current = identity(db, request)
+    token = request.headers.get("X-Step-Up", "")
+    if (
+        not token
+        or not current.step_up_at
+        or utcnow() - datetime.fromisoformat(current.step_up_at) > timedelta(minutes=5)
+    ):
+        raise DomainError("Re-authenticate to change account security", 403, requires_step_up=True)
+    try:
+        proof = mfa.load_challenge(db, token, "step-up")
+    except DomainError:
+        raise DomainError("Re-authenticate to change account security", 403, requires_step_up=True)
+    if proof.user_id != user.id or proof.body.get("session_id") != current.id:
+        raise DomainError("Security verification belongs to a different session", 403, requires_step_up=True)
+    return user, proof
+
+
 @router.post("/identify")
 def identify(body: Options):
     return {"methods": ["passkey", "password"]}
 
 
 @router.post("/password")
+@router.post("/login")
 def login(body: Login, request: Request, response: Response, db=Depends(database, scope="function")):
+    from app.auth.account_lock import ensure_not_locked
+
+    ensure_not_locked(db, body.email)
     check_limit(request)
     user = authenticate(db, body.email, body.password)
     totp = db.get(TOTPSecret, user.id)
@@ -64,14 +87,16 @@ def totp_login(body: OTP, request: Request, response: Response, db=Depends(datab
 
 @router.post("/totp/setup")
 def totp_setup(request: Request, db=Depends(database, scope="function")):
-    user, _ = identity(db, request)
+    user, _ = credential_access(db, request)
     return mfa.setup_totp(db, user)
 
 
 @router.post("/totp/enable")
 def totp_enable(body: OTP, request: Request, db=Depends(database, scope="function")):
-    user, _ = identity(db, request)
-    return {"recovery_codes": mfa.enable_totp(db, user.id, body.code)}
+    user, proof = credential_access(db, request)
+    codes = mfa.enable_totp(db, user.id, body.code)
+    proof.consumed = True
+    return {"recovery_codes": codes}
 
 
 @router.post("/recovery")
@@ -85,14 +110,16 @@ def recovery(body: OTP, request: Request, response: Response, db=Depends(databas
 
 @router.post("/passkeys/register/options")
 def register_options(request: Request, db=Depends(database, scope="function")):
-    user, _ = identity(db, request)
+    user, _ = credential_access(db, request)
     return passkeys.registration_options(db, user)
 
 
 @router.post("/passkeys/register")
 def register(body: Ceremony, request: Request, db=Depends(database, scope="function")):
-    user, _ = identity(db, request)
-    return passkeys.register(db, user, body.challenge_id, body.credential)
+    user, proof = credential_access(db, request)
+    result = passkeys.register(db, user, body.challenge_id, body.credential)
+    proof.consumed = True
+    return result
 
 
 @router.post("/passkey/options")

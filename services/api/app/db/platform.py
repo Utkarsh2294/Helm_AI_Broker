@@ -19,6 +19,14 @@ from app.db.models import Base, SecretJSON, stamp, uid
 Json = JSON().with_variant(JSONB, "postgresql")
 
 
+class LoginAttempt(Base):
+    __tablename__ = "login_attempts"
+    identity_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    failures: Mapped[int] = mapped_column(default=0)
+    locked_until: Mapped[str | None] = mapped_column(String(40))
+    updated_at: Mapped[str] = mapped_column(String(40), default=stamp)
+
+
 class AuthChallenge(Base):
     __tablename__ = "auth_challenges"
     id: Mapped[str] = mapped_column(String(64), primary_key=True)

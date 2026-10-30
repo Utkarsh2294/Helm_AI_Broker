@@ -12,6 +12,10 @@ from app.schemas import DomainError
 
 def challenge(db, user_id, purpose, body=None):
     raw = secrets.token_urlsafe(32)
+    if purpose == "step-up":
+        from app.auth.tokens import mint_token
+
+        raw = mint_token(user_id, "step-up", session_id=(body or {}).get("session_id"))
     db.add(
         AuthChallenge(
             id=digest(raw),
@@ -25,6 +29,10 @@ def challenge(db, user_id, purpose, body=None):
 
 
 def load_challenge(db, raw, purpose):
+    if purpose == "step-up" and "." in raw:
+        from app.auth.tokens import verify_token
+
+        verify_token(raw, "step-up")
     row = db.scalar(select(AuthChallenge).where(AuthChallenge.id == digest(raw)).with_for_update())
     if (
         not row

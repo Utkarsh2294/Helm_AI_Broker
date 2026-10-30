@@ -77,6 +77,9 @@ class User(Base):
     can_approve: Mapped[bool] = mapped_column(default=False)
     fca_irn: Mapped[str | None] = mapped_column(String(100))
     is_lead_broker: Mapped[bool] = mapped_column(default=False)
+    is_active: Mapped[bool] = mapped_column(default=True, server_default="true")
+    failed_login_count: Mapped[int] = mapped_column(default=0, server_default="0")
+    locked_until: Mapped[str | None] = mapped_column(String(40))
 
 
 class LoginSession(Base):

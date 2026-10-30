@@ -1,20 +1,4 @@
-import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import sessionmaker
 from app import main
-from app.db.models import Base
-from app.db.store import make_engine
-
-
-@pytest.fixture
-def client(tmp_path, monkeypatch):
-    engine = make_engine(f"sqlite:///{tmp_path / 'api.db'}")
-    Base.metadata.create_all(engine)
-    monkeypatch.setattr(main, "SessionLocal", sessionmaker(engine, expire_on_commit=False))
-    main.attempts.clear()
-    with TestClient(main.app) as client:
-        yield client
-    engine.dispose()
 
 
 def login(client, email="broker@helm.demo"):

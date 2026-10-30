@@ -37,8 +37,10 @@ def database():
 async def lifespan(app):
     from app.agents.runtime import prepare_runtime
     from app.logging_setup import configure_logging
+    from app.auth.tokens import signer
 
     configure_logging()
+    signer()
     await asyncio.to_thread(prepare_runtime, settings().agent_runtime)
     with SessionLocal() as db:
         seed_demo(db)

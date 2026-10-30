@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 from decimal import Decimal
-from pydantic import Field, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     ipt_rate: str = "0.12"
     demo_delay_seconds: int = 8
     session_hours: int = 8
+    jwt_private_key: SecretStr | None = None
+    jwt_signing_key_file: str = str(ROOT / ".runtime/auth-signing.pem")
+    account_lock_minutes: int = 15
     agent_runtime: Literal["python", "crewai"] = "python"
 
     @property
@@ -68,7 +71,10 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def check_live_configuration(self):
         if self.clock_mode == "live" and (
-            "demo" in self.secret_key or not self.encryption_key or not self.cookie_secure
+            "demo" in self.secret_key
+            or not self.encryption_key
+            or not self.cookie_secure
+            or not self.jwt_private_key
         ):
             raise ValueError("Live mode requires non-demo secrets, field encryption and secure cookies")
         if not 0 <= Decimal(self.ipt_rate) <= 1:
