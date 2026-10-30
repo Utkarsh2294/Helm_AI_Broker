@@ -21,6 +21,15 @@ export default function useSSE(caseId, onEvent) {
       if (fresh.length) {
         setEvents((previous) => [...previous, ...fresh]);
         onEvent?.(fresh.at(-1));
+        const response = fresh.find(
+          (event) =>
+            event.type.startsWith('consumer.') && Date.now() - Date.parse(event.created_at) < 10000,
+        );
+        if (response && 'Notification' in window && Notification.permission === 'granted')
+          new Notification('Helm: consumer update', {
+            body: 'A consumer response is recorded. Open the case to review.',
+            tag: `helm-${caseId}-${response.seq}`,
+          });
       }
     }
     function connect() {

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import { createHmac } from 'node:crypto';
 
 async function login(page) {
   await page.goto('/');
@@ -30,6 +31,20 @@ test('broker completes the five-agent workflow with real approval and evidence',
   const copilotReply = page.waitForResponse((r) => r.url().endsWith('/ranking/copilot'));
   await panel.getByRole('button', { name: 'Why #2 above #3?' }).click();
   expect((await (await copilotReply).json()).cited_fields.length).toBeGreaterThan(0);
+  await expect(panel.getByRole('button', { name: 'Select this plan' }).first()).toBeDisabled();
+  for (let i = 0; i < 5; i++) {
+    const card = panel.locator('.quote-card').nth(i);
+    await card.getByRole('slider').fill('4');
+    await card.getByRole('radio', { name: 'Recommend', exact: true }).check();
+    await card
+      .getByRole('textbox', { name: 'Your reason for', exact: false })
+      .fill(
+        'I reviewed the recorded coverage, annual cost and hospital network against the stated consumer priorities.',
+      );
+    await card.getByRole('button', { name: 'Save rating', exact: true }).click();
+    await expect(card.getByText('Assessment saved · Broker edited')).toBeVisible();
+  }
+  await expect(panel.getByText('Rated 5 of 5 plans.', { exact: false })).toBeVisible();
   for (let i = 0; i < 3; i++) {
     const card = panel.locator('.quote-card').nth(i);
     await card.getByRole('button', { name: 'Select this plan' }).click();
@@ -71,6 +86,31 @@ test('broker completes the five-agent workflow with real approval and evidence',
   await expect(panel.getByText('Historical view · read only')).toBeVisible();
   await panel.getByRole('button', { name: 'Return to present' }).click();
   await expect(panel.getByText('Historical view · read only')).toHaveCount(0);
+  const caseId = new URL(page.url()).pathname.split('/').at(-1);
+  const current = await (await page.request.get(`/api/v1/cases/${caseId}`)).json();
+  const event = JSON.stringify({
+    id: `expiry-${Date.now()}`,
+    type: 'consumer.magic_link_expired',
+    case_id: caseId,
+    pack_hash: current.pack.pack_hash,
+  });
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const signature =
+    'sha256=' +
+    createHmac('sha256', 'demo-webhook-secret-change-before-live')
+      .update(timestamp + '.' + event)
+      .digest('hex');
+  const expired = await page.request.post('/api/v1/webhooks/core', {
+    data: event,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Helm-Timestamp': timestamp,
+      'X-Helm-Signature': signature,
+    },
+  });
+  expect(expired.ok()).toBeTruthy();
+  await panel.getByRole('tab', { name: 'Fact-find', exact: true }).click();
+  await expect(panel.getByText('The consumer link expired.', { exact: false })).toBeVisible();
   await panel.getByRole('button', { name: 'Close case' }).click();
   await page.getByRole('button', { name: 'Learning & insights', exact: true }).click();
   const evaluationResponse = page.waitForResponse(

@@ -35,6 +35,8 @@ import Reauthenticate from './components/Reauthenticate';
 import DnrEditor from './components/DnrEditor';
 import MedicalReview from './components/MedicalReview';
 import TextArea from './components/TextArea';
+import PlanAssessment from './components/PlanAssessment';
+import ComplaintHold from './components/ComplaintHold';
 
 export default function CasePanel({ id, user, onClose }) {
   const dialog = useRef(null),
@@ -42,6 +44,10 @@ export default function CasePanel({ id, user, onClose }) {
     medicalRevealed = useRef(false),
     mutationEpoch = useRef(0);
   const [medicalPrompt, setMedicalPrompt] = useState(false);
+  const [complaintPrompt, setComplaintPrompt] = useState(false),
+    [complaintReason, setComplaintReason] = useState('');
+  const [ratings, setRatings] = useState({}),
+    [dirtyRatings, setDirtyRatings] = useState([]);
   const [pausePrompt, setPausePrompt] = useState(false),
     [pauseReason, setPauseReason] = useState('');
   const [historical, setHistorical] = useState(false),
@@ -96,6 +102,21 @@ export default function CasePanel({ id, user, onClose }) {
   useEffect(() => {
     if (c?.pack) setSuitability(c.pack.suitability_final);
   }, [c?.pack?.pack_hash]);
+  useEffect(() => {
+    if (!c?.ranking?.id) return;
+    let active = true;
+    setDirtyRatings([]);
+    api(`/cases/${id}/ratings`)
+      .then((result) => {
+        if (active) setRatings(Object.fromEntries(result.ratings.map((r) => [r.plan_id, r])));
+      })
+      .catch((e) => {
+        if (active) setError(e.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, [id, c?.ranking?.id]);
   async function action(name, body = {}) {
     setBusy(true);
     setError('');
@@ -174,6 +195,10 @@ export default function CasePanel({ id, user, onClose }) {
     if (result) setTab('pack');
   }
   const comparison = c?.ranking?.top || [];
+  const reviewedCount = comparison.filter(
+    (row) => ratings[row.plan.id] && !dirtyRatings.includes(row.plan.id),
+  ).length;
+  const allReviewed = comparison.length > 0 && reviewedCount === comparison.length;
   const stage = !c
     ? 0
     : ['FACTFIND_REVIEW', 'NEEDS_INFO'].includes(c.state)
@@ -268,6 +293,11 @@ export default function CasePanel({ id, user, onClose }) {
                 >
                   {c.state === 'PAUSED_NEEDS_HUMAN' ? <Play size={14} /> : <Pause size={14} />}{' '}
                   {c.state === 'PAUSED_NEEDS_HUMAN' ? 'Resume' : 'Pause'}
+                </button>
+              )}
+              {broker && !['CLOSED', 'COMPLAINT_FLAGGED'].includes(c.state) && (
+                <button className="text-button" onClick={() => setComplaintPrompt(true)}>
+                  Record complaint
                 </button>
               )}
             </div>
@@ -377,19 +407,30 @@ export default function CasePanel({ id, user, onClose }) {
                 </div>
               )}
               {c.state === 'COMPLAINT_FLAGGED' && (
-                <div className="notice warning">
-                  <AlertTriangle size={18} />
-                  <div>
-                    <strong>Complaint hold</strong>
-                    <p>
-                      All agent jobs are blocked. A designated complaint owner must handle this
-                      case. Closure is outside this demo.
-                    </p>
-                  </div>
-                </div>
+                <ComplaintHold item={c} user={user} onResolved={refresh} />
               )}
               {tab === 'overview' && (
                 <>
+                  {c.consumer_response && (
+                    <p className="notice" role="status">
+                      Consumer response: {label(c.consumer_response.decision)}.{' '}
+                      {c.policy_bound
+                        ? 'Fictional binding confirmation recorded.'
+                        : c.state === 'CLOSED'
+                          ? 'Case closed.'
+                          : 'Review the consumer response before taking the next step.'}
+                    </p>
+                  )}
+                  {c.consumer_link?.type === 'consumer.magic_link_expired' && (
+                    <p className="notice warning" role="status">
+                      The consumer link expired. Review the case before arranging a fresh handoff.
+                    </p>
+                  )}
+                  {c.state === 'CLOSED' && (
+                    <a className="button small" href={`/api/v1/cases/${id}/closure.pdf`} download>
+                      Download closure record
+                    </a>
+                  )}
                   <div className="section-header">
                     <h3>Demands & needs record</h3>
                     <span className="subtle-badge">VERSION {c.dnr.version}</span>
@@ -646,6 +687,12 @@ export default function CasePanel({ id, user, onClose }) {
                         </div>
                       )}
                       <div className="quote-list">
+                        {broker && c.state === 'BROKER_REVIEW' && (
+                          <p className="notice" role="status">
+                            Rated {reviewedCount} of {comparison.length} plans. Save an assessment
+                            for every plan before selecting three.
+                          </p>
+                        )}
                         {comparison.map((row, i) => {
                           const plan = row.plan,
                             isSelected = selected.includes(plan.id);
@@ -759,9 +806,33 @@ export default function CasePanel({ id, user, onClose }) {
                               )}
                               {broker && c.state === 'BROKER_REVIEW' && (
                                 <>
+                                  <PlanAssessment
+                                    key={`${c.ranking.id}:${plan.id}:${ratings[plan.id]?.id || 'draft'}`}
+                                    caseId={id}
+                                    rankingId={c.ranking.id}
+                                    row={row}
+                                    rating={ratings[plan.id]}
+                                    onDirty={(planId) => {
+                                      setDirtyRatings((old) =>
+                                        old.includes(planId) ? old : [...old, planId],
+                                      );
+                                      setSelected([]);
+                                    }}
+                                    onSaved={(rating) => {
+                                      setRatings((old) => ({ ...old, [plan.id]: rating }));
+                                      setDirtyRatings((old) =>
+                                        old.filter((key) => key !== plan.id),
+                                      );
+                                    }}
+                                  />
                                   <button
                                     className={`button full ${isSelected ? 'primary' : ''}`}
-                                    disabled={!isSelected && selected.length >= 3}
+                                    disabled={
+                                      busy ||
+                                      !allReviewed ||
+                                      ratings[plan.id]?.decision !== 'YES' ||
+                                      (!isSelected && selected.length >= 3)
+                                    }
                                     onClick={() => togglePlan(plan.id)}
                                   >
                                     {isSelected ? (
@@ -829,65 +900,123 @@ export default function CasePanel({ id, user, onClose }) {
                           ))}
                         </details>
                       )}
-                      {broker && c.state === 'BROKER_REVIEW' && selected.length > 0 && (
-                        <SurveySheet container={dialog.current} ready={selected.length === 3}>
-                          <div className="feedback-area">
-                            <span className="eyebrow">A QUICK SENSE CHECK</span>
-                            <h3>Did the scores and explanations look right?</h3>
-                            {selected.map((planId) => (
-                              <div className="thumb-row" key={planId}>
-                                <span>
-                                  {comparison.find((r) => r.plan.id === planId).plan.name}
-                                </span>
-                                <button
-                                  aria-label={`Score looks right for ${planId}`}
-                                  aria-pressed={thumbs[planId] === 'up'}
-                                  onClick={() => setThumbs({ ...thumbs, [planId]: 'up' })}
+                      {broker &&
+                        c.state === 'BROKER_REVIEW' &&
+                        allReviewed &&
+                        selected.length > 0 && (
+                          <SurveySheet container={dialog.current} ready={selected.length === 3}>
+                            <div className="feedback-area">
+                              <h3>Order your three selected plans</h3>
+                              {selected.map((planId, index) => (
+                                <div
+                                  className="button-row"
+                                  key={planId}
+                                  draggable
+                                  onDragStart={(event) =>
+                                    event.dataTransfer.setData('text/plain', planId)
+                                  }
+                                  onDragOver={(event) => event.preventDefault()}
+                                  onDrop={(event) => {
+                                    event.preventDefault();
+                                    const moved = event.dataTransfer.getData('text/plain');
+                                    if (!selected.includes(moved) || moved === planId) return;
+                                    const order = selected.filter((id) => id !== moved);
+                                    order.splice(order.indexOf(planId), 0, moved);
+                                    setSelected(order);
+                                  }}
                                 >
-                                  <ThumbsUp size={16} />
-                                </button>
-                                <button
-                                  aria-label={`Dispute score for ${planId}`}
-                                  aria-pressed={thumbs[planId] === 'down'}
-                                  onClick={() => setThumbs({ ...thumbs, [planId]: 'down' })}
-                                >
-                                  <ThumbsDown size={16} />
-                                </button>
-                              </div>
-                            ))}
-                            {!selected.includes(comparison[0]?.plan.id) && (
+                                  <span>
+                                    {index + 1}.{' '}
+                                    {comparison.find((row) => row.plan.id === planId)?.plan.name}
+                                  </span>
+                                  <button
+                                    className="button small"
+                                    aria-label={`Move ${planId} up`}
+                                    disabled={index === 0}
+                                    onClick={() => {
+                                      const order = [...selected];
+                                      [order[index - 1], order[index]] = [
+                                        order[index],
+                                        order[index - 1],
+                                      ];
+                                      setSelected(order);
+                                    }}
+                                  >
+                                    ↑
+                                  </button>
+                                  <button
+                                    className="button small"
+                                    aria-label={`Move ${planId} down`}
+                                    disabled={index === selected.length - 1}
+                                    onClick={() => {
+                                      const order = [...selected];
+                                      [order[index + 1], order[index]] = [
+                                        order[index],
+                                        order[index + 1],
+                                      ];
+                                      setSelected(order);
+                                    }}
+                                  >
+                                    ↓
+                                  </button>
+                                </div>
+                              ))}
+                              <span className="eyebrow">A QUICK SENSE CHECK</span>
+                              <h3>Did the scores and explanations look right?</h3>
+                              {selected.map((planId) => (
+                                <div className="thumb-row" key={planId}>
+                                  <span>
+                                    {comparison.find((r) => r.plan.id === planId).plan.name}
+                                  </span>
+                                  <button
+                                    aria-label={`Score looks right for ${planId}`}
+                                    aria-pressed={thumbs[planId] === 'up'}
+                                    onClick={() => setThumbs({ ...thumbs, [planId]: 'up' })}
+                                  >
+                                    <ThumbsUp size={16} />
+                                  </button>
+                                  <button
+                                    aria-label={`Dispute score for ${planId}`}
+                                    aria-pressed={thumbs[planId] === 'down'}
+                                    onClick={() => setThumbs({ ...thumbs, [planId]: 'down' })}
+                                  >
+                                    <ThumbsDown size={16} />
+                                  </button>
+                                </div>
+                              ))}
+                              {!selected.includes(comparison[0]?.plan.id) && (
+                                <label>
+                                  Why wasn't the engine's first plan selected?
+                                  <input
+                                    maxLength={140}
+                                    required
+                                    value={omittedReason}
+                                    onChange={(e) => setOmittedReason(e.target.value)}
+                                  />
+                                </label>
+                              )}
                               <label>
-                                Why wasn't the engine's first plan selected?
-                                <input
+                                Anything else? <small>Optional · 140 characters</small>
+                                <textarea
                                   maxLength={140}
-                                  required
-                                  value={omittedReason}
-                                  onChange={(e) => setOmittedReason(e.target.value)}
+                                  value={note}
+                                  onChange={(e) => setNote(e.target.value)}
+                                  placeholder="A short note for the learning agent…"
                                 />
                               </label>
-                            )}
-                            <label>
-                              Anything else? <small>Optional · 140 characters</small>
-                              <textarea
-                                maxLength={140}
-                                value={note}
-                                onChange={(e) => setNote(e.target.value)}
-                                placeholder="A short note for the learning agent…"
-                              />
-                            </label>
-                            <button
-                              className="button primary full"
-                              disabled={
-                                busy || selected.length !== 3 || selected.some((p) => !thumbs[p])
-                              }
-                              onClick={createPack}
-                            >
-                              Prepare recommendation pack
-                              <ArrowRight size={16} />
-                            </button>
-                          </div>
-                        </SurveySheet>
-                      )}
+                              <button
+                                className="button primary full"
+                                disabled={
+                                  busy || selected.length !== 3 || selected.some((p) => !thumbs[p])
+                                }
+                                onClick={createPack}
+                              >
+                                Prepare recommendation pack
+                                <ArrowRight size={16} />
+                              </button>
+                            </div>
+                          </SurveySheet>
+                        )}
                     </>
                   )}
                 </>
@@ -1175,6 +1304,32 @@ export default function CasePanel({ id, user, onClose }) {
           </button>
         </BottomSheet>
         <footer className="panel-footer">
+          <BottomSheet
+            open={complaintPrompt}
+            onClose={() => setComplaintPrompt(false)}
+            container={dialog.current}
+            title="Record a complaint"
+            description="This pauses agent work and assigns a compliance owner."
+            detent="auto"
+          >
+            <TextArea
+              label="Complaint details"
+              minLength={20}
+              maxLength={1000}
+              value={complaintReason}
+              onChange={(e) => setComplaintReason(e.target.value)}
+            />
+            <button
+              className="button primary"
+              disabled={busy || complaintReason.trim().length < 20}
+              onClick={async () => {
+                if (await action('complaint', { reason: complaintReason.trim() }))
+                  setComplaintPrompt(false);
+              }}
+            >
+              Record complaint and pause work
+            </button>
+          </BottomSheet>
           <ShieldCheck size={13} />
           <span>Grounded in facts. Approved by a human.</span>
           <span>DEMO</span>
