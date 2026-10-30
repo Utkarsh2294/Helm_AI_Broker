@@ -1373,17 +1373,17 @@ small {
 }
 .audit-row strong {
   display: block;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 500;
 }
 .audit-row div > span {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--helm-tone-8a9781);
   display: block;
   margin-top: 5px;
 }
 .audit-row time {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--helm-tone-8a9781);
 }
 .audit-marker {

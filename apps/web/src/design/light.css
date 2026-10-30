@@ -39,7 +39,9 @@
 [data-theme='light'] .app-footer,
 [data-theme='light'] .metric p,
 [data-theme='light'] .request-date,
-[data-theme='light'] .table-bottom {
+[data-theme='light'] .table-bottom,
+[data-theme='light'] .audit-row div > span,
+[data-theme='light'] .audit-row time {
   color: var(--helm-text-secondary);
 }
 [data-theme='light'] input,

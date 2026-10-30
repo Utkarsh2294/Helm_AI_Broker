@@ -48,7 +48,7 @@ export default function CaseControls({ item, user, container, onSaved }) {
   }
   return (
     <>
-      <button className="text-button" onClick={show}>
+      <button className="text-button case-controls-trigger" onClick={show}>
         Case controls
       </button>
       {!open && error && (

@@ -4,6 +4,11 @@
   margin-block: 1rem;
   min-width: 0;
 }
+.case-controls-trigger {
+  min-height: 44px;
+  justify-content: flex-start;
+  padding-inline: 2rem;
+}
 
 .two-decisions,
 .single-signoff,

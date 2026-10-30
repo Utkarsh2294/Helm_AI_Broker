@@ -88,13 +88,19 @@ export function AgentWork({ data, detailed = false }) {
                 <div>
                   <strong>{label(event.type)}</strong>
                   <span>
-                    {event.actor.startsWith('broker:')
-                      ? 'Human broker decision'
-                      : event.actor.startsWith('agent:')
-                        ? label(event.actor.replace(':', ' '))
-                        : event.actor === 'demo-automation'
-                          ? 'Automatic demo preparation'
-                          : 'System'}
+                    {['recommendation_delivered', 'demo_recommendation_delivered'].includes(
+                      event.type,
+                    )
+                      ? 'Automatic delivery after broker approval'
+                      : event.actor.startsWith('broker:')
+                        ? 'Broker action'
+                        : event.actor.startsWith('agent:')
+                          ? label(event.actor.replace(':', ' '))
+                          : event.actor === 'demo-automation'
+                            ? 'Automatic demo preparation'
+                            : event.actor.startsWith('user:')
+                              ? 'Workspace user action'
+                              : 'System'}
                   </span>
                 </div>
                 <time dateTime={event.created_at}>
