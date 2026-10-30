@@ -75,6 +75,7 @@ def identity(db, request: Request):
         csrf = request.headers.get("X-CSRF-Token", "")
         if not secrets.compare_digest(row.csrf, csrf):
             raise DomainError("Invalid session verification token", 403)
+    db.info["staff_user"] = user
     return user, row
 
 

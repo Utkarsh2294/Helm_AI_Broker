@@ -6,6 +6,7 @@ from app.db.models import Activity, Case, Snapshot
 from app.main import database
 from app import service
 from app.evidence import replay
+from app.case_access import visible_cases
 
 router = APIRouter(prefix="/api/v1")
 
@@ -28,8 +29,8 @@ def search(
     limit: int = Query(50, ge=1, le=200),
     db=Depends(database, scope="function"),
 ):
-    identity(db, request)
-    query = select(Activity)
+    user, _ = identity(db, request)
+    query = select(Activity).join(Case, Activity.case_id == Case.id).where(visible_cases(user))
     for column, value in ((Activity.case_id, case_id), (Activity.actor, actor), (Activity.type, event_type)):
         if value:
             query = query.where(column == value)
@@ -53,17 +54,23 @@ def search(
 
 @router.get("/insights")
 def insights(request: Request, db=Depends(database, scope="function")):
-    identity(db, request)
-    states = dict(db.execute(select(Case.state, func.count()).group_by(Case.state)).all())
+    user, _ = identity(db, request)
+    scope = visible_cases(user)
+    states = dict(db.execute(select(Case.state, func.count()).where(scope).group_by(Case.state)).all())
     halts = dict(
         db.execute(
             select(Activity.type, func.count())
+            .join(Case, Activity.case_id == Case.id)
+            .where(scope)
             .where(Activity.type.in_(["partner_requires_human", "ranking_requires_human"]))
             .group_by(Activity.type)
         ).all()
     )
     surveys = db.scalars(
-        select(Snapshot).where(Snapshot.kind == "selection").order_by(Snapshot.version)
+        select(Snapshot)
+        .join(Case, Snapshot.case_id == Case.id)
+        .where(Snapshot.kind == "selection", scope)
+        .order_by(Snapshot.version)
     ).all()
     latest = {s.case_id: s.body["survey"] for s in surveys}
     thumbs = [v for s in latest.values() for v in s["thumbs"].values()]

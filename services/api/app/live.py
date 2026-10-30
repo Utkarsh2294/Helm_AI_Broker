@@ -38,6 +38,7 @@ def event_dict(row):
 def fetch_events(case_id, cursor, request):
     with SessionLocal() as db:
         identity(db, request)
+        get_case(db, case_id)
         return [
             event_dict(e)
             for e in db.scalars(

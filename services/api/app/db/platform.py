@@ -27,6 +27,14 @@ class LoginAttempt(Base):
     updated_at: Mapped[str] = mapped_column(String(40), default=stamp)
 
 
+class MedicalAccess(Base):
+    __tablename__ = "medical_access"
+    session_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    case_id: Mapped[str] = mapped_column(ForeignKey("cases.id"), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    expires_at: Mapped[str] = mapped_column(String(40))
+
+
 class AuthChallenge(Base):
     __tablename__ = "auth_challenges"
     id: Mapped[str] = mapped_column(String(64), primary_key=True)

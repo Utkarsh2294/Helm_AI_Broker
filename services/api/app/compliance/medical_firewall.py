@@ -1,4 +1,5 @@
 import copy
+import re
 
 MEDICAL_ROLES = {"authorised_broker", "compliance_officer"}
 
@@ -16,6 +17,27 @@ def safe_case(data, user, include_medical=False):
 
         result = hide_links(result)
     if not (include_medical and user.role in MEDICAL_ROLES):
+        texts = set()
+
+        def gather(value):
+            if isinstance(value, dict):
+                for key, item in value.items():
+                    if key == "medical_items" and isinstance(item, list):
+                        for medical in item:
+                            text = medical.get("text") if isinstance(medical, dict) else medical
+                            if isinstance(text, str) and text and text != "[REDACTED]":
+                                texts.add(text)
+                    gather(item)
+            elif isinstance(value, list):
+                for item in value:
+                    gather(item)
+
+        gather(result)
+        pattern = (
+            re.compile("|".join(re.escape(t) for t in sorted(texts, key=len, reverse=True)), re.IGNORECASE)
+            if texts
+            else None
+        )
 
         def redact(value):
             if isinstance(value, dict):
@@ -29,6 +51,8 @@ def safe_case(data, user, include_medical=False):
                 }
             if isinstance(value, list):
                 return [redact(item) for item in value]
+            if isinstance(value, str) and pattern:
+                return pattern.sub("[REDACTED]", value)
             return value
 
         result = redact(result)

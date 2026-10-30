@@ -21,6 +21,10 @@ def get_case(db, case_id):
     case = db.scalar(select(Case).where(Case.id == case_id).with_for_update())
     if not case:
         raise DomainError("Case not found", 404)
+    if db.info.get("staff_user"):
+        from app.case_access import require_case_access
+
+        require_case_access(case, db.info["staff_user"])
     return case
 
 
@@ -353,9 +357,13 @@ def act(db, case_id, action, user, session, body):
 def process_due_jobs(db):
     if settings().agents_paused:
         return
+    query = select(Job)
+    if db.info.get("staff_user"):
+        from app.case_access import visible_cases
+
+        query = query.join(Case, Job.case_id == Case.id).where(visible_cases(db.info["staff_user"]))
     jobs = db.scalars(
-        select(Job)
-        .where(Job.status == "pending", Job.due_at <= utcnow().isoformat())
+        query.where(Job.status == "pending", Job.due_at <= utcnow().isoformat())
         .order_by(Job.due_at)
         .with_for_update(skip_locked=True)
     ).all()

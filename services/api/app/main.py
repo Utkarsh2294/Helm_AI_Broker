@@ -265,11 +265,14 @@ def create_demo_request(body: QuoteRequest, request: Request, db=Depends(databas
 def case_detail(
     case_id: str, request: Request, include_medical: bool = False, db=Depends(database, scope="function")
 ):
-    user, _ = identity(db, request)
+    user, session = identity(db, request)
+    case = service.get_case(db, case_id)
     service.process_due_jobs(db)
-    if include_medical and user.role not in ("authorised_broker", "compliance_officer"):
-        raise DomainError("Your role cannot reveal medical statements", 403)
-    return safe_case(service.detail(db, service.get_case(db, case_id)), user, include_medical)
+    if include_medical:
+        from app.medical_access import require_medical_access
+
+        require_medical_access(db, case, user, session)
+    return safe_case(service.detail(db, case), user, include_medical)
 
 
 @app.patch("/api/v1/cases/{case_id}/dnr")
@@ -307,6 +310,9 @@ def edit_dnr(case_id: str, body: EditDNR, request: Request, db=Depends(database,
 from app.case_operations import router as case_operations_router  # noqa: E402
 
 app.include_router(case_operations_router)
+from app.medical_access import router as medical_router  # noqa: E402
+
+app.include_router(medical_router)
 
 
 @app.post("/api/v1/cases/{case_id}/{action}")
@@ -362,11 +368,16 @@ def edit_suitability(
 
 @app.get("/api/v1/cases/{case_id}/evidence")
 def export_evidence(case_id: str, request: Request, db=Depends(database, scope="function")):
-    user, _ = identity(db, request)
+    user, session = identity(db, request)
     case = service.get_case(db, case_id)
     from app.evidence import generate, pdf_bytes
 
-    result = generate(db, case, user, request.query_params.get("include_medical") == "true")
+    include_medical = request.query_params.get("include_medical") == "true"
+    if include_medical:
+        from app.medical_access import require_medical_access
+
+        require_medical_access(db, case, user, session)
+    result = generate(db, case, user, include_medical)
     audit(db, case_id, "evidence_exported", f"user:{user.id}")
     if "application/pdf" in request.headers.get("accept", ""):
         return Response(
