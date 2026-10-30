@@ -512,6 +512,9 @@ from app.insights_api import router as insights_router  # noqa: E402
 
 app.include_router(insights_router)
 from app.observability import instrument  # noqa: E402
+from app.demo_documents import router as demo_documents_router  # noqa: E402
+
+app.include_router(demo_documents_router)
 
 from app.case_queries import router as case_queries_router  # noqa: E402
 
