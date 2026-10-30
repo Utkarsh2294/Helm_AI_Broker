@@ -31,4 +31,8 @@ def pending_review(db, case_id):
     from app.db.store import latest
 
     triage, review = latest(db, case_id, "medical_triage"), latest(db, case_id, "medical_review")
-    return bool(triage and not (review and review.body.get("resolved")))
+    return bool(
+        triage
+        and triage.body.get("required", True)
+        and not (review and review.created_at > triage.created_at and review.body.get("resolved"))
+    )

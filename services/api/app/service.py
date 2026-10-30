@@ -742,6 +742,19 @@ def detail(db, case):
         data[kind] = snapshot.body if snapshot else None
         if kind == "broker_referral" and snapshot:
             data["broker_referral_hash"] = snapshot.body_hash
+    triage, review = latest(db, case.id, "medical_triage"), latest(db, case.id, "medical_review")
+    if triage and review and review.created_at <= triage.created_at:
+        data["medical_review"] = None
+    if data.get("medical_triage", {}) is not None and not data.get("medical_triage", {}).get(
+        "required", True
+    ):
+        data["medical_triage"] = None
+    if (
+        data.get("broker_referral")
+        and data.get("ranking")
+        and data["broker_referral"].get("ranking_id") != data["ranking"]["id"]
+    ):
+        data["broker_referral"] = None
     data["events"] = [
         {k: getattr(row, k) for k in ("seq", "actor", "type", "payload", "created_at", "hash")}
         for row in db.scalars(select(Activity).where(Activity.case_id == case.id).order_by(Activity.seq))

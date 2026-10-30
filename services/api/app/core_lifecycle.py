@@ -92,9 +92,7 @@ def handle(db, raw):
     dnr = (
         research_request(event.request)
         if triage
-        else DNR.model_validate(
-            service.invoke("intake", event.request.model_dump())
-        )
+        else DNR.model_validate(service.invoke("intake", event.request.model_dump()))
     )
     dnr.version = old.version + 1 if old else 1
     for key, fact in dnr.facts.items():
@@ -107,8 +105,12 @@ def handle(db, raw):
         "core_revision",
         {"revision": event.revision, "request_hash": digest, "event_id": event.id},
     )
-    if triage:
-        save_snapshot(db, case.id, "medical_triage", triage)
+    save_snapshot(
+        db,
+        case.id,
+        "medical_triage",
+        {"required": bool(triage), **(triage or {}), "source_revision": event.revision},
+    )
     case.profile = {
         **case.profile,
         "name": event.request.name,
