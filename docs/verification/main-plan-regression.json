@@ -1,0 +1,39 @@
+{
+  "verified_on": "2026-10-30",
+  "backend_pytest": {
+    "passed": 536,
+    "warnings": 66,
+    "seconds": 390.7
+  },
+  "engine_package_pytest": {
+    "passed": 18
+  },
+  "engine_javascript_node_test": {
+    "passed": 16
+  },
+  "frontend_vitest": {
+    "passed": 7
+  },
+  "browser_playwright": {
+    "distinct_checks_verified": 28,
+    "full_suite_passed": 26,
+    "full_suite_failed": 2,
+    "focused_retries_passed": [
+      "partner injection metadata over real HTTP",
+      "resident WebAuthn register/sign-in after rate-limit configuration fix"
+    ],
+    "note": "The two failures were fixed and each focused retry passed. This is not represented as a second all-green full-suite run."
+  },
+  "other_passed": [
+    "Ruff check and format",
+    "ESLint",
+    "Prettier",
+    "Spectral Core and Broker contracts",
+    "frozen pnpm workspace lock validation",
+    "SQLite and PostgreSQL migration round trips",
+    "PostgreSQL direct SQL mutation/deletion guards for audit, quotation plans and broker ratings",
+    "Production Vite build",
+    "Seven-service Docker build and worker-driven publication with real HTTP simulators"
+  ],
+  "live_pilot_approved": false
+}

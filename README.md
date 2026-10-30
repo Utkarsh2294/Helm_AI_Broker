@@ -34,10 +34,10 @@ are sent to an LLM**. The framework smoke test exercises all five CrewAI steps.
 1. Sign in and open a fictional case (or create a new demo request).
 2. Review the sourced demands-and-needs record; optionally edit the annual budget.
 3. Sign off the fact-find, select a partner scenario, and release the demo RFQ.
-4. After about six seconds with the default demo clock, compare the top five, scores, uncertainty and sources.
-5. Select three plans in preference order. Acknowledge any blockers and give per-plan feedback.
-6. Prepare the pack, review/edit the suitability statement and save all DNR/unmet-need confirmations.
-7. Re-enter the demo password and approve. Delivery is simulated and recorded.
+4. Compare the top five, scores, uncertainty and sources. The six-hour RFQ deadline compresses to six seconds; first Crew startup and ranking take longer.
+5. Save stars, Recommend/Exclude/Refer and a written reason for all five plans, then select and order exactly three recommended policies.
+6. Prepare the pack, review/edit the suitability statement and save all per-plan, overall, DNR and unmet-need confirmations.
+7. Re-authenticate with the enrolled method (password for an unenrolled demo account) and approve the exact pack. Delivery is simulated and recorded.
 8. Export fourteen-section JSON/PDF evidence and replay historical states; run Agent 5's feedback evaluation in Learning & insights.
 
 Pausing survives reloads. Medical clarification and referral scenarios require
@@ -55,7 +55,7 @@ automatically closed. Repeated imports and repeated partner revisions are dedupl
 | 5 Learning | `services/api/app/agents/learning.py` | Bradley–Terry proposal, evidence shrinkage, disputed-case exclusion, case-level holdout metrics |
 
 `CaseService` owns persisted state and human approval gates. Agent functions cannot
-publish advice. MockCore supplies the consumer boundary in the six-service stack. The real consumer portal and insurer systems are not connected.
+publish advice. MockCore supplies the consumer boundary in the seven-service stack. The real consumer portal and insurer systems are not connected. Signed consumer responses, link expiry and fictional binding events are tested against the local contract.
 
 ## Layout
 
@@ -65,6 +65,7 @@ services/api/app/agents/    intake, quotation, ranking, review, learning
 services/api/app/engine/    deterministic recommendation mathematics
 services/api/app/db/        database models and migrations
 packages/contracts/        shared API contracts
+packages/engine/           supplied pure Python engine, JS reference and parity tests
 tools/                     demo fixtures and development utilities
 docs/                      requirements, architecture and runbooks
 ```
@@ -86,7 +87,7 @@ docker compose up -d postgres redis
 ```
 
 Set `PYTHONPATH=services/api` when starting the Arq worker from the repository root.
-The worker polls durable quotation jobs every five seconds and checks for daily
+The worker polls durable quotation jobs every second and checks for daily
 learning at 02:00 Europe/London (or the next hourly tick after a restart).
 
 `docker compose up --build` runs PostgreSQL, Redis, API, worker, website, MockCore and a standalone fictional partner simulator. Container
@@ -106,6 +107,9 @@ This downloads compatible Linux wheels through the host network into
 `uv.lock`, and installs them offline in Docker. Interrupted downloads resume on
 the next run. The cache is local and is not committed. TLS and package hash
 verification remain enabled. Use `-Wheelhouse <path>` to reuse a completed cache.
+The build script also hydrates source bytes into a fresh context outside OneDrive,
+so cloud placeholders do not cause BuildKit file-request errors. Cached downloads
+and data/key volumes are preserved during retries.
 
 **Back up the database and encryption key together.** `.runtime/demo.key` is the
 local-only key fallback. Losing or replacing it makes existing encrypted records
@@ -118,6 +122,7 @@ $env:UV_PROJECT_ENVIRONMENT = Join-Path $env:LOCALAPPDATA 'HelmBroker\venv'
 uv sync --frozen --extra dev --extra agents --link-mode copy
 & "$env:LOCALAPPDATA\HelmBroker\venv\Scripts\python.exe" -m ruff check services/api tools
 & "$env:LOCALAPPDATA\HelmBroker\venv\Scripts\python.exe" -m pytest -q
+& "$env:LOCALAPPDATA\HelmBroker\venv\Scripts\python.exe" -m pytest packages/engine/tests -q
 & "$env:LOCALAPPDATA\HelmBroker\venv\Scripts\python.exe" -m alembic upgrade head
 & "$env:LOCALAPPDATA\HelmBroker\venv\Scripts\python.exe" tools/export_contract.py
 ```
@@ -130,5 +135,9 @@ GitHub Actions runs backend checks/migrations and the frontend build. The implem
 OpenAPI contract is tracked at `packages/contracts/broker.openapi.json`.
 
 See [docs/STATUS.md](docs/STATUS.md) for exact limits and outstanding live work.
+The final regression passes 536 backend tests. Lighthouse is 100/100/100 and axe
+reports zero violations on the eight audited screens. P10/P11 live acceptance is
+still open: see the [unsigned pilot handover](docs/PILOT_READINESS.md) and
+[measured results](docs/verification/main-plan-regression.json).
 
 The phase evidence ledger is [docs/phases/EVIDENCE.md](docs/phases/EVIDENCE.md). Operational instructions, the DPIA draft, model card and live launch gates are under `docs/`. Do not treat prototype test results as production approval.
