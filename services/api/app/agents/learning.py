@@ -86,7 +86,7 @@ def propose_improvement(records: list[dict], champion: dict | None = None, min_c
     proposed = combine_weights(champion, fit["weights"])
     evaluation = [r for r in records if r["case_id"] in holdout and r["id"] not in disputed]
     old, new = metrics(evaluation, active), metrics(evaluation, proposed)
-    improved = new["ndcg3"] > old["ndcg3"] + 1e-12 and new["top3_agreement"] >= old["top3_agreement"]
+    improved = new["ndcg3"] - old["ndcg3"] + 1e-12 >= 0.02 and new["top3_agreement"] >= old["top3_agreement"]
     return {
         **base,
         "status": "proposed" if improved else "no_improvement",

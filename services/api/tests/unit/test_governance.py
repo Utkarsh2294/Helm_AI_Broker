@@ -8,6 +8,7 @@ from app.db.store import make_engine, save_snapshot
 from app.engine.ranking import user_weights
 from app.schemas import DomainError
 from app import governance
+from review_governance_fixtures import eligible_proposal
 
 
 def test_independent_g5_shadow_metrics_promotion_and_rollback(tmp_path, monkeypatch):
@@ -28,9 +29,7 @@ def test_independent_g5_shadow_metrics_promotion_and_rollback(tmp_path, monkeypa
             password_hash=hasher.hash("test"),
         )
         db.add_all([compliance, lead])
-        proposal = ModelProposal(
-            status="proposed", body={"eligible_for_shadow": True, "weights": user_weights([])}
-        )
+        proposal = ModelProposal(status="proposed", body=eligible_proposal())
         db.add(proposal)
         db.flush()
         with pytest.raises(DomainError, match="Compliance must"):

@@ -59,9 +59,11 @@ export default function Governance({ user }) {
             promotion.
           </p>
         </div>
-        <button className="button" disabled={busy} onClick={() => change('/models/evaluate')}>
-          Run evaluation
-        </button>
+        {(user.role === 'compliance_officer' || user.role === 'admin' || user.is_lead_broker) && (
+          <button className="button" disabled={busy} onClick={() => change('/models/evaluate')}>
+            Run evaluation
+          </button>
+        )}
       </div>
       <div className="table-tabs">
         {['models', 'notebook', 'playbooks', 'decisions'].map((t) => (

@@ -688,7 +688,7 @@ def process_due_jobs(db, case_id=None):
         job.status = "completed"
 
 
-def learning_run(db):
+def learning_run(db, proposer=None):
     records = []
     consumed = set()
     for proposal in db.scalars(
@@ -727,6 +727,7 @@ def learning_run(db):
         },
     )
     result["champion_version"] = current.version
+    result["proposed_by"] = proposer.id if proposer else None
     result["selection_ids"] = [record["id"] for record in records]
     proposal = ModelProposal(body=result, status=result["status"])
     db.add(proposal)

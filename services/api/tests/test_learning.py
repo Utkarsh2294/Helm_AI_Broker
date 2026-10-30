@@ -46,3 +46,17 @@ def test_detailed_ratings_weight_training_and_referred_plans_are_held_out():
         rating["is_edited"] = False
     reduced, _ = preference_pairs([record])
     assert [p["weight"] for p in reduced] == [p["weight"] * 0.5 for p in rated]
+
+
+def test_small_heldout_improvement_cannot_propose_an_activatable_model(monkeypatch):
+    from app.agents import learning
+
+    values = iter(
+        [
+            {"ndcg3": 0.8, "top3_agreement": 0.8, "cases": 2},
+            {"ndcg3": 0.81, "top3_agreement": 0.9, "cases": 2},
+        ]
+    )
+    monkeypatch.setattr(learning, "metrics", lambda *args: next(values))
+    result = learning.propose_improvement(records(), user_weights([]))
+    assert result["status"] == "no_improvement" and not result["eligible_for_shadow"]

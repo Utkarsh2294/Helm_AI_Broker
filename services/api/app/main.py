@@ -488,9 +488,11 @@ def models(request: Request, db=Depends(database, scope="function")):
 @app.post("/api/v1/models/evaluate")
 def evaluate(request: Request, db=Depends(database, scope="function")):
     user, _ = identity(db, request)
-    if user.role not in ("authorised_broker", "compliance_officer"):
-        raise DomainError("Only advisers and compliance may run an evaluation", 403)
-    return service.learning_run(db)
+    if user.role not in ("compliance_officer", "admin") and not user.is_lead_broker:
+        raise DomainError(
+            "Only the lead broker, compliance or an administrator may request a model evaluation", 403
+        )
+    return service.learning_run(db, user)
 
 
 from app.platform_api import router as platform_router  # noqa: E402

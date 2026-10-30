@@ -37,8 +37,20 @@ def approval(db, proposal_id, stage, user):
     proposal = db.scalar(select(ModelProposal).where(ModelProposal.id == proposal_id).with_for_update())
     if not proposal:
         raise DomainError("Model change request not found", 404)
+    if proposal.body.get("proposed_by") == user.id:
+        raise DomainError("The proposer cannot approve their own model change", 403)
+    if proposal.status != ("proposed" if stage == "shadow" else "shadow_mode"):
+        raise DomainError("This proposal is not awaiting this approval stage", 409)
     if not proposal.body.get("eligible_for_shadow"):
         raise DomainError("Held-out results must improve before G5 approval")
+    old, new = proposal.body.get("champion_metrics", {}), proposal.body.get("challenger_metrics", {})
+    if (
+        not old.get("cases")
+        or not new.get("cases")
+        or new.get("ndcg3", 0) - old.get("ndcg3", 0) + 1e-12 < 0.02
+        or new.get("top3_agreement", 0) < old.get("top3_agreement", 0)
+    ):
+        raise DomainError("Verified held-out NDCG@3 improvement of at least 0.02 is required")
     if proposal.body.get("champion_version", champion(db).version) != champion(db).version:
         raise DomainError("Champion changed; rerun evaluation before G5 approval")
     rows = db.scalars(

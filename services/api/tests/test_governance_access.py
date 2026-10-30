@@ -2,7 +2,7 @@ from sqlalchemy import select
 from app import main
 from app.db.models import ModelProposal
 from app.db.platform import ModelApproval
-from app.engine.ranking import user_weights
+from review_governance_fixtures import eligible_proposal
 
 
 def login(client, email):
@@ -14,9 +14,7 @@ def login(client, email):
 def test_g5_requires_single_use_session_bound_verification(client):
     headers = login(client, "compliance@helm.demo")
     with main.SessionLocal() as db:
-        proposal = ModelProposal(
-            status="proposed", body={"eligible_for_shadow": True, "weights": user_weights([])}
-        )
+        proposal = ModelProposal(status="proposed", body=eligible_proposal())
         db.add(proposal)
         db.commit()
         proposal_id = proposal.id
