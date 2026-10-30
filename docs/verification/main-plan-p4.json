@@ -1,0 +1,26 @@
+{
+  "fictional_only": true,
+  "transport": "actual independent HTTP processes",
+  "checks": {
+    "happy": {
+      "seconds": 1.734,
+      "quotes": 30,
+      "partners": 5,
+      "state": "BROKER_REVIEW"
+    },
+    "one_real_http_timeout": {
+      "seconds": 6.953,
+      "quotes": 24,
+      "state": "BROKER_REVIEW"
+    },
+    "insufficient_quotes": {
+      "seconds": 0.265,
+      "quotes": 0,
+      "state": "PAUSED_NEEDS_HUMAN"
+    },
+    "referral": {
+      "seconds": 0.266,
+      "state": "UW_REFERRAL"
+    }
+  }
+}

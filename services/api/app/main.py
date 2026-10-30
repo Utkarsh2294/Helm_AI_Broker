@@ -12,7 +12,7 @@ from sqlalchemy.orm.exc import StaleDataError
 
 from app.auth import authenticate, identity, new_session, public_user, verify_password
 from app.agents.review import canonical_hash
-from app.agents.quotation import PARTNERS, Scenario
+from app.agents.quotation import Scenario
 from app.agents.runtime import AGENTS
 from app.config import settings
 from app.db.models import Activity, Case, ModelProposal, utcnow
@@ -137,6 +137,7 @@ class StepUp(Model):
 
 
 class Action(Model):
+    reason: str = Field(default="", max_length=1000)
     dnr_acknowledged: bool = False
     vulnerability_acknowledged: bool = False
     underwriter_reference: str = Field(default="", max_length=200)
@@ -232,7 +233,15 @@ def agents(request: Request, db=Depends(database, scope="function")):
 @app.get("/api/v1/partners")
 def partners(request: Request, db=Depends(database, scope="function")):
     identity(db, request)
-    return PARTNERS
+    from app.db.platform import Partner
+
+    return [
+        {
+            key: getattr(p, key)
+            for key in ("id", "name", "fca_status", "toba_status", "fictional", "is_active")
+        }
+        for p in db.scalars(select(Partner).order_by(Partner.id))
+    ]
 
 
 @app.get("/api/v1/cases")
@@ -298,10 +307,17 @@ def edit_dnr(case_id: str, body: EditDNR, request: Request, db=Depends(database,
             source=f"broker_edit:{case_id}:v{revised.version}",
             verified_by=user.id,
         )
-    if previous.body.get("record"):
-        from app.schemas import DNRRecord
+    from app.schemas import DNRRecord
 
+    if previous.body.get("record"):
         revised.record = DNRRecord.model_validate(previous.body["record"])
+    else:
+        from app.agents.intake import research_request
+
+        revised.record = research_request(
+            QuoteRequest.model_validate(latest(db, case_id, "request").body)
+        ).record
+    if revised.record:
         revised.record.budget_confirmed, revised.record.broker_ref = False, None
         revised.record.stated_needs = [
             {

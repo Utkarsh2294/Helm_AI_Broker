@@ -11,12 +11,47 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
     Index,
+    event,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
-from app.db.models import Base, SecretJSON, stamp, uid
+from app.db.models import Base, SecretJSON, stamp, uid, immutable
 
 Json = JSON().with_variant(JSONB, "postgresql")
+
+
+class Partner(Base):
+    __tablename__ = "partners"
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    name: Mapped[str] = mapped_column(String(120))
+    api_endpoint: Mapped[str] = mapped_column(String(200), default="/rfq")
+    api_credentials: Mapped[dict | None] = mapped_column(SecretJSON)
+    is_active: Mapped[bool] = mapped_column(default=True)
+    fictional: Mapped[bool] = mapped_column(default=True)
+    fca_status: Mapped[str] = mapped_column(String(30), default="authorised")
+    toba_status: Mapped[str] = mapped_column(String(30), default="active")
+    timeout_seconds: Mapped[int] = mapped_column(default=21600)
+    supports_moratorium: Mapped[bool] = mapped_column(default=True)
+    supports_fmu: Mapped[bool] = mapped_column(default=True)
+    max_members: Mapped[int] = mapped_column(default=10)
+
+
+class CasePlan(Base):
+    __tablename__ = "plans"
+    __table_args__ = (UniqueConstraint("snapshot_id", "plan_id", "revision"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    case_id: Mapped[str] = mapped_column(ForeignKey("cases.id"), index=True)
+    partner_id: Mapped[str] = mapped_column(ForeignKey("partners.id"))
+    snapshot_id: Mapped[str] = mapped_column(ForeignKey("snapshots.id"))
+    plan_id: Mapped[str] = mapped_column(String(100))
+    revision: Mapped[int]
+    body: Mapped[dict] = mapped_column(SecretJSON)
+    body_hash: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[str] = mapped_column(String(40), default=stamp)
+
+
+event.listen(CasePlan, "before_update", immutable)
+event.listen(CasePlan, "before_delete", immutable)
 
 
 class LoginAttempt(Base):

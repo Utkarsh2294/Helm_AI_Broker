@@ -12,7 +12,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="HELM_", env_file=str(ROOT / ".env"), extra="ignore")
     mode: Literal["demo"] = "demo"
     clock_mode: Literal["demo", "live"] = "demo"
-    partner_mode: Literal["simulator", "core"] = "simulator"
+    partner_mode: Literal["simulator", "http_simulator", "core"] = "simulator"
+    partner_simulator_url: str = "http://127.0.0.1:8013"
+    minimum_active_partners: int = Field(default=5, ge=1, le=50)
     secret_key: str = Field(
         default="local-demo-only-change-before-live-64-characters-helm-broker-portal", min_length=32
     )
@@ -31,7 +33,7 @@ class Settings(BaseSettings):
     llm_enabled: bool = False
     min_quotes: int = 3
     min_new_comparisons: int = 30
-    demo_clock_multiplier: int = 2700
+    demo_clock_multiplier: int = 3600
     agents_paused: bool = False
     rp_id: str = "localhost"
     auth_rate_limit: int = 5
@@ -45,7 +47,6 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     allowed_origin: str = "http://127.0.0.1:5180"
     ipt_rate: str = "0.12"
-    demo_delay_seconds: int = 8
     session_hours: int = 8
     jwt_private_key: SecretStr | None = None
     jwt_signing_key_file: str = str(ROOT / ".runtime/auth-signing.pem")

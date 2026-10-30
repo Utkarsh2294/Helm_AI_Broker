@@ -55,7 +55,7 @@ class WorkerSettings:
     redis_settings = RedisSettings.from_dsn(settings().redis_url)
     functions = [poll_jobs, daily_learning, nightly_verify]
     cron_jobs = [
-        cron(poll_jobs, second={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55}),
+        cron(poll_jobs, second=set(range(60))),
         cron(daily_learning, minute=0),
         cron(nightly_verify, hour=3, minute=0),
     ]

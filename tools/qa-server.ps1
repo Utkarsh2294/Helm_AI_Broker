@@ -1,15 +1,15 @@
-param([switch]$Stop, [switch]$ReuseDatabase, [switch]$Postgres, [switch]$ProductionWeb)
+param([switch]$Stop, [switch]$ReuseDatabase, [switch]$Postgres, [switch]$ProductionWeb, [switch]$HttpPartners)
 $ErrorActionPreference = 'Stop'
 $qaRoot = Split-Path -Parent $PSScriptRoot
 $qaDirectory = Join-Path $qaRoot '.runtime\qa'
 New-Item -ItemType Directory -Force $qaDirectory | Out-Null
 if ($Stop) {
-    foreach ($qaName in @('api', 'web')) {
+    foreach ($qaName in @('api', 'web', 'partner')) {
         $qaPidFile = Join-Path $qaDirectory "$qaName.pid"
         if (-not (Test-Path -LiteralPath $qaPidFile)) { continue }
         $qaPid = [int](Get-Content -LiteralPath $qaPidFile)
         $qaProcess = Get-CimInstance Win32_Process -Filter "ProcessId=$qaPid"
-        $qaNeedle = if ($qaName -eq 'api') { '--port 8012' } else { '--port 5182' }
+        $qaNeedle = if ($qaName -eq 'api') { '--port 8012' } elseif ($qaName -eq 'partner') { '--port 8015' } else { '--port 5182' }
         if ($qaProcess -and $qaProcess.CommandLine.Contains($qaNeedle)) {
             foreach ($qaChild in (Get-CimInstance Win32_Process -Filter "ParentProcessId=$qaPid")) {
                 if ($qaChild.CommandLine -and $qaChild.CommandLine.Contains($qaNeedle)) { Stop-Process -Id $qaChild.ProcessId }
@@ -35,10 +35,19 @@ $env:HELM_ALLOWED_ORIGIN = 'http://127.0.0.1:5182'
 # QA only: shared login traffic deliberately exceeds the live five-attempt policy.
 $env:HELM_AUTH_RATE_LIMIT = '500'
 $env:HELM_CORE_DELIVERY_ENABLED = 'false'
+$env:HELM_PARTNER_MODE = if ($HttpPartners) { 'http_simulator' } else { 'simulator' }
+$env:HELM_PARTNER_SIMULATOR_URL = 'http://127.0.0.1:8015'
 $env:HELM_API_PROXY = 'http://127.0.0.1:8012'
 $env:PYTHONUTF8 = '1'
 Push-Location -LiteralPath $qaRoot
 try {
+    if ($HttpPartners) {
+        $qaPriorPythonPath = $env:PYTHONPATH
+        $env:PYTHONPATH = Join-Path $qaRoot 'services\api'
+        try { $qaPartner = Start-Process -FilePath $qaPython -ArgumentList '-m uvicorn tools.partner_sim:app --host 127.0.0.1 --port 8015' -WorkingDirectory $qaRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput "$qaDirectory\partner.log" -RedirectStandardError "$qaDirectory\partner.err.log" }
+        finally { $env:PYTHONPATH = $qaPriorPythonPath }
+        $qaPartner.Id | Set-Content "$qaDirectory\partner.pid"
+    }
     & $qaPython -m alembic upgrade head
     if ($LASTEXITCODE) { throw 'QA migration failed' }
     $qaApi = Start-Process -FilePath $qaPython -ArgumentList '-m uvicorn app.main:app --app-dir services/api --host 127.0.0.1 --port 8012' -WorkingDirectory $qaRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput "$qaDirectory\api.log" -RedirectStandardError "$qaDirectory\api.err.log"

@@ -4636,6 +4636,12 @@
     "schemas": {
       "Action": {
         "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Reason",
+            "default": ""
+          },
           "dnr_acknowledged": {
             "type": "boolean",
             "title": "Dnr Acknowledged",

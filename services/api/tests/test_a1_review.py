@@ -83,3 +83,11 @@ def test_fact_find_changes_have_server_authored_provenance_and_reset_confirmatio
     assert saved["facts"]["budget_annual_pence"]["source"] != "forged-client-source"
     assert saved["record"]["broker_ref"] is None
     assert saved["record"]["budget_confirmed"] is False
+    assert (
+        client.patch(
+            "/api/v1/cases/" + case["id"] + "/dnr",
+            headers=headers,
+            json={"dnr": dnr, "reason": "An obsolete editor must not overwrite the saved version."},
+        ).status_code
+        == 409
+    )

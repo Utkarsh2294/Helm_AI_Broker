@@ -10,9 +10,13 @@ from uuid import uuid4
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import DatabaseError
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "services/api"))
 from app.db.models import Case  # noqa: E402
-from app.db.store import audit  # noqa: E402
+from app.db.store import audit, save_snapshot  # noqa: E402
+from app.db.platform import Partner, CasePlan  # noqa: E402
+from app.schemas import Plan  # noqa: E402
+from app.agents.review import canonical_hash  # noqa: E402
 
 
 def main():
@@ -41,14 +45,43 @@ def main():
             db.add(case)
             db.flush()
             audit(db, case.id, "qa_created", "test")
+            db.add(Partner(id="migration-partner", name="Fictional migration partner"))
+            db.flush()
+            plan = Plan(
+                id="migration-quote",
+                insurerId="migration-partner",
+                name="Fictional migration quote",
+                basePremiumPence=100000,
+                annualPremiumPence=112000,
+                coverage={},
+            ).model_dump(mode="json")
+            snapshot = save_snapshot(db, case.id, "quotes", {"quotes": [plan]})
+            db.add(
+                CasePlan(
+                    case_id=case.id,
+                    partner_id="migration-partner",
+                    snapshot_id=snapshot.id,
+                    plan_id=plan["id"],
+                    revision=1,
+                    body=plan,
+                    body_hash=canonical_hash(plan),
+                )
+            )
             db.commit()
-            try:
-                db.execute(text("UPDATE activity_events SET type='tampered'"))
-            except DatabaseError:
-                db.rollback()
-            else:
-                raise AssertionError("PostgreSQL permitted evidence mutation")
-        print("PASS: PostgreSQL upgrade -> empty downgrade -> upgrade; direct SQL evidence update denied")
+            for statement in (
+                "UPDATE activity_events SET type='tampered'",
+                "UPDATE plans SET revision=999",
+                "DELETE FROM plans",
+            ):
+                try:
+                    db.execute(text(statement))
+                except DatabaseError:
+                    db.rollback()
+                else:
+                    raise AssertionError("PostgreSQL permitted evidence mutation")
+        print(
+            "PASS: PostgreSQL upgrade -> empty downgrade -> upgrade; direct SQL audit/quote update and quote deletion denied"
+        )
     finally:
         target.dispose()
         with admin.connect() as conn:

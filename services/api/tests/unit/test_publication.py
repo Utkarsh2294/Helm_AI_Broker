@@ -28,6 +28,9 @@ def test_committed_approval_precedes_idempotent_core_delivery(tmp_path, monkeypa
 
     monkeypatch.setattr(publication, "CoreAPIClient", lambda: DurableCore(transport))
     with Session(engine, expire_on_commit=False) as db:
+        from app.demo import seed_partners
+
+        seed_partners(db)
         user = User(
             email="pub@test.demo",
             name="Test",

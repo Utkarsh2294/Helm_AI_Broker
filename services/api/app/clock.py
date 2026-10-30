@@ -44,12 +44,12 @@ def wall_now() -> datetime:
     return LiveClock().now()
 
 
-@lru_cache(maxsize=1)
 def get_clock() -> Clock:
     from app.config import settings
 
-    return (
-        DemoClock(multiplier=settings().demo_clock_multiplier)
-        if settings().clock_mode == "demo"
-        else LiveClock()
-    )
+    return _configured_clock(settings().clock_mode, settings().demo_clock_multiplier)
+
+
+@lru_cache(maxsize=2)
+def _configured_clock(mode, multiplier):
+    return DemoClock(multiplier=multiplier) if mode == "demo" else LiveClock()

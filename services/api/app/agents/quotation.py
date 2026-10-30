@@ -3,9 +3,11 @@
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Literal
+from pydantic import Field
 
 from app.schemas import DNR, DomainError, Model, Plan
 from app.config import settings
+from app.clock import get_clock
 
 Scenario = Literal["happy", "decline", "late", "arithmetic", "medical", "duplicate", "referral", "injection"]
 PARTNERS = [
@@ -32,10 +34,16 @@ class RFQ(Model):
     partners: list[str]
     body: dict
     demo: bool = True
+    clock_multiplier: float = Field(default=1, gt=0)
 
 
 def build_rfq(
-    dnr: DNR, *, signed_off: bool, medical_released: bool = False, now: datetime | None = None
+    dnr: DNR,
+    *,
+    signed_off: bool,
+    medical_released: bool = False,
+    now: datetime | None = None,
+    partner_ids: list[str] | None = None,
 ) -> RFQ:
     if not signed_off or dnr.missing or not dnr.consent_to_share:
         raise DomainError("Complete and sign off the fact-find before releasing quotations")
@@ -53,12 +61,12 @@ def build_rfq(
     return RFQ(
         request_id=dnr.request_id,
         dnr_version=dnr.version,
-        deadline=(now or datetime.now(timezone.utc))
-        + timedelta(seconds=settings().demo_delay_seconds if settings().clock_mode == "demo" else 21600),
-        partners=[
-            p["id"] for p in PARTNERS if p["toba_status"] == "active" and p["fca_status"] == "authorised"
-        ],
+        deadline=(now or datetime.now(timezone.utc)) + get_clock().wall_delay(timedelta(hours=6)),
+        partners=partner_ids
+        if partner_ids is not None
+        else [p["id"] for p in PARTNERS if p["toba_status"] == "active" and p["fca_status"] == "authorised"],
         body=body,
+        clock_multiplier=settings().demo_clock_multiplier if settings().clock_mode == "demo" else 1,
     )
 
 
@@ -82,7 +90,7 @@ def simulate_responses(
             {
                 **partner,
                 "state": state,
-                "response_count": 0 if state != "quoted" else 2,
+                "response_count": 0 if state != "quoted" else 6,
                 "injection_blocked": scenario == "injection" and i == 4,
             }
         )

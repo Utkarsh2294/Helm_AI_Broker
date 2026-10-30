@@ -14,6 +14,9 @@ def workspace(tmp_path):
     engine = make_engine(f"sqlite:///{tmp_path / 'workflow.db'}")
     Base.metadata.create_all(engine)
     with Session(engine, expire_on_commit=False) as db:
+        from app.demo import seed_partners
+
+        seed_partners(db)
         user = User(
             email="test@helm.demo",
             name="Broker",

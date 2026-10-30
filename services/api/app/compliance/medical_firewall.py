@@ -41,6 +41,10 @@ def safe_case(data, user, include_medical=False):
 
         def redact(value):
             if isinstance(value, dict):
+                if value.get("kind") in {"medical_review", "broker_pause"} and isinstance(
+                    value.get("body"), dict
+                ):
+                    value = {**value, "body": {**value["body"], "reason": "[REDACTED]"}}
                 return {
                     key: (
                         ["[REDACTED]"] * len(item)

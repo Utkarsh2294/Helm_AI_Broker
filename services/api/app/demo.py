@@ -7,8 +7,19 @@ from app.service import import_request
 DEMO_PASSWORD = "HelmDemo!2026"
 
 
+def seed_partners(db):
+    from app.db.platform import Partner
+    from app.agents.quotation import PARTNERS
+
+    for partner in PARTNERS:
+        if not db.get(Partner, partner["id"]):
+            db.add(Partner(**partner))
+
+
 def seed_demo(db):
     from app.knowledge import seed_knowledge
+
+    seed_partners(db)
 
     seed_knowledge(db)
     for email, name, role, approve in [

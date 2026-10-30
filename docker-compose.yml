@@ -30,6 +30,8 @@ services:
       HELM_ALLOWED_ORIGIN: http://127.0.0.1:5180
       HELM_REDIS_URL: redis://redis:6379/0
       HELM_CORE_API_URL: http://mock-core:8011
+      HELM_PARTNER_MODE: http_simulator
+      HELM_PARTNER_SIMULATOR_URL: http://partner-sim:8013
       HELM_CORE_DELIVERY_ENABLED: "true"
       HELM_ENCRYPTION_KEY: ${HELM_ENCRYPTION_KEY:-}
     command: ["sh", "-c", "alembic upgrade head && python -m uvicorn app.main:app --host 0.0.0.0 --port 8010"]
@@ -50,6 +52,8 @@ services:
       HELM_ENCRYPTION_KEY: ${HELM_ENCRYPTION_KEY:-}
       HELM_REDIS_URL: redis://redis:6379/0
       HELM_CORE_API_URL: http://mock-core:8011
+      HELM_PARTNER_MODE: http_simulator
+      HELM_PARTNER_SIMULATOR_URL: http://partner-sim:8013
       HELM_CORE_DELIVERY_ENABLED: "true"
       HELM_AGENT_RUNTIME: crewai
     command: ["python", "-m", "arq", "app.worker.WorkerSettings"]

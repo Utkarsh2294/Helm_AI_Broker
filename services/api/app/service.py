@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta
 import asyncio
+from httpx import HTTPError
 from sqlalchemy import select
 
 from app.agents.quotation import build_rfq
@@ -122,6 +123,14 @@ def act(db, case_id, action, user, session, body):
     if action == "pause":
         if case.state in [State.PUBLISHED, State.CLOSED, State.COMPLAINT_FLAGGED, State.PAUSED_NEEDS_HUMAN]:
             raise DomainError("This case cannot be paused")
+        if case.state == State.AWAIT_BROKER_RELEASE and len(body.get("reason", "").strip()) < 10:
+            raise DomainError("Record a release pause reason of at least 10 characters", 422)
+        save_snapshot(
+            db,
+            case.id,
+            "broker_pause",
+            {"reason": body.get("reason", "").strip(), "by": user.id, "from": case.state},
+        )
         case.previous_state = case.state
         transition(db, case, [case.state], State.PAUSED_NEEDS_HUMAN, "broker_paused", actor)
     elif action == "resume":
@@ -200,10 +209,18 @@ def act(db, case_id, action, user, session, body):
             raise DomainError("Explicitly acknowledge the fact-find and any vulnerability indicators", 422)
         if data.missing or not data.consent_to_share:
             raise DomainError("Fact-find has missing information or consent")
-        if data.record:
-            data.record.broker_ref, data.record.budget_confirmed = user.id, True
-            data.version = dnr.version + 1
-            dnr = save_snapshot(db, case.id, "dnr", data.model_dump(mode="json"))
+        if not data.record:
+            from app.agents.intake import research_request
+
+            source = QuoteRequest.model_validate(latest(db, case.id, "request").body)
+            data.record = research_request(source).record
+            data.record.stated_needs = [
+                {"category": key, "detail": str(value), "source": "broker-reviewed"}
+                for key, value in data.needs.model_dump().items()
+            ]
+        data.record.broker_ref, data.record.budget_confirmed = user.id, True
+        data.version = dnr.version + 1
+        dnr = save_snapshot(db, case.id, "dnr", data.model_dump(mode="json"))
         db.add(Approval(case_id=case.id, gate="G0", user_id=user.id, payload_hash=dnr.body_hash))
         transition(
             db,
@@ -236,34 +253,46 @@ def act(db, case_id, action, user, session, body):
             )
         )
         medical_ok = bool(body.get("medical_released"))
-        rfq = build_rfq(dnr, signed_off=bool(g0), medical_released=medical_ok)
+        from app.partners import active_partners
+
+        eligible = active_partners(db, dnr)
+        if len(eligible) < settings().minimum_active_partners:
+            case.previous_state = case.state
+            transition(
+                db,
+                case,
+                [case.state],
+                State.PAUSED_NEEDS_HUMAN,
+                "partner_panel_unavailable",
+                actor,
+                {"reason": "insufficient_active_partners", "code": "H7"},
+            )
+            return detail(db, case)
+        rfq = build_rfq(
+            dnr, signed_off=bool(g0), medical_released=medical_ok, partner_ids=[p.id for p in eligible]
+        )
         db.add(Approval(case_id=case.id, gate="G1", user_id=user.id, payload_hash=snapshot.body_hash))
         save_snapshot(db, case.id, "rfq", rfq.model_dump(mode="json"))
         db.add(
             Job(
                 case_id=case.id,
                 kind="collect_quotes",
-                due_at=(
-                    utcnow()
-                    + timedelta(
-                        seconds=settings().demo_delay_seconds if settings().clock_mode == "demo" else 21600
-                    )
-                ).isoformat(),
+                due_at=(rfq.deadline if settings().partner_mode == "simulator" else utcnow()).isoformat(),
                 body={"scenario": body.get("scenario", "happy")},
             )
         )
         for number in (1, 2):
+            from app.clock import get_clock
+
             db.add(
                 Job(
                     case_id=case.id,
                     kind="chase",
-                    due_at=(
-                        utcnow()
-                        + timedelta(seconds=number * (2 if settings().clock_mode == "demo" else 7200))
-                    ).isoformat(),
+                    due_at=(utcnow() + get_clock().wall_delay(timedelta(hours=2 * number))).isoformat(),
                     body={"chase_number": number},
                 )
             )
+        db.add(Job(case_id=case.id, kind="rfq_timeout", due_at=rfq.deadline.isoformat(), body={}))
         transition(db, case, [State.AWAIT_BROKER_RELEASE], State.QUOTES_PENDING, "rfq_released", actor)
     elif action == "selection":
         if case.state != State.BROKER_REVIEW:
@@ -431,12 +460,87 @@ def process_due_jobs(db):
             audit(db, case.id, "partner_chase", "agent:2", {"chase_number": job.body["chase_number"]})
             job.status = "completed"
             continue
+        if job.kind == "rfq_timeout":
+            quotes = latest(db, case.id, "quotes")
+            if not quotes or sum(p["status"] == "quoted" for p in quotes.body["quotes"]) < 3:
+                case.previous_state = State.QUOTES_PENDING
+                transition(
+                    db,
+                    case,
+                    [case.state],
+                    State.PAUSED_NEEDS_HUMAN,
+                    "insufficient_quotes",
+                    "agent:2",
+                    {"reason": "insufficient_quotes", "code": "H8", "phase_alias": "H3"},
+                )
+                job.status = "needs_human"
+            else:
+                job.status = "completed"
+            continue
         rfq = latest(db, case.id, "rfq").body
         from app.partners import PartnerGateway
         from app.agents.quotation import RFQ
 
-        replies = asyncio.run(PartnerGateway().collect(RFQ.model_validate(rfq), job.body["scenario"]))
-        save_snapshot(db, case.id, "quotes", replies)
+        from app.partners import active_partners
+        from app.db.platform import CasePlan
+        from app.agents.review import canonical_hash
+
+        dnr_model = DNR.model_validate(latest(db, case.id, "dnr").body)
+        eligible = [p for p in active_partners(db, dnr_model) if p.id in rfq["partners"]]
+        if len(eligible) < settings().minimum_active_partners:
+            case.previous_state = case.state
+            transition(
+                db,
+                case,
+                [case.state],
+                State.PAUSED_NEEDS_HUMAN,
+                "partner_panel_unavailable",
+                "agent:2",
+                {"reason": "insufficient_active_partners", "code": "H7"},
+            )
+            job.status = "needs_human"
+            continue
+        try:
+            replies = asyncio.run(
+                PartnerGateway().collect(RFQ.model_validate(rfq), job.body["scenario"], eligible)
+            )
+        except (DomainError, ValueError, HTTPError) as error:
+            code = (
+                "H8"
+                if isinstance(error, HTTPError)
+                else "H4"
+                if isinstance(error, DomainError) and str(error).startswith("Contradictory")
+                else "H7"
+                if isinstance(error, DomainError) and str(error).startswith("H7:")
+                else "H1"
+            )
+            from app.case_graph import HALTS
+
+            case.previous_state = case.state
+            transition(
+                db,
+                case,
+                [case.state],
+                State.PAUSED_NEEDS_HUMAN,
+                "partner_response_rejected",
+                "agent:2",
+                {"code": code, "reason": HALTS[code]},
+            )
+            job.status = "needs_human"
+            continue
+        quote_snapshot = save_snapshot(db, case.id, "quotes", replies)
+        for plan in replies["quotes"]:
+            db.add(
+                CasePlan(
+                    case_id=case.id,
+                    partner_id=plan["insurerId"],
+                    snapshot_id=quote_snapshot.id,
+                    plan_id=plan["id"],
+                    revision=plan["revision"],
+                    body=plan,
+                    body_hash=canonical_hash(plan),
+                )
+            )
         special = [p for p in replies["partners"] if p["state"] in ("clarification", "referred")]
         if special:
             case.previous_state = State.QUOTES_PENDING
@@ -448,6 +552,19 @@ def process_due_jobs(db):
                 "partner_requires_human",
                 "agent:2",
                 {"reason": "G3" if special[0]["state"] == "referred" else "H5"},
+            )
+            job.status = "needs_human"
+            continue
+        if sum(p["status"] == "quoted" for p in replies["quotes"]) < 3:
+            case.previous_state = State.QUOTES_PENDING
+            transition(
+                db,
+                case,
+                [case.state],
+                State.PAUSED_NEEDS_HUMAN,
+                "insufficient_quotes",
+                "agent:2",
+                {"reason": "insufficient_quotes", "code": "H8", "phase_alias": "H3"},
             )
             job.status = "needs_human"
             continue

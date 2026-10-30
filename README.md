@@ -34,7 +34,7 @@ are sent to an LLM**. The framework smoke test exercises all five CrewAI steps.
 1. Sign in and open a fictional case (or create a new demo request).
 2. Review the sourced demands-and-needs record; optionally edit the annual budget.
 3. Sign off the fact-find, select a partner scenario, and release the demo RFQ.
-4. After about eight seconds, compare the top five, scores, uncertainty and sources.
+4. After about six seconds with the default demo clock, compare the top five, scores, uncertainty and sources.
 5. Select three plans in preference order. Acknowledge any blockers and give per-plan feedback.
 6. Prepare the pack, review/edit the suitability statement and save all DNR/unmet-need confirmations.
 7. Re-enter the demo password and approve. Delivery is simulated and recorded.

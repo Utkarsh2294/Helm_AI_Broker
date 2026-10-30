@@ -30,6 +30,8 @@ def permits(source, target, event):
         return True
     if event == "broker_paused":
         return target == "PAUSED_NEEDS_HUMAN" and source not in {"PUBLISHED", "CLOSED", "COMPLAINT_FLAGGED"}
+    if event == "partner_panel_unavailable":
+        return source in {"AWAIT_BROKER_RELEASE", "QUOTES_PENDING"} and target == "PAUSED_NEEDS_HUMAN"
     if event == "complaint_flagged":
         return target == "COMPLAINT_FLAGGED" and source not in {"CLOSED", "COMPLAINT_FLAGGED"}
     if event == "broker_resumed":

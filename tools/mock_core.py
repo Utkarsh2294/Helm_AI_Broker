@@ -152,10 +152,10 @@ def create_rfq(body: dict, idempotency_key: str = Header()):
     rfq_id = secrets.token_hex(12)
     rfq = RFQ(
         request_id=body.get("request_id", "demo"),
-        dnr_version=1,
-        deadline=utcnow() + timedelta(seconds=8),
-        partners=[p["id"] for p in PARTNERS],
-        body=body,
+        dnr_version=body.get('dnr_version',1),
+        deadline=body.get('deadline') or utcnow() + timedelta(seconds=6),
+        partners=body.get('partners',[p["id"] for p in PARTNERS]),
+        body=body.get('body',body),
     )
     scenario = {
         f"S{i}": value
