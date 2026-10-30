@@ -35,6 +35,9 @@ def database():
 
 @asynccontextmanager
 async def lifespan(app):
+    from app.agents.runtime import prepare_runtime
+
+    await asyncio.to_thread(prepare_runtime, settings().agent_runtime)
     with SessionLocal() as db:
         seed_demo(db)
     yield

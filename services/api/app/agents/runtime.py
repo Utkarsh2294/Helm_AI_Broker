@@ -1,6 +1,7 @@
 """Short, rehydratable steps. CaseService owns gates and durable state."""
 
 import os
+from importlib import import_module
 from opentelemetry import trace
 from decimal import Decimal
 from app.agents.intake import research_request
@@ -37,6 +38,13 @@ AGENTS = [
         "key": "learning",
     },
 ]
+
+
+def prepare_runtime(runtime):
+    if runtime == "crewai":
+        os.environ.setdefault("CREWAI_TRACING_ENABLED", "false")
+        os.environ.setdefault("CREWAI_DISABLE_TELEMETRY", "true")
+        import_module("crewai.flow.flow")
 
 
 def execute_step(kind, payload):

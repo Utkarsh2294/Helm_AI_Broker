@@ -47,8 +47,10 @@ class WorkerSettings:
     @staticmethod
     async def on_startup(ctx):
         from app.observability import configure
+        from app.agents.runtime import prepare_runtime
 
         configure()
+        await asyncio.to_thread(prepare_runtime, settings().agent_runtime)
 
     redis_settings = RedisSettings.from_dsn(settings().redis_url)
     functions = [poll_jobs, daily_learning, nightly_verify]
