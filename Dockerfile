@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=python:3.12-slim-bookworm@sha256:e697c81897302a4c4333bade000d98038fbb21eb064f8ee1fd42d02ebcd9d337
+ARG BASE_IMAGE=python:3.12-slim-trixie@sha256:aa943ce411423c7582288f18707ff66eddcbaeb510502d747a72aeb34f30d159
 FROM ${BASE_IMAGE}
 WORKDIR /app
 COPY tools/bootstrap-linux.txt /tmp/bootstrap-linux.txt

@@ -9,7 +9,7 @@ if ($PrepareWheelhouse) {
     if (-not $Wheelhouse) { $Wheelhouse = Join-Path $env:LOCALAPPDATA 'HelmBroker\linux-wheels' }
     $brokerPython = Join-Path $env:LOCALAPPDATA 'HelmBroker\venv\Scripts\python.exe'
     if (-not (Test-Path -LiteralPath $brokerPython)) { throw 'Run scripts/start.ps1 once to prepare the host Python environment' }
-    $brokerTagImage = if ($BaseImage) { $BaseImage } else { 'python:3.12-slim-bookworm' }
+    $brokerTagImage = if ($BaseImage) { $BaseImage } else { 'python:3.12-slim-trixie' }
     $brokerTags = Join-Path $brokerBuildDirectory 'linux-tags.json'
     $brokerRequirements = Join-Path $brokerBuildDirectory 'requirements.txt'
     & docker run --rm --entrypoint python $brokerTagImage -c 'import json,platform; from pip._internal.utils.compatibility_tags import get_supported; print(json.dumps(dict(python=platform.python_version(),tags=[str(t) for t in get_supported()])))' | Set-Content -LiteralPath $brokerTags -Encoding UTF8
@@ -52,7 +52,7 @@ if ($Wheelhouse) {
     $brokerBootstrap = Get-Content -LiteralPath (Join-Path $brokerBuildRoot 'tools\bootstrap-wheel.json') -Raw | ConvertFrom-Json
     $brokerBootstrapPath = Join-Path $brokerWheelPath $brokerBootstrap.filename
     if (-not (Test-Path -LiteralPath $brokerBootstrapPath) -or ('sha256:' + (Get-FileHash -LiteralPath $brokerBootstrapPath -Algorithm SHA256).Hash.ToLowerInvariant()) -ne $brokerBootstrap.hash) { throw 'Bootstrap wheel missing or invalid; run with -PrepareWheelhouse' }
-    $brokerDockerSource = $brokerDockerSource.Replace('RUN pip install --no-cache-dir', 'RUN --mount=type=bind,from=wheelhouse,target=/wheelhouse \' + [Environment]::NewLine + '    pip install --no-cache-dir --no-index --find-links=/wheelhouse')
+    $brokerDockerSource = $brokerDockerSource.Replace('RUN pip install --no-cache-dir', 'RUN --mount=type=bind,from=wheelhouse,target=/wheelhouse \' + [Environment]::NewLine + '    pip install --no-cache-dir')
     $brokerDockerSource = $brokerDockerSource.Replace('    --mount=type=cache,target=/root/.cache/pip \', '    --mount=type=cache,target=/root/.cache/pip \' + [Environment]::NewLine + '    --mount=type=bind,from=wheelhouse,target=/wheelhouse \')
     $brokerDockerSource = $brokerDockerSource.Replace('--require-hashes --no-deps', '--no-index --find-links=/wheelhouse --require-hashes --no-deps')
     $brokerDockerSource | Set-Content -LiteralPath $brokerOfflineDockerfile
