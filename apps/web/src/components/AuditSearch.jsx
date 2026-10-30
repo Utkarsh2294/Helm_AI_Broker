@@ -1,7 +1,93 @@
 import React, { useEffect, useState } from 'react';
 import { api, label } from '../api';
 export default function AuditSearch({ onCase }) {
-  const [actor, setActor] = useState(''), [type, setType] = useState(''), [offset, setOffset] = useState(0), [data, setData] = useState({ items: [], total: 0 }), [error, setError] = useState('');
-  useEffect(() => { let active = true; const timer = setTimeout(() => api(`/audit/search?actor=${encodeURIComponent(actor)}&event_type=${encodeURIComponent(type)}&offset=${offset}`).then(v => active && setData(v)).catch(e => active && setError(e.message)), 200); return () => { active = false; clearTimeout(timer); }; }, [actor, type, offset]);
-  return <section className="surface"><div className="section-header"><h3>Search the audit trail</h3><span>{data.total} events</span></div><div className="table-controls"><label>Actor<input value={actor} onChange={e => { setActor(e.target.value); setOffset(0); }} placeholder="e.g. agent:3"/></label><label>Event type<input value={type} onChange={e => { setType(e.target.value); setOffset(0); }} placeholder="e.g. ranking_completed"/></label></div>{error && <p role="alert" className="error">{error}</p>}{data.items.map(e => <button className="audit-row" key={`${e.case_id}:${e.seq}`} onClick={() => onCase(e.case_id)}><div><strong>{label(e.type)}</strong><span>{e.actor} · {e.case_id.slice(0, 8)}</span></div><time>{new Date(e.created_at).toLocaleString('en-GB')}</time></button>)}<div className="button-row table-bottom"><button className="button small" disabled={!offset} onClick={() => setOffset(Math.max(0, offset - 50))}>Previous</button><button className="button small" disabled={offset + data.items.length >= data.total} onClick={() => setOffset(offset + 50)}>Next</button></div></section>;
+  const [actor, setActor] = useState(''),
+    [type, setType] = useState(''),
+    [offset, setOffset] = useState(0),
+    [data, setData] = useState({ items: [], total: 0 }),
+    [error, setError] = useState('');
+  useEffect(() => {
+    let active = true;
+    const timer = setTimeout(
+      () =>
+        api(
+          `/audit/search?actor=${encodeURIComponent(actor)}&event_type=${encodeURIComponent(type)}&offset=${offset}`,
+        )
+          .then((v) => active && setData(v))
+          .catch((e) => active && setError(e.message)),
+      200,
+    );
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [actor, type, offset]);
+  return (
+    <section className="surface">
+      <div className="section-header">
+        <h3>Search the audit trail</h3>
+        <span>{data.total} events</span>
+      </div>
+      <div className="table-controls">
+        <label>
+          Actor
+          <input
+            value={actor}
+            onChange={(e) => {
+              setActor(e.target.value);
+              setOffset(0);
+            }}
+            placeholder="e.g. agent:3"
+          />
+        </label>
+        <label>
+          Event type
+          <input
+            value={type}
+            onChange={(e) => {
+              setType(e.target.value);
+              setOffset(0);
+            }}
+            placeholder="e.g. ranking_completed"
+          />
+        </label>
+      </div>
+      {error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
+      {data.items.map((e) => (
+        <button
+          className="audit-row"
+          key={`${e.case_id}:${e.seq}`}
+          onClick={() => onCase(e.case_id)}
+        >
+          <div>
+            <strong>{label(e.type)}</strong>
+            <span>
+              {e.actor} · {e.case_id.slice(0, 8)}
+            </span>
+          </div>
+          <time>{new Date(e.created_at).toLocaleString('en-GB')}</time>
+        </button>
+      ))}
+      <div className="button-row table-bottom">
+        <button
+          className="button small"
+          disabled={!offset}
+          onClick={() => setOffset(Math.max(0, offset - 50))}
+        >
+          Previous
+        </button>
+        <button
+          className="button small"
+          disabled={offset + data.items.length >= data.total}
+          onClick={() => setOffset(offset + 50)}
+        >
+          Next
+        </button>
+      </div>
+    </section>
+  );
 }

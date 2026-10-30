@@ -1,0 +1,24 @@
+{
+  "name": "helm-broker-portal",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.20.0",
+  "scripts": {
+    "dev": "npm --prefix apps/web run dev",
+    "build": "npm --prefix apps/web run build",
+    "lint": "uv run ruff check services/api tools && npm --prefix apps/web run lint",
+    "test": "uv run python -m pytest -q && npm --prefix apps/web run test:unit",
+    "typecheck": "npm --prefix apps/web run lint",
+    "contracts": "uv run python tools/export_contract.py && spectral lint packages/contracts/core.yaml packages/contracts/broker.yaml",
+    "format:check": "prettier --check apps/web/src apps/web/tests apps/web/*.js"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@stoplight/spectral-cli": "^6.17.0",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10"
+  }
+}

@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5180 --strictPort",
     "build": "vite build",
+    "lint": "eslint src tests *.js",
+    "test:unit": "vitest run --passWithNoTests",
     "test:e2e": "playwright test"
   },
   "dependencies": {
