@@ -40,7 +40,16 @@ def test_all_excluded_closes_without_publication_and_requires_current_complete_a
         case_id = url.rsplit("/", 1)[-1]
         assert not db.scalar(select(Publication).where(Publication.case_id == case_id))
         assert not db.scalar(select(Approval).where(Approval.case_id == case_id, Approval.gate == "G2"))
-        assert not db.scalar(select(Job).where(Job.case_id == case_id, Job.status == "pending"))
+        assert not db.scalar(
+            select(Job).where(Job.case_id == case_id, Job.status == "pending", Job.kind != "retention_review")
+        )
+    import pymupdf
+
+    exported = client.get(url + "/closure.pdf")
+    assert exported.status_code == 200
+    with pymupdf.open(stream=exported.content, filetype="pdf") as document:
+        text = " ".join(page.get_text() for page in document)
+        assert "DEMONSTRATION ONLY" in text and body["reason"] not in text
     assert client.post(url + "/close-without-advice", headers=headers, json=body).status_code == 409
 
 

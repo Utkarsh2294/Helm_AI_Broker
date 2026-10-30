@@ -3,6 +3,22 @@
 from app.schemas import DomainError
 
 
+def record_pdf(title, paragraphs):
+    import io
+    from xml.sax.saxutils import escape
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+
+    stream = io.BytesIO()
+    styles = getSampleStyleSheet()
+    story = [Paragraph(escape(title), styles["Title"]), Spacer(1, 18)]
+    for text in paragraphs:
+        story.extend([Paragraph(escape(str(text)), styles["BodyText"]), Spacer(1, 12)])
+    SimpleDocTemplate(stream, pagesize=A4, title=title, author="Helm Broker").build(story)
+    return stream.getvalue()
+
+
 def extract_document(raw: bytes, mime: str):
     if len(raw) > 10_000_000:
         raise DomainError("Document exceeds the 10 MB limit", 413)

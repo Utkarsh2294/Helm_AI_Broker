@@ -56,6 +56,42 @@ def close_without_advice(
     service.transition(
         db, case, [State.BROKER_REVIEW], State.CLOSED, "no_suitable_plans", f"broker:{user.id}"
     )
+    import base64
+    import hashlib
+    from datetime import timedelta
+    from app.documents import record_pdf
+
+    content = record_pdf(
+        "Helm — fictional case closed without advice",
+        [
+            "DEMONSTRATION ONLY — no policy was recommended, purchased or bound.",
+            f"Case: {case.id}",
+            f"Recorded: {utcnow().isoformat()}",
+            f"Broker reference: {user.id}",
+            "All shortlisted policies were reviewed and excluded. The written rationale remains in the encrypted evidence record.",
+            *[f"{row.plan_id}: {row.stars} stars; decision {row.decision}" for row in reviews],
+            "Medical text and free-text assessment reasons are excluded from this closure PDF.",
+            "Retention review follows the approved policy; this demo does not destroy evidence automatically.",
+        ],
+    )
+    save_snapshot(
+        db,
+        case.id,
+        "closure_pdf",
+        {
+            "base64": base64.b64encode(content).decode(),
+            "sha256": hashlib.sha256(content).hexdigest(),
+            "medical_included": False,
+        },
+    )
+    db.add(
+        Job(
+            case_id=case.id,
+            kind="retention_review",
+            due_at=(utcnow() + timedelta(days=6 * 365 + 2)).isoformat(),
+            body={"requires_policy_approval": True, "proposed_years": 6},
+        )
+    )
     return {"state": case.state, "recommendation_sent": False}
 
 
