@@ -128,12 +128,14 @@ test('a server-verified resident passkey can register and sign in', async ({ pag
   try {
     await login(page);
     await page.getByRole('button', { name: 'Security & devices', exact: true }).click();
+    await page.getByLabel('Security verification password').fill('HelmDemo!2026');
+    await page.getByRole('button', { name: 'Verify security changes' }).click();
     await page.getByRole('button', { name: 'Register a passkey' }).click();
     await expect(
       page.getByText('Passkey registered. You can use it on your next sign-in.'),
     ).toBeVisible();
     await page.getByRole('button', { name: 'Sign out' }).click();
-    await page.getByRole('button', { name: 'Continue with passkey' }).click();
+    await page.getByRole('link', { name: 'Sign back in' }).click();
     await expect(
       page.getByRole('heading', { name: 'Good advice starts with clarity.' }),
     ).toBeVisible();
@@ -156,6 +158,8 @@ function otp(secret, offset = 0) {
 test('TOTP enrollment requires the second factor on the next sign-in', async ({ page }) => {
   await login(page, 'lead@helm.demo');
   await page.getByRole('button', { name: 'Security & devices', exact: true }).click();
+  await page.getByLabel('Security verification password').fill('HelmDemo!2026');
+  await page.getByRole('button', { name: 'Verify security changes' }).click();
   await page.getByRole('button', { name: 'Set up authenticator' }).click();
   const secret = await page.locator('.secret-key').textContent();
   await page.getByLabel('Enrollment code').fill(otp(secret));
@@ -164,11 +168,11 @@ test('TOTP enrollment requires the second factor on the next sign-in', async ({ 
     page.getByText('Authenticator enabled. Store your recovery codes securely.'),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Sign out' }).click();
+  await page.getByRole('link', { name: 'Sign back in' }).click();
   await page.getByLabel('Email address').fill('lead@helm.demo');
   await page.getByLabel('Password', { exact: true }).fill('HelmDemo!2026');
   await page.getByRole('button', { name: 'Sign in to your workspace' }).click();
-  await page.getByLabel('Authenticator code', { exact: true }).fill(otp(secret, 1));
-  await page.getByRole('button', { name: 'Sign in to your workspace' }).click();
+  await page.getByLabel('Digit 1 of 6').fill(otp(secret, 1));
   await expect(
     page.getByRole('heading', { name: 'Good advice starts with clarity.' }),
   ).toBeVisible();

@@ -1,3 +1,4 @@
+import Reauthenticate from './components/Reauthenticate';
 import PasskeyOrigin, { passkeysAvailable } from './components/PasskeyOrigin';
 import React, { useEffect, useState } from 'react';
 import { Fingerprint, ShieldCheck, Monitor, KeyRound } from 'lucide-react';
@@ -5,6 +6,8 @@ import { startRegistration } from '@simplewebauthn/browser';
 import { api } from './api';
 
 export default function SecuritySettings() {
+  const [securityProof, setSecurityProof] = useState('');
+  const securityHeaders = { 'X-Step-Up': securityProof };
   const [devices, setDevices] = useState([]),
     [error, setError] = useState(''),
     [message, setMessage] = useState('');
@@ -25,11 +28,13 @@ export default function SecuritySettings() {
     try {
       await task();
     } catch (e) {
+      if (e.requires_step_up) setSecurityProof('');
       setError(e.name === 'NotAllowedError' ? 'Passkey ceremony was cancelled.' : e.message);
     } finally {
       setBusy(false);
     }
   }
+  if (!securityProof) return <Reauthenticate onVerified={setSecurityProof} />;
   return (
     <>
       <div className="page-heading">
@@ -60,10 +65,14 @@ export default function SecuritySettings() {
           disabled={busy || !passkeysAvailable()}
           onClick={() =>
             run(async () => {
-              const options = await api('/auth/passkeys/register/options', { method: 'POST' });
+              const options = await api('/auth/passkeys/register/options', {
+                method: 'POST',
+                headers: securityHeaders,
+              });
               const credential = await startRegistration({ optionsJSON: options.options });
               await api('/auth/passkeys/register', {
                 method: 'POST',
+                headers: securityHeaders,
                 body: { challenge_id: options.challenge_id, credential },
               });
               setMessage('Passkey registered. You can use it on your next sign-in.');
@@ -87,7 +96,11 @@ export default function SecuritySettings() {
             className="button"
             disabled={busy}
             onClick={() =>
-              run(async () => setSetup(await api('/auth/totp/setup', { method: 'POST' })))
+              run(async () =>
+                setSetup(
+                  await api('/auth/totp/setup', { method: 'POST', headers: securityHeaders }),
+                ),
+              )
             }
           >
             Set up authenticator
@@ -99,7 +112,11 @@ export default function SecuritySettings() {
             onSubmit={(e) => {
               e.preventDefault();
               run(async () => {
-                const response = await api('/auth/totp/enable', { method: 'POST', body: { code } });
+                const response = await api('/auth/totp/enable', {
+                  method: 'POST',
+                  headers: securityHeaders,
+                  body: { code },
+                });
                 setCodes(response.recovery_codes);
                 setSetup(null);
                 setMessage('Authenticator enabled. Store your recovery codes securely.');

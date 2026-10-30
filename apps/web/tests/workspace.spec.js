@@ -84,7 +84,7 @@ test('broker completes the five-agent workflow with real approval and evidence',
       .first(),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Sign out' }).click();
-  await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "You've been signed out." })).toBeVisible();
   expect(errors).toEqual([]);
 });
 

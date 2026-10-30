@@ -17,13 +17,19 @@ export async function api(path, options = {}) {
   if (
     response.status === 401 &&
     data.detail === 'Sign in to continue' &&
+    Boolean(csrf) &&
     !retried &&
     path !== '/auth/refresh'
   ) {
     refreshInFlight ||= api('/auth/refresh', { method: 'POST' }).finally(() => {
       refreshInFlight = null;
     });
-    await refreshInFlight;
+    try {
+      await refreshInFlight;
+    } catch (cause) {
+      window.dispatchEvent(new CustomEvent('helm:session-expired'));
+      throw cause;
+    }
     return api(path, { ...options, retried: true });
   }
   if (!response.ok) {
@@ -35,6 +41,7 @@ export async function api(path, options = {}) {
     throw error;
   }
   if (data.csrf) csrf = data.csrf;
+  if (path === '/auth/logout' || path === '/auth/logout-all') csrf = '';
   return data;
 }
 export const money = (pence) =>
