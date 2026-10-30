@@ -73,6 +73,31 @@
 [data-theme='light'] .state-badge.amber {
   color: #75500d;
 }
+[data-theme='light'] .notice.warning {
+  color: #75500d;
+}
+[data-theme='light'] .notice {
+  color: var(--helm-light-ink);
+}
+[data-theme='light'] .rank-label,
+[data-theme='light'] .quote-score small,
+[data-theme='light'] .quote-price small {
+  color: var(--helm-light-muted);
+}
+[data-theme='light'] .feedback-area label small,
+[data-theme='light'] .approval-area p,
+[data-theme='light'] .timeline p {
+  color: var(--helm-light-muted);
+}
+.review-checklist .checkbox-label {
+  min-height: 32px;
+  padding-block: 4px;
+}
+.review-checklist input[type='checkbox'] {
+  width: 24px;
+  height: 24px;
+  margin: 0;
+}
 [data-theme='light'] .state-badge.red {
   color: #8b302b;
 }

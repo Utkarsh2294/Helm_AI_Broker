@@ -368,8 +368,18 @@
 }
 .demo-journey {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.25rem;
   padding-left: 1.25rem;
+}
+.demo-journey > li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.demo-showcase .button {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .demo-journey p,
 .demo-showcase form {

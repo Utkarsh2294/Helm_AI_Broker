@@ -66,7 +66,11 @@ export default function CaseControls({ item, user, container, onSaved }) {
         <form onSubmit={save}>
           <label>
             Change
-            <select value={operation} onChange={(e) => setOperation(e.target.value)}>
+            <select
+              aria-label="Case control change"
+              value={operation}
+              onChange={(e) => setOperation(e.target.value)}
+            >
               <option value="priority">Priority</option>
               <option value="assign">Assignment</option>
               {item.state === 'PAUSED_NEEDS_HUMAN' && (
@@ -77,7 +81,11 @@ export default function CaseControls({ item, user, container, onSaved }) {
           {operation === 'priority' && (
             <label>
               Priority
-              <select value={priority} onChange={(e) => setPriority(e.target.value)}>
+              <select
+                aria-label="Priority"
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+              >
                 {['normal', 'urgent'].map((value) => (
                   <option key={value} value={value}>
                     {label(value)}
@@ -89,7 +97,11 @@ export default function CaseControls({ item, user, container, onSaved }) {
           {operation === 'assign' && (
             <label>
               Assign to
-              <select value={assignee} onChange={(e) => setAssignee(e.target.value)}>
+              <select
+                aria-label="Assign to"
+                value={assignee}
+                onChange={(e) => setAssignee(e.target.value)}
+              >
                 {assignees.map((row) => (
                   <option key={row.id} value={row.id}>
                     {row.name}
