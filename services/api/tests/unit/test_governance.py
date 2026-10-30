@@ -75,6 +75,14 @@ def test_independent_g5_shadow_metrics_promotion_and_rollback(tmp_path, monkeypa
         db.flush()
         assert governance.champion(db).id == model.id
         assert len(db.scalars(select(ModelApproval)).all()) == 4
+        save_snapshot(
+            db,
+            case.id,
+            "selection",
+            {"ranking_id": f"rank-{i}", "selected": ["a", "b", "c"], "survey": {"thumbs": {"a": "down"}}},
+        )
+        db.flush()
+        assert governance.shadow_metrics(db, model)["labelled_cases"] == 29
         governance.rollback(
             db, model.id, compliance, "Restore the earlier champion after a fictional review."
         )

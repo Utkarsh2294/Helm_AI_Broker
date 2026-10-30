@@ -43,3 +43,30 @@ def test_referral_requires_saved_human_decision_and_cannot_create_cover_terms(cl
     assert current["ranking"]["id"] == ranking["id"] and current["state"] == "BROKER_REVIEW"
     assert body["reason"] not in str(current["events"])
     assert current["broker_referral"]["reason"] == "[REDACTED]"
+
+
+def test_http_simulator_g3_can_recollect_but_live_mode_cannot(client, monkeypatch):
+    from app import main
+    from app.db.models import Case, Job, utcnow
+
+    url, headers, _ = ranked(client)
+    with main.SessionLocal() as db:
+        case = db.get(Case, url.rsplit("/", 1)[-1])
+        case.state = "UW_REFERRAL"
+        db.add(
+            Job(
+                case_id=case.id,
+                kind="collect",
+                status="needs_human",
+                due_at=utcnow().isoformat(),
+                body={"scenario": "referral"},
+            )
+        )
+        db.commit()
+    monkeypatch.setattr(settings(), "partner_mode", "http_simulator")
+    monkeypatch.setattr(settings(), "clock_mode", "live")
+    body = {"underwriter_reference": "DEMO-UW-HTTP-001"}
+    assert client.post(url + "/resolve", headers=headers, json=body).status_code == 409
+    monkeypatch.setattr(settings(), "clock_mode", "demo")
+    response = client.post(url + "/resolve", headers=headers, json=body)
+    assert response.status_code == 200 and response.json()["state"] == "QUOTES_PENDING"

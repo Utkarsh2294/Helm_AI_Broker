@@ -94,7 +94,8 @@ def shadow_metrics(db, model):
     values = []
     for row in rows:
         choice = latest(db, row.case_id, "selection")
-        if choice and choice.body["ranking_id"] == row.body["ranking_id"]:
+        disputed = choice and "down" in choice.body.get("survey", {}).get("thumbs", {}).values()
+        if choice and not disputed and choice.body["ranking_id"] == row.body["ranking_id"]:
             selected = choice.body["selected"]
             values.append((ndcg(row.body["champion"], selected), ndcg(row.body["challenger"], selected)))
     return {

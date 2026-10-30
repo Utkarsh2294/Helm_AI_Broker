@@ -148,7 +148,11 @@ def act(db, case_id, action, user, session, body):
         if case.state not in (State.PAUSED_NEEDS_HUMAN, State.UW_REFERRAL):
             raise DomainError("No exception is awaiting resolution")
         if case.state == State.UW_REFERRAL or case.previous_state == State.UW_REFERRAL:
-            if settings().partner_mode != "simulator" or len(body.get("underwriter_reference", "")) < 3:
+            if (
+                settings().clock_mode != "demo"
+                or settings().partner_mode not in {"simulator", "http_simulator"}
+                or len(body.get("underwriter_reference", "").strip()) < 3
+            ):
                 raise DomainError(
                     "G3 requires a recorded fictional underwriter confirmation; live referrals need partner evidence"
                 )
