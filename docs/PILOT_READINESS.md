@@ -4,6 +4,8 @@ Date: 30 October 2026. Scope: the complete main plan in `docs/spec/HELM_BROKER_P
 
 **Fictional demonstration: available. Real-customer pilot: NO GO until the release gates below have named owners and evidence.** Automated checks do not constitute legal, clinical, security or regulatory approval.
 
+The owner requested a **demo document flow to showcase how this works**. The [Pilot showcase walkthrough](DEMO_SHOWCASE.md) provides the implemented seven-PDF flow, normal G0–G2 journey, independent fictional compliance/legal reviews, and downloadable bound decision record. This demonstration replaces the request for real pilot details for the current task; the live gates below remain unchanged.
+
 ## Demonstration walkthrough
 
 1. Start PostgreSQL/Redis and `scripts/start.ps1`; open `http://127.0.0.1:5180`. Alternatively, use the seven-service Compose deployment. Demo identities are listed in the operator guide.

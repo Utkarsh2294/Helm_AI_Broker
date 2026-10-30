@@ -1,0 +1,44 @@
+[
+  {
+    "document": "renewal",
+    "pages": 1,
+    "sha256": "c7c277d054dccc5b6d0cac850288f32b83e0e9804d4a33fd30436ef629090981",
+    "text_within_page": true
+  },
+  {
+    "document": "ipid",
+    "pages": 1,
+    "sha256": "d621fa8ae3ae1b620f10d22a04ff0bbd88a99fe5b619a3766f98f72d3919a44d",
+    "text_within_page": true
+  },
+  {
+    "document": "toba",
+    "pages": 1,
+    "sha256": "0728739742a35c2018b9ca5c39e8d8a9f97ab4722821fafdfdbccfc92658b7b2",
+    "text_within_page": true
+  },
+  {
+    "document": "dpia",
+    "pages": 1,
+    "sha256": "1c383f486d928e005969872353d92b80a8e02171dde61a48a4e4f25976f18767",
+    "text_within_page": true
+  },
+  {
+    "document": "register",
+    "pages": 1,
+    "sha256": "0ab1b1cb0a00b9fe49bb7718ca4a27a9dc84af461b6de15c29fb3e0a1fcd2d4b",
+    "text_within_page": true
+  },
+  {
+    "document": "runbook",
+    "pages": 1,
+    "sha256": "364d1d57a67d4eec973acbe7dfab9e209847bff82c509b0520f195e8d2a85a93",
+    "text_within_page": true
+  },
+  {
+    "document": "go-no-go",
+    "pages": 1,
+    "sha256": "aaa3e1dd4320498f9fa790b7d1f9390ce123f97aeb82e898f2cd872779e13b31",
+    "text_within_page": true
+  }
+]

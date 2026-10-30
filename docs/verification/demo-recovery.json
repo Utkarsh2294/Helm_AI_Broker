@@ -1,0 +1,13 @@
+{
+  "cases": 8,
+  "events_verified": 53,
+  "snapshots_decrypted_and_verified": 45,
+  "database_integrity": "ok",
+  "live_recovery_approved": false,
+  "backup_seconds": 0.376,
+  "restore_seconds": 0.329,
+  "bundle_encrypted_with_separate_ephemeral_passphrase": true,
+  "restored_into_new_isolated_directory": true,
+  "primary_database_unchanged": true,
+  "offsite_storage_or_pitr_verified": false
+}
