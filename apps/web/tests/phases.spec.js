@@ -34,9 +34,11 @@ test('keyboard command search, Quick Look and case filters work', async ({ page 
   await page.keyboard.press('Control+k');
   const palette = page.getByRole('dialog', { name: 'Search your workspace' });
   await palette.getByLabel('Command search').fill('Asha');
+  await expect(palette.getByRole('option').filter({ hasText: 'Asha Patel' })).toBeVisible();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog', { name: 'Case workspace' })).toBeVisible();
   await page.keyboard.press('Escape');
+  await page.getByRole('textbox', { name: 'Search cases' }).fill('Asha');
   await page.getByRole('button').filter({ hasText: 'Asha Patel' }).first().focus();
   await page.keyboard.press('Space');
   await expect(page.getByRole('dialog', { name: 'Quick look', exact: true })).toBeVisible();

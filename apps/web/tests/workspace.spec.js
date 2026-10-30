@@ -68,10 +68,23 @@ test('broker completes the five-agent workflow with real approval and evidence',
   expect(errors).toEqual([]);
 });
 
+test('workspace counts include cases beyond the loaded page', async ({ page }) => {
+  await login(page);
+  const listing = await (await page.request.get('/api/v1/cases?limit=50')).json();
+  const total = Object.values(listing.summary).reduce((sum, count) => sum + count, 0);
+  const open = total - (listing.summary.PUBLISHED || 0) - (listing.summary.CLOSED || 0);
+  await expect(page.locator('.metric').filter({ hasText: 'Open cases' }).locator('strong')).toHaveText(String(open).padStart(2, '0'));
+  await expect(page.locator('.case-section .count-badge')).toHaveText(String(listing.total));
+  await page.getByRole('textbox', { name: 'Search cases' }).fill('Asha');
+  const filtered = await (await page.request.get('/api/v1/cases?limit=50&q=Asha')).json();
+  await expect(page.locator('.case-section .count-badge')).toHaveText(String(filtered.total));
+});
+
 for (const width of [1440, 768, 390]) {
   test(`workspace and case panel fit viewport ${width}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 });
     await login(page);
+    await page.getByRole('textbox', { name: 'Search cases' }).fill('Asha');
     await expect(page.getByRole('button', { name: 'Open Asha Patel' })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: `../../.runtime/workspace-${width}.png`, fullPage: true });
