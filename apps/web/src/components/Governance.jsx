@@ -1,11 +1,14 @@
 import Insights from './Insights';
 import React, { useEffect, useState } from 'react';
 import { api, label } from '../api';
+import BottomSheet from './BottomSheet';
+import Reauthenticate from './Reauthenticate';
 export default function Governance({ user }) {
   const [models, setModels] = useState([]),
     [data, setData] = useState({ models: [], events: [] }),
     [edges, setEdges] = useState([]),
     [playbooks, setPlaybooks] = useState([]);
+  const [pendingDecision, setPendingDecision] = useState(null);
   const [tab, setTab] = useState('models'),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
@@ -31,11 +34,11 @@ export default function Governance({ user }) {
   useEffect(() => {
     load();
   }, []);
-  async function change(url, body = {}, method = 'POST') {
+  async function change(url, body = {}, method = 'POST', proof = null) {
     setBusy(true);
     setError('');
     try {
-      await api(url, { method, body });
+      await api(url, { method, body, ...(proof ? { headers: { 'X-Step-Up': proof } } : {}) });
       await load();
     } catch (e) {
       setError(e.message);
@@ -52,7 +55,8 @@ export default function Governance({ user }) {
           <h2>Learn carefully. Improve deliberately.</h2>
           <p>
             Thirty comparisons, held-out improvement and independent human decisions precede shadow
-            mode. A challenger needs twenty new labelled cases before promotion.
+            mode. A challenger needs thirty new labelled cases and a 0.02 NDCG@3 improvement before
+            promotion.
           </p>
         </div>
         <button className="button" disabled={busy} onClick={() => change('/models/evaluate')}>
@@ -92,7 +96,7 @@ export default function Governance({ user }) {
                   <button
                     className="button"
                     disabled={busy}
-                    onClick={() => change(`/engine-models/${m.id}/rollback`)}
+                    onClick={() => setPendingDecision(`/engine-models/${m.id}/rollback`)}
                   >
                     Roll back champion
                   </button>
@@ -127,14 +131,14 @@ export default function Governance({ user }) {
                   <button
                     className="button"
                     disabled={busy}
-                    onClick={() => change(`/mcr/${m.id}/approve`)}
+                    onClick={() => setPendingDecision(`/mcr/${m.id}/approve`)}
                   >
                     Approve shadow · G5
                   </button>
                   <button
                     className="button"
                     disabled={busy}
-                    onClick={() => change(`/mcr/${m.id}/promote`)}
+                    onClick={() => setPendingDecision(`/mcr/${m.id}/promote`)}
                   >
                     Approve promotion · G5
                   </button>
@@ -254,6 +258,22 @@ export default function Governance({ user }) {
           {!data.events.length && <p>No model approvals recorded.</p>}
         </section>
       )}
+      <BottomSheet
+        open={Boolean(pendingDecision)}
+        onClose={() => setPendingDecision(null)}
+        title="Verify model decision"
+        description="Confirm your own decision with a fresh, single-use verification. A different authorised reviewer is still required for the second approval."
+      >
+        <Reauthenticate
+          title="Re-authenticate for G5"
+          actionLabel="Verify and record decision"
+          onVerified={async (proof) => {
+            const url = pendingDecision;
+            setPendingDecision(null);
+            await change(url, {}, 'POST', proof);
+          }}
+        />
+      </BottomSheet>
     </>
   );
 }

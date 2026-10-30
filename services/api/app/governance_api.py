@@ -35,7 +35,11 @@ def dashboard(request: Request, db=Depends(database, scope="function")):
 
 @router.post("/mcr/{proposal_id}/{action}")
 def decide(proposal_id: str, action: str, request: Request, db=Depends(database, scope="function")):
-    user, _ = identity(db, request)
+    from app.auth.router import credential_access
+
+    user, proof = credential_access(db, request)
+    governance.governance_role(user)
+    proof.consumed = True
     if action == "approve":
         return governance.approve_shadow(db, proposal_id, user)
     if action == "promote":
@@ -45,7 +49,10 @@ def decide(proposal_id: str, action: str, request: Request, db=Depends(database,
 
 @router.post("/engine-models/{model_id}/rollback")
 def rollback(model_id: str, request: Request, db=Depends(database, scope="function")):
-    user, _ = identity(db, request)
+    from app.auth.router import credential_access
+
+    user, proof = credential_access(db, request)
+    proof.consumed = True
     return governance.rollback(db, model_id, user)
 
 
