@@ -348,6 +348,9 @@ app.include_router(case_documents_router)
 from app.referrals import router as referrals_router  # noqa: E402
 
 app.include_router(referrals_router)
+from app.case_controls import router as case_controls_router  # noqa: E402
+
+app.include_router(case_controls_router)
 from app.medical_access import router as medical_router  # noqa: E402
 
 app.include_router(medical_router)

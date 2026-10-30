@@ -21,7 +21,6 @@ import {
   CheckCheck,
   Pencil,
   Save,
-  UserCheck,
 } from 'lucide-react';
 import { api, label, money } from './api';
 import { Status } from './workspace';
@@ -40,6 +39,7 @@ import ComplaintHold from './components/ComplaintHold';
 import CloseWithoutAdvice from './components/CloseWithoutAdvice';
 import ReferralControls from './components/ReferralControls';
 import CaseDocuments from './components/CaseDocuments';
+import CaseControls from './components/CaseControls';
 
 export default function CasePanel({ id, user, onClose }) {
   const dialog = useRef(null),
@@ -280,12 +280,6 @@ export default function CasePanel({ id, user, onClose }) {
               >
                 PDF
               </button>
-              {broker && !c.assigned_to && (
-                <button className="text-button" disabled={busy} onClick={() => action('assign')}>
-                  <UserCheck size={14} />
-                  Assign to me
-                </button>
-              )}
               {broker && !['PUBLISHED', 'CLOSED', 'COMPLAINT_FLAGGED'].includes(c.state) && (
                 <button
                   className="text-button"
@@ -304,6 +298,9 @@ export default function CasePanel({ id, user, onClose }) {
                 </button>
               )}
             </div>
+            {broker && c.state !== 'CLOSED' && (
+              <CaseControls item={c} user={user} container={dialog.current} onSaved={refresh} />
+            )}
             <div className="panel-tabs" role="tablist" aria-label="Case views">
               {[
                 ['overview', 'Fact-find'],
