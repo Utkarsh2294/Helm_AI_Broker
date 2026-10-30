@@ -31,10 +31,15 @@ for its G0/G1 and exception scenarios.
 
 ## Inspect the workspace
 
-**Agent work & audit** shows all five agents, waiting/running/complete/held status,
+**Audit trail**, available on every dashboard case row and inside the case, shows
+only the selected case's five agents, waiting/running/complete/held status,
 their purpose, saved output, timestamp and evidence reference. Expanded events
 distinguish automatic preparation, agent outputs and human decisions. The audit
 chain is verified from persisted events. Evidence can be downloaded as JSON.
+
+The workspace uses the light theme throughout. The agent-team page, decorative
+team strip, dark-mode switch and combined audit page have been removed. Old
+`/agents` and `/audit` links return to the case dashboard.
 
 **Digital client file** shows available identity facts, preferences, priority order,
 budget, benefit targets, consent, source references, document metadata, versioned

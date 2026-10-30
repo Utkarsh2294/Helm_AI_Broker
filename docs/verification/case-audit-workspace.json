@@ -1,0 +1,101 @@
+{
+  "date": "2026-10-31",
+  "revision": "1478f52f760fb9088819d2d9ed4771742387670a",
+  "scope": "Light-only dashboard, removed team page/strip and combined audit page; direct case-scoped audit actions",
+  "removed": [
+    "Agent-team page and navigation",
+    "Pictured dashboard team strip",
+    "Dark-mode control, preference loading and dark CSS",
+    "Combined audit screen and command-palette entry"
+  ],
+  "navigation": "Each case row opens /case/{id}?view=audit. Retired /agents and /audit routes redirect to /queue.",
+  "tests": {
+    "frontend_units": {
+      "passed": 9,
+      "failed": 0
+    },
+    "initial_affected_browser_run": {
+      "passed": 13,
+      "failed": 1,
+      "total": 14,
+      "failure": "Long evidence hash overflowed in a manual-case audit on a phone; fixed."
+    },
+    "first_recheck": {
+      "passed": 3,
+      "failed": 1,
+      "failure": "Existing complaint-case inline link needed an underline on the populated learning page; fixed."
+    },
+    "final_recheck": {
+      "passed": 4,
+      "failed": 0,
+      "suites": [
+        "case-audit.spec.js",
+        "readability.spec.js",
+        "accessibility.spec.js"
+      ]
+    },
+    "single_full_browser_run_after_fixes": false,
+    "backend_regression": "Not rerun; no backend, schema, dependencies or agent logic changed."
+  },
+  "accessibility": {
+    "latest_general_screen_count": 6,
+    "violations": 0,
+    "screens": [
+      {
+        "screen": "login",
+        "violations": []
+      },
+      {
+        "screen": "/queue",
+        "violations": []
+      },
+      {
+        "screen": "/partners",
+        "violations": []
+      },
+      {
+        "screen": "/learning",
+        "violations": []
+      },
+      {
+        "screen": "/security",
+        "violations": []
+      },
+      {
+        "screen": "case fact-find",
+        "violations": []
+      }
+    ],
+    "manual_screen_reader_acceptance": "not claimed"
+  },
+  "build": "passed",
+  "docker_web_image": "built and running",
+  "eslint": "passed",
+  "prettier": "passed",
+  "runtime_checks": [
+    {
+      "runtime": "preview",
+      "light_only": true,
+      "team_strip_removed": true,
+      "team_page_removed": true,
+      "global_audit_page_removed": true,
+      "case_audit_verified": true,
+      "mobile_audit_fits": true
+    },
+    {
+      "runtime": "containers",
+      "light_only": true,
+      "team_strip_removed": true,
+      "team_page_removed": true,
+      "global_audit_page_removed": true,
+      "case_audit_verified": true,
+      "mobile_audit_fits": true
+    }
+  ],
+  "preserved": [
+    "Case access checks",
+    "All audit records and case evidence",
+    "Five agents and the two-decision demo flow",
+    "Existing client records and authentication settings"
+  ]
+}

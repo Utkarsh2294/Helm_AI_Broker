@@ -37,7 +37,9 @@ are sent to an LLM**. The framework smoke test exercises all five CrewAI steps.
    the selection. Agent 4 prepares the recommendation automatically.
 3. **Decision 2:** read the recommendation and disclosures, enter your password
    or enrolled authenticator code, then press **Sign off & deliver demo**.
-4. Inspect **Agent work & audit**, **Digital client file** and **Case assistant**.
+4. Use the **Audit trail** button on a case row to inspect only that case's agent
+   work and reasons. **Digital client file** and **Case assistant** remain inside
+   the case. The workspace is light-only; team and combined-audit pages are removed.
    Agent 5 evaluates the recorded choices automatically after delivery.
 
 See the [complete automatic demo walkthrough](docs/TWO_DECISION_DEMO.md).

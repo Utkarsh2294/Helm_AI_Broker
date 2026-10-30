@@ -1,5 +1,16 @@
 # Current build status
 
+The latest workspace simplification removes the agent-team page, team strip,
+dark-mode controls/styles and combined audit page. Each case row opens its own
+audit directly; existing evidence, agent execution and approval controls remain.
+Retired team/audit links return to the dashboard.
+
+[Workspace verification](verification/case-audit-workspace.json) records the web
+and container builds, nine passing frontend units, the 14-scenario browser run
+and four passing final rechecks after the mobile/link fixes. The local preview
+and Docker site both pass case-scoped audit and light-only checks. Backend
+regression was not repeated for these frontend-only changes.
+
 The 31 October owner-requested automatic demo now has two human decision stages:
 policy selection/order and authenticated final sign-off. Durable agent jobs handle
 preparation and post-delivery evaluation; the case file, per-agent work/reasons,

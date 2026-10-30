@@ -16,7 +16,9 @@ recorded choices after delivery. The local start script enables durable backgrou
 processing even with the case window closed. See the
 [automatic walkthrough](../TWO_DECISION_DEMO.md) for each function. Digital client
 files, per-agent work/reasons and the scoped case assistant are available from the
-case workspace. The staged process below describes existing manual cases and the
+case workspace. Each dashboard row has an **Audit trail** button that opens just
+that case's audit. There is no combined audit page or team page, and the site is
+light-only. The staged process below describes existing manual cases and the
 separate pilot/exception showcase.
 
 The separate partner simulator is the seventh Compose service. For unreliable Docker DNS, run `scripts/build-containers.ps1 -PrepareWheelhouse`; later builds can reuse `%LOCALAPPDATA%/HelmBroker/linux-wheels`. The script verifies locked wheel hashes and hydrates source bytes into a fresh build context outside OneDrive, avoiding cloud-placeholder errors. Do not delete the download cache or any database/key volumes when retrying.
