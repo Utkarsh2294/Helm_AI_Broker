@@ -132,6 +132,7 @@ class PartnerGateway:
                         "id": partner.id,
                         "name": partner.name,
                         "state": "referred" if state == "referral" else state,
+                        "injection_blocked": result.get("injection_blocked") is True,
                     }
                 except (TimeoutError, httpx.TimeoutException):
                     state = "timed_out"

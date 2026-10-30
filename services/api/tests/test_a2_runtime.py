@@ -113,6 +113,17 @@ async def test_transient_failure_retries_once_with_the_same_idempotency_key(monk
     assert len(calls) == 2 and calls[0] == calls[1]
 
 
+@pytest.mark.anyio
+async def test_http_simulator_preserves_the_injection_guard_evidence(monkeypatch):
+    from tools.partner_sim import app, responses
+
+    responses.clear()
+    monkeypatch.setattr(settings(), "partner_mode", "http_simulator")
+    result = await PartnerGateway(httpx.ASGITransport(app=app)).collect(rfq(), "injection")
+    assert len(result["quotes"]) == 30
+    assert sum(bool(p.get("injection_blocked")) for p in result["partners"]) == 1
+
+
 def released_case(client, release=True):
     auth = client.post(
         "/api/v1/auth/password", json={"email": "broker@helm.demo", "password": "HelmDemo!2026"}

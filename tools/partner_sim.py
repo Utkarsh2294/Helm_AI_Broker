@@ -31,6 +31,7 @@ class SimReply(Model):
     state: str
     fictional: bool = True
     quotes: list[Plan]
+    injection_blocked: bool = False
 
 
 def known_partner(partner_id):
@@ -64,6 +65,7 @@ async def rfq(body: SimRequest):
         partner_id=body.partner_id,
         state=partner["state"],
         quotes=[p for p in plans if p.insurerId == body.partner_id],
+        injection_blocked=bool(partner.get("injection_blocked")),
     )
 
 
