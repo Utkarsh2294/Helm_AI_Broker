@@ -30,15 +30,24 @@ import AgentPill from './components/AgentPill';
 import QuotesBoard from './components/QuotesBoard';
 import RankingTools from './components/RankingTools';
 import ReviewChecklist from './components/ReviewChecklist';
+import BottomSheet from './components/BottomSheet';
+import Reauthenticate from './components/Reauthenticate';
 
 export default function CasePanel({ id, user, onClose }) {
   const dialog = useRef(null),
-    historicalRef = useRef(false);
+    historicalRef = useRef(false),
+    medicalRevealed = useRef(false),
+    mutationEpoch = useRef(0);
+  const [medicalPrompt, setMedicalPrompt] = useState(false);
   const [historical, setHistorical] = useState(false),
     [liveCase, setLiveCase] = useState(null);
-  const [c, setCase] = useState(null),
+  const [c, setCaseState] = useState(null),
     [tab, setTab] = useState('overview'),
     [error, setError] = useState('');
+  function setCase(value) {
+    mutationEpoch.current += 1;
+    setCaseState(value);
+  }
   const [busy, setBusy] = useState(false),
     [selected, setSelected] = useState([]),
     [thumbs, setThumbs] = useState({});
@@ -56,15 +65,22 @@ export default function CasePanel({ id, user, onClose }) {
     [budget, setBudget] = useState(''),
     [reason, setReason] = useState('');
   const broker = user.role === 'authorised_broker' && !historical;
+  const canRevealMedical =
+    !historical && ['authorised_broker', 'compliance_officer'].includes(user.role);
   const canSignOff = !historical && (broker || user.role === 'broker_assistant');
   const liveEvents = useSSE(id, () => refresh());
   const refresh = useCallback(async () => {
     try {
       if (historicalRef.current) return;
-      const current = await api(`/cases/${id}`);
-      setCase(current);
+      const epoch = mutationEpoch.current;
+      const current = await api(
+        `/cases/${id}${medicalRevealed.current ? '?include_medical=true' : ''}`,
+      );
+      if (historicalRef.current || mutationEpoch.current !== epoch) return;
+      setCaseState(current);
       setLiveCase(current);
     } catch (e) {
+      if (e.requires_step_up) medicalRevealed.current = false;
       setError(e.message);
     }
   }, [id]);
@@ -442,16 +458,20 @@ export default function CasePanel({ id, user, onClose }) {
                       </p>
                     </div>
                   </div>
-                  {broker && c.dnr.medical_items.includes('[REDACTED]') && (
+                  {canRevealMedical && c.dnr.medical_items.includes('[REDACTED]') && (
+                    <button className="text-button" onClick={() => setMedicalPrompt(true)}>
+                      Reveal medical statements
+                    </button>
+                  )}
+                  {medicalRevealed.current && (
                     <button
                       className="text-button"
-                      onClick={() =>
-                        api(`/cases/${id}?include_medical=true`)
-                          .then(setCase)
-                          .catch((e) => setError(e.message))
-                      }
+                      onClick={() => {
+                        medicalRevealed.current = false;
+                        refresh();
+                      }}
                     >
-                      Reveal medical statements
+                      Hide medical statements
                     </button>
                   )}
                   {c.dnr.medical_items.map((text, i) => (
@@ -1119,6 +1139,28 @@ export default function CasePanel({ id, user, onClose }) {
             </section>
           )}
         </div>
+        <BottomSheet
+          open={medicalPrompt}
+          onClose={() => setMedicalPrompt(false)}
+          container={dialog.current}
+          title="Reveal medical statements"
+          description="Medical text stays inside this case and is hidden by default."
+          detent="auto"
+        >
+          <Reauthenticate
+            title="Verify to view medical statements."
+            actionLabel="Verify medical access"
+            onVerified={async (proof) => {
+              await api(`/cases/${id}/medical-access`, {
+                method: 'POST',
+                headers: { 'X-Step-Up': proof },
+              });
+              medicalRevealed.current = true;
+              await refresh();
+              setMedicalPrompt(false);
+            }}
+          />
+        </BottomSheet>
         <footer className="panel-footer">
           <ShieldCheck size={13} />
           <span>Grounded in facts. Approved by a human.</span>

@@ -12,6 +12,7 @@ export default function BottomSheet({
   description,
   detent = 'mid',
   children,
+  container,
 }) {
   const content = useRef(null),
     y = useMotionValue(0);
@@ -34,7 +35,7 @@ export default function BottomSheet({
         if (!value) onClose();
       }}
     >
-      <Dialog.Portal>
+      <Dialog.Portal container={container}>
         <Dialog.Overlay className="ui-sheet-overlay" />
         <Dialog.Content
           asChild

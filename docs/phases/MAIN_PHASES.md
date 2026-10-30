@@ -6,8 +6,8 @@ Specification: `docs/spec/HELM_BROKER_PORTAL_PROJECT_PLAN main.md`. Results belo
 |---|---|---|
 | P0 Foundations | Complete | 478 backend tests; real two-task mocked Crew and Flow; 3600× clock test; independent app factory; root readiness; valid Core/Broker OpenAPI contracts; seven containers; five standalone partners / thirty quotes; SQLite and PostgreSQL migration round trips and immutable SQL evidence. [Runtime report](../verification/main-plan-p0.json). |
 | P1 Design system + authentication | Complete | 488 backend checks; seven frontend unit tests; nine focused browser outcomes, including real WebAuthn and TOTP; five-attempt identity locks; revocable RS256 cookies and separate five-minute step-up; credential changes protected by re-authentication; safe next-route redirects and three signed-out screens. Production build, lint, formatting and migrations pass. |
-| P2 Queue + Core + SSE + audit | In progress | Existing queue/replay/hash-chain controls; review ownership, cursor and medical-access policy. |
-| P3 A1 + DNR | Pending revised acceptance | Existing sourced DNR/firewall; add the revised ambiguity fixtures and editing/crew requirements. |
+| P2 Queue + Core + SSE + audit | Complete | 492-test regression plus a malformed-webhook regression; five focused access checks; medical-reveal, complete broker journey and three viewport browser checks. Signed cursor pagination, assigned-case access, scoped audit/insights, one-hour case/session medical grants, deep links and protection against stale polls. PostgreSQL migration/immutability and Spectral checks pass. |
+| P3 A1 + DNR | In progress | Existing sourced DNR/firewall; add the revised ambiguity fixtures and editing/crew requirements. |
 | P4 A2 + clock | Pending revised acceptance | Existing five-partner/eight-scenario pipeline; verify fan-out and exact clock requirements. |
 | P5 Engine + all-plan HITL | Pending revised acceptance | Verify supplied appendices and implement mandatory star/decision/reason reviews for every shortlisted plan. |
 | P6 A4 + G2 | Pending revised acceptance | Bind the revised ratings and per-plan confirmations to committed publication. |

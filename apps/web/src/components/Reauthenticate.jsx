@@ -5,7 +5,11 @@ import Button from './Button';
 import Input from './Input';
 import PasskeyOrigin, { passkeysAvailable } from './PasskeyOrigin';
 
-export default function Reauthenticate({ onVerified }) {
+export default function Reauthenticate({
+  onVerified,
+  title = 'Verify before changing security.',
+  actionLabel = 'Verify security changes',
+}) {
   const [password, setPassword] = useState(''),
     [code, setCode] = useState(''),
     [error, setError] = useState(''),
@@ -28,7 +32,7 @@ export default function Reauthenticate({ onVerified }) {
       } else proof = await api('/auth/step-up', { method: 'POST', body: { password, code } });
       setPassword('');
       setCode('');
-      onVerified(proof.step_up_token);
+      await onVerified(proof.step_up_token);
     } catch (cause) {
       setError(cause.message);
     } finally {
@@ -37,7 +41,7 @@ export default function Reauthenticate({ onVerified }) {
   }
   return (
     <section className="surface security-section">
-      <h2>Verify before changing security.</h2>
+      <h2>{title}</h2>
       <p className="muted">This verification lasts five minutes and is bound to this session.</p>
       <Button disabled={busy || !passkeysAvailable()} onClick={() => verify(true)}>
         Verify with passkey
@@ -70,7 +74,7 @@ export default function Reauthenticate({ onVerified }) {
           </p>
         )}
         <Button type="submit" variant="primary" loading={busy}>
-          Verify security changes
+          {actionLabel}
         </Button>
       </form>
     </section>

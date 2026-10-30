@@ -1,4 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
+import { useLocation, useNavigate } from 'react-router-dom';
 import AuditSearch from './components/AuditSearch';
 import Governance from './components/Governance';
 import React, { useCallback, useEffect, useState, useRef } from 'react';
@@ -70,25 +71,30 @@ export function Status({ state }) {
 }
 
 export default function Workspace({ page, user, setPage }) {
+  const location = useLocation(),
+    navigate = useNavigate();
+  const selected = location.pathname.startsWith('/case/')
+    ? decodeURIComponent(location.pathname.slice(6))
+    : null;
+  const setSelected = (id) => navigate(id ? `/case/${encodeURIComponent(id)}` : '/queue');
   const [error, setError] = useState('');
   const [sort, setSort] = useState('newest'),
     [assignee, setAssignee] = useState(''),
     [priority, setPriority] = useState('');
   const moreRef = useRef(null);
   const [query, setQuery] = useState(''),
-    [filter, setFilter] = useState(''),
-    [selected, setSelected] = useState(null);
+    [filter, setFilter] = useState('');
   const [creating, setCreating] = useState(false),
     [partners, setPartners] = useState([]);
   const [quick, setQuick] = useState(null);
   const listing = useInfiniteQuery({
     queryKey: ['cases', user.id, query, filter, sort, assignee, priority],
-    initialPageParam: 0,
+    initialPageParam: '',
     queryFn: ({ pageParam }) =>
       api(
-        `/cases?limit=50&offset=${pageParam}&q=${encodeURIComponent(query)}&state=${filter}&sort=${sort}&assignee=${assignee}&priority=${priority}`,
+        `/cases?limit=50&cursor=${encodeURIComponent(pageParam)}&q=${encodeURIComponent(query)}&state=${filter}&sort=${sort}&assignee=${assignee}&priority=${priority}`,
       ),
-    getNextPageParam: (last) => last.next_offset ?? undefined,
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
     refetchInterval: 3000,
   });
   const cases = listing.data?.pages.flatMap((p) => p.items) || [],
