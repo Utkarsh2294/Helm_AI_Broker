@@ -92,6 +92,9 @@
 [data-theme='light'] .weight-bars > div > span {
   color: var(--helm-light-muted);
 }
+[data-theme='light'] .pack-disclosures p {
+  color: var(--helm-light-muted);
+}
 .review-checklist .checkbox-label {
   min-height: 32px;
   padding-block: 4px;
