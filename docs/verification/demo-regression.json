@@ -1,0 +1,32 @@
+{
+  "python": {
+    "command": "python -m pytest -q",
+    "passed": 560,
+    "warnings": 66,
+    "seconds": 417.9,
+    "includes_engine_package_tests": true,
+    "engine_package_count": 18
+  },
+  "focused_case_controls_and_showcase": {
+    "passed": 2
+  },
+  "frontend_units": {
+    "passed": 7
+  },
+  "javascript_engine": {
+    "passed": 16
+  },
+  "production_web_server": {
+    "passed": 1
+  },
+  "ruff_lint": "pass",
+  "ruff_format": "pass",
+  "eslint": "pass",
+  "prettier": "pass",
+  "spectral_core_and_broker_contracts": "pass",
+  "production_build": "pass",
+  "initial_authenticated_js_gzip_kb": 198.78,
+  "postgres_migration_roundtrip_and_immutable_sql_guards": "pass",
+  "sqlite_migration_startup": "pass",
+  "live_release_approved": false
+}

@@ -1,0 +1,10 @@
+{
+  "command": "node apps/web/node_modules/@playwright/test/cli.js test --config apps/web/playwright.config.js",
+  "production_web_server": true,
+  "http_partner_process": true,
+  "fresh_isolated_sqlite_database": true,
+  "exit_code": 0,
+  "passed": 31,
+  "complete_clean_run": true,
+  "manual_screen_reader_acceptance": false
+}

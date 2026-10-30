@@ -1,0 +1,113 @@
+{
+  "engine": "axe-core",
+  "tags": [
+    "wcag2a",
+    "wcag2aa",
+    "wcag21aa",
+    "wcag22aa"
+  ],
+  "automated_screens": 25,
+  "reports": [
+    {
+      "screen": "login",
+      "violations": []
+    },
+    {
+      "screen": "/queue",
+      "violations": []
+    },
+    {
+      "screen": "/agents",
+      "violations": []
+    },
+    {
+      "screen": "/partners",
+      "violations": []
+    },
+    {
+      "screen": "/learning",
+      "violations": []
+    },
+    {
+      "screen": "/audit",
+      "violations": []
+    },
+    {
+      "screen": "/security",
+      "violations": []
+    },
+    {
+      "screen": "case fact-find",
+      "violations": []
+    },
+    {
+      "screen": "pilot documents desktop",
+      "violations": []
+    },
+    {
+      "screen": "case uploaded source document",
+      "violations": []
+    },
+    {
+      "screen": "case comparison ratings",
+      "violations": []
+    },
+    {
+      "screen": "selection feedback sheet",
+      "violations": []
+    },
+    {
+      "screen": "recommendation review",
+      "violations": []
+    },
+    {
+      "screen": "published case Fact-find",
+      "violations": []
+    },
+    {
+      "screen": "published case Compare (5)",
+      "violations": []
+    },
+    {
+      "screen": "published case Recommendation",
+      "violations": []
+    },
+    {
+      "screen": "published case Activity",
+      "violations": []
+    },
+    {
+      "screen": "pilot review compliance@helm.demo",
+      "violations": []
+    },
+    {
+      "screen": "pilot review legal@helm.demo",
+      "violations": []
+    },
+    {
+      "screen": "pilot completed mobile 200 percent reduced motion",
+      "violations": []
+    },
+    {
+      "screen": "no advice closure confirmation",
+      "violations": []
+    },
+    {
+      "screen": "case controls confirmation",
+      "violations": []
+    },
+    {
+      "screen": "underwriter referral hold",
+      "violations": []
+    },
+    {
+      "screen": "underwriter response confirmation",
+      "violations": []
+    },
+    {
+      "screen": "complaint hold",
+      "violations": []
+    }
+  ],
+  "manual_acceptance": false
+}
