@@ -42,3 +42,4 @@ def test_referral_requires_saved_human_decision_and_cannot_create_cover_terms(cl
     current = client.get(url).json()
     assert current["ranking"]["id"] == ranking["id"] and current["state"] == "BROKER_REVIEW"
     assert body["reason"] not in str(current["events"])
+    assert current["broker_referral"]["reason"] == "[REDACTED]"
