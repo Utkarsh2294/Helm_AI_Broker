@@ -90,6 +90,21 @@ learning at 02:00 Europe/London (or the next hourly tick after a restart).
 `docker compose up --build` runs PostgreSQL, Redis, API, worker, website and MockCore. Container
 ports bind only to loopback. The API and worker share the encryption-key volume.
 
+If Docker Desktop cannot resolve the package hosts, use `scripts/build-containers.ps1`.
+It resolves those hosts on Windows for this build and retains package download caches.
+For a slow or repeatedly interrupted Docker download, run:
+
+```powershell
+.\scripts\build-containers.ps1 -PrepareWheelhouse
+docker compose up -d --no-build
+```
+
+This downloads compatible Linux wheels through the host network into
+`%LOCALAPPDATA%/HelmBroker/linux-wheels`, verifies their SHA-256 hashes against
+`uv.lock`, and installs them offline in Docker. Interrupted downloads resume on
+the next run. The cache is local and is not committed. TLS and package hash
+verification remain enabled. Use `-Wheelhouse <path>` to reuse a completed cache.
+
 **Back up the database and encryption key together.** `.runtime/demo.key` is the
 local-only key fallback. Losing or replacing it makes existing encrypted records
 unreadable. A live deployment requires KMS-backed key management and access controls.
