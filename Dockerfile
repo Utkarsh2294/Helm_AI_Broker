@@ -3,7 +3,12 @@ FROM ${BASE_IMAGE}
 WORKDIR /app
 RUN pip install --no-cache-dir uv
 COPY pyproject.toml uv.lock ./
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --extra agents --no-dev
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=cache,target=/root/.cache/pip \
+    uv export --frozen --extra agents --no-dev --format requirements-txt --output-file /tmp/requirements.lock >/dev/null && \
+    python -m venv .venv && \
+    .venv/bin/python -m pip install --disable-pip-version-check --require-hashes --no-deps --prefer-binary --timeout 300 --retries 5 -r /tmp/requirements.lock && \
+    uv sync --frozen --extra agents --no-dev --offline
 COPY services ./services
 COPY tools ./tools
 COPY alembic.ini ./
