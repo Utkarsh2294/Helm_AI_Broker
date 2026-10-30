@@ -1,6 +1,7 @@
 """Fictional document fixtures for demonstrating the whole broker/pilot journey."""
 
 import hashlib
+from functools import lru_cache
 import io
 from xml.sax.saxutils import escape
 from fastapi import APIRouter, Depends, Request
@@ -38,7 +39,7 @@ DOCUMENTS = {
         "P4: partner release",
         [
             "Fictional entity: Helm Demonstration Brokerage. Reference DEMO-FRN-000 — not an FCA registration.",
-        "Five fictional providers: Northgate Health, Cedar Mutual, ClearPath Insurance, MediFirst UK and PremiumCare. This is a panel search, not a whole-market claim.",
+            "Five fictional providers: Northgate Health, Cedar Mutual, ClearPath Insurance, MediFirst UK and PremiumCare. This is a panel search, not a whole-market claim.",
             "Only partners with active demo terms and authorised fixture status receive a minimised RFQ after G0/G1. Names and medical wording are excluded from the default RFQ.",
             "Remuneration: example commission is disclosed separately and cannot enter ranking scores. Premiums are paid directly to an insurer; this portal does not hold client money.",
             "A broker approves every recommendation. This document grants no real agency, insurer agreement or payment authority.",
@@ -102,6 +103,7 @@ def demo_only():
         raise DomainError("Demonstration fixtures are unavailable in live mode", 404)
 
 
+@lru_cache(maxsize=7)
 def document_pdf(document_id):
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer

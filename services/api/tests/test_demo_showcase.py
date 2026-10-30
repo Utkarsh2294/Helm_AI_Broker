@@ -49,6 +49,14 @@ def test_demo_showcase_requires_actual_case_publication_and_independent_verified
     assert result.status_code == 200, result.text
     assert result.json()["demo_ready"] and not result.json()["live_release_approved"]
     assert {r["role"] for r in result.json()["reviews"]} == {"compliance_officer", "legal_reviewer"}
+    import pymupdf
+
+    pdf = client.get("/api/v1/demo/showcase/report.pdf")
+    assert pdf.status_code == 200
+    with pymupdf.open(stream=pdf.content, filetype="pdf") as document:
+        text = " ".join(page.get_text() for page in document)
+        assert "LIVE RELEASE APPROVED: FALSE" in text and "Casey Demo" in text
+        assert result.json()["manifest_hash"] in text
     assert (
         client.post("/api/v1/cases/" + data["case_id"] + "/approve", headers=legal, json={}).status_code
         == 403

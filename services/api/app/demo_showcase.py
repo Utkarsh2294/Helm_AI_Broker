@@ -8,6 +8,7 @@ from app.agents.review import canonical_hash
 from app.db.models import Approval, Case, Publication, Activity, Snapshot, User, utcnow
 from app.db.store import latest, save_snapshot, verify_chain, audit
 from app.demo_documents import database, demo_only, manifest, DISCLAIMER
+from app.demo_documents import document_pdf
 from app.schemas import Model, DomainError, QuoteRequest, State
 from app import service
 
@@ -133,9 +134,69 @@ def create_showcase(request: Request, db=Depends(database, scope="function")):
         ),
     )
     if not latest(db, case.id, "demo_documents"):
+        from app.documents import extract_document
+        import hashlib
+
+        renewal = document_pdf("renewal")
+        extracted = extract_document(renewal, "application/pdf")
+        save_snapshot(
+            db,
+            case.id,
+            "demo_renewal_source",
+            {
+                "document_id": "renewal",
+                "sha256": hashlib.sha256(renewal).hexdigest(),
+                "pages": extracted["pages"],
+                "text": extracted["text"],
+                "fictional": True,
+                "verified_by": None,
+                "source": "demo:renewal#page1",
+            },
+        )
         save_snapshot(db, case.id, "demo_documents", {"manifest": manifest(), "fictional": True})
         audit(db, case.id, "demo_showcase_created", f"broker:{user.id}", {"fictional": True})
     return status(db)
+
+
+@router.get("/report.pdf")
+def review_report(request: Request, db=Depends(database, scope="function")):
+    import io
+    from xml.sax.saxutils import escape
+    from fastapi.responses import Response
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet
+
+    demo_only()
+    identity(db, request)
+    data = status(db)
+    if not data["case_id"]:
+        raise DomainError("Create the showcase first", 409)
+    styles = getSampleStyleSheet()
+    stream = io.BytesIO()
+    lines = [
+        DISCLAIMER,
+        "Fictional pilot review record",
+        f"Case: {data['case_id']}",
+        f"Document manifest: {data['manifest_hash']}",
+        f"Review binding: {data['review_hash']}",
+        f"G2 publication: {data['workflow_published']}. Audit chain verified: {data['chain_verified']}.",
+        f"Demo review complete: {data['demo_ready']}. LIVE RELEASE APPROVED: FALSE.",
+    ]
+    lines.extend(f"Document: {d['title']} — SHA-256 {d['sha256']}" for d in data["documents"])
+    lines.extend(f"Fictional reviewer: {r['name']}, {r['role']}, {r['at']}" for r in data["reviews"])
+    if not data["reviews"]:
+        lines.append("No demo reviewer decisions have been recorded.")
+    story = []
+    for line in lines:
+        story.extend([Paragraph(escape(line), styles["BodyText"]), Spacer(1, 12)])
+    SimpleDocTemplate(stream, title="Helm fictional pilot review record", author="Helm demonstration").build(
+        story
+    )
+    return Response(
+        stream.getvalue(),
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="helm-demo-pilot-review.pdf"'},
+    )
 
 
 class DemoReview(Model):

@@ -161,6 +161,12 @@ export default function DemoShowcase({ user }) {
       </section>
       <section className="surface demo-showcase" aria-labelledby="demo-review-title">
         <h2 id="demo-review-title">Pilot review rehearsal</h2>
+        {data.case_id && (
+          <a className="button" href="/api/v1/demo/showcase/report.pdf" download>
+            <Download size={16} />
+            Download demo review record
+          </a>
+        )}
         <p>
           Current case audit: {data.chain_verified ? 'verified' : 'not yet available'}. Live release
           approval: <strong>not granted</strong>.
