@@ -488,10 +488,12 @@ def act(db, case_id, action, user, session, body):
     return detail(db, case)
 
 
-def process_due_jobs(db):
+def process_due_jobs(db, case_id=None):
     if settings().agents_paused:
         return
     query = select(Job)
+    if case_id is not None:
+        query = query.where(Job.case_id == case_id)
     if db.info.get("staff_user"):
         from app.case_access import visible_cases
 

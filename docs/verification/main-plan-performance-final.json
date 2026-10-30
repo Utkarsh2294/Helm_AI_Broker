@@ -1,0 +1,49 @@
+{
+  "measured_at": "2026-10-30T10:36:29.404153+00:00",
+  "server": "http://127.0.0.1:8012",
+  "environment": "Local Windows, postgresql+psycopg, Redis DB 1; not a production capacity claim",
+  "case_count": 1117,
+  "case_list_50_concurrent": {
+    "samples": 50,
+    "p50_ms": 1135.49,
+    "p95_ms": 1829.4,
+    "max_ms": 1847.23
+  },
+  "case_list_50_concurrent_cold": {
+    "samples": 50,
+    "p50_ms": 1121.5,
+    "p95_ms": 1617.37,
+    "max_ms": 1619.01
+  },
+  "case_list_10_concurrent_filtered": {
+    "samples": 10,
+    "p50_ms": 192.29,
+    "p95_ms": 207.19,
+    "max_ms": 207.19
+  },
+  "measurement_notes": "Case-list steady-state follows one cold batch; both are retained. Ranking HTTP connections are warmed with health requests before timing new queue operations.",
+  "insights": {
+    "samples": 10,
+    "p50_ms": 51.42,
+    "p95_ms": 95.54,
+    "max_ms": 95.54
+  },
+  "sse_50_connections": {
+    "samples": 50,
+    "p50_ms": 1530.63,
+    "p95_ms": 1851.0,
+    "max_ms": 1861.62
+  },
+  "sse_event_delivery": {
+    "samples": 50,
+    "p50_ms": 281.31,
+    "p95_ms": 321.23,
+    "max_ms": 321.97
+  },
+  "ranking_enqueue_20_concurrent": {
+    "samples": 20,
+    "p50_ms": 387.48,
+    "p95_ms": 425.4,
+    "max_ms": 437.06
+  }
+}

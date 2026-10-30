@@ -65,10 +65,18 @@ def identity(db, request: Request):
         from app.auth.tokens import verify_token
 
         claims = verify_token(token)
-    row = db.get(LoginSession, digest(token)) if token else None
+    pair = (
+        db.execute(
+            select(LoginSession, User)
+            .join(User, User.id == LoginSession.user_id)
+            .where(LoginSession.id == digest(token))
+        ).first()
+        if token
+        else None
+    )
+    row, user = pair if pair else (None, None)
     if not row or datetime.fromisoformat(row.expires_at) <= utcnow():
         raise DomainError("Sign in to continue", 401)
-    user = db.get(User, row.user_id)
     if not user or not user.is_active or (claims and claims["sub"] != str(user.id)):
         raise DomainError("Sign in to continue", 401)
     if request.method not in ("GET", "HEAD", "OPTIONS"):

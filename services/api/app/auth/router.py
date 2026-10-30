@@ -6,6 +6,7 @@ from sqlalchemy import select
 from app.auth import authenticate, identity, public_user, verify_password
 from app.auth import mfa, passkeys, sessions
 from app.auth.rate_limiter import check_limit
+from app.config import settings
 from app.db.models import LoginSession, User, utcnow
 from app.db.platform import SessionDevice, TOTPSecret, RefreshToken
 from app.main import database
@@ -124,7 +125,7 @@ def register(body: Ceremony, request: Request, db=Depends(database, scope="funct
 
 @router.post("/passkey/options")
 def auth_options(body: Options, request: Request, db=Depends(database, scope="function")):
-    check_limit(request, "passkey-options", limit=20)
+    check_limit(request, "passkey-options", limit=settings().auth_rate_limit * 4)
     if body.step_up:
         user, session = identity(db, request)
         return passkeys.authentication_options(db, user.id, session.id)

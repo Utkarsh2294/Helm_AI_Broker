@@ -278,7 +278,7 @@ def case_detail(
 ):
     user, session = identity(db, request)
     case = service.get_case(db, case_id)
-    service.process_due_jobs(db)
+    service.process_due_jobs(db, case_id)
     if include_medical:
         from app.medical_access import require_medical_access
 

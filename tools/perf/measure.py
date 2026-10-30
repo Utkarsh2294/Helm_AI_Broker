@@ -24,7 +24,11 @@ async def measure(base_url, output, fixture_cases):
     if not base_url.startswith(("http://localhost:8012", "http://127.0.0.1:8012")):
         raise ValueError("Use the dedicated QA server on port 8012; this script creates fictional records")
     async with httpx.AsyncClient(
-        base_url=base_url, timeout=60, limits=httpx.Limits(max_connections=100, max_keepalive_connections=100)
+        base_url=base_url,
+        timeout=60,
+        # Expire client sockets before Uvicorn's five-second idle timeout; avoid
+        # a stale-connection race between the independent measurement batches.
+        limits=httpx.Limits(max_connections=100, max_keepalive_connections=100, keepalive_expiry=2),
     ) as client:
         auth = await client.post(
             "/api/v1/auth/password", json={"email": "broker@helm.demo", "password": "HelmDemo!2026"}
@@ -63,6 +67,9 @@ async def measure(base_url, output, fixture_cases):
         cold_list_times = list_times
         list_times = await asyncio.gather(*(timed_get("/api/v1/cases?limit=50") for _ in range(50)))
         insight_times = [await timed_get("/api/v1/insights") for _ in range(10)]
+        filtered_times = await asyncio.gather(
+            *(timed_get("/api/v1/cases?limit=50&state=FACTFIND_REVIEW") for _ in range(10))
+        )
         ready, readers_ready, sent = asyncio.Event(), 0, None
         connection_times = []
 
@@ -113,7 +120,7 @@ async def measure(base_url, output, fixture_cases):
                 raise RuntimeError(response.text)
             return (time.perf_counter() - start) * 1000
 
-        await asyncio.gather(*(timed_get('/api/v1/health') for _ in range(20)))
+        await asyncio.gather(*(timed_get("/api/v1/health") for _ in range(20)))
         enqueue_times = await asyncio.gather(*(enqueue(case) for case in rank_cases))
         result = {
             "measured_at": datetime.now(timezone.utc).isoformat(),
@@ -122,6 +129,7 @@ async def measure(base_url, output, fixture_cases):
             "case_count": (await client.get("/api/v1/insights")).json()["cases"],
             "case_list_50_concurrent": summary(list_times),
             "case_list_50_concurrent_cold": summary(cold_list_times),
+            "case_list_10_concurrent_filtered": summary(filtered_times),
             "measurement_notes": "Case-list steady-state follows one cold batch; both are retained. Ranking HTTP connections are warmed with health requests before timing new queue operations.",
             "insights": summary(insight_times),
             "sse_50_connections": summary(connection_times),

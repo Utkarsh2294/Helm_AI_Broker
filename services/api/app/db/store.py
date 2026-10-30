@@ -66,10 +66,13 @@ def save_snapshot(db, case_id, kind, body):
 def next_case_time(db, case_id):
     # Wall-clock timestamps can repeat on Windows. Preserve ordering across processes/records.
     now = stamp()
-    previous = max(
-        db.scalar(select(func.max(Activity.created_at)).where(Activity.case_id == case_id)) or "",
-        db.scalar(select(func.max(Snapshot.created_at)).where(Snapshot.case_id == case_id)) or "",
-    )
+    activity_time, snapshot_time = db.execute(
+        select(
+            select(func.max(Activity.created_at)).where(Activity.case_id == case_id).scalar_subquery(),
+            select(func.max(Snapshot.created_at)).where(Snapshot.case_id == case_id).scalar_subquery(),
+        )
+    ).one()
+    previous = max(activity_time or "", snapshot_time or "")
     if previous and previous >= now:
         return (datetime.fromisoformat(previous) + timedelta(microseconds=1)).isoformat()
     return now
