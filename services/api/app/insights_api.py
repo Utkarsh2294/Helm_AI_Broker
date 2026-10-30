@@ -11,6 +11,14 @@ from app.case_access import visible_cases
 router = APIRouter(prefix="/api/v1")
 
 
+@router.get("/insights/outcomes")
+def outcomes(request: Request, db=Depends(database, scope="function")):
+    from app.outcome_metrics import measured_outcomes
+
+    user, _ = identity(db, request)
+    return measured_outcomes(db, user)
+
+
 @router.get("/cases/{case_id}/replay")
 def historical(case_id: str, request: Request, at: datetime, db=Depends(database, scope="function")):
     user, _ = identity(db, request)
