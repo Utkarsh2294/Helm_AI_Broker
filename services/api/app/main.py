@@ -515,6 +515,9 @@ from app.observability import instrument  # noqa: E402
 from app.demo_documents import router as demo_documents_router  # noqa: E402
 
 app.include_router(demo_documents_router)
+from app.demo_showcase import router as demo_showcase_router  # noqa: E402
+
+app.include_router(demo_showcase_router)
 
 from app.case_queries import router as case_queries_router  # noqa: E402
 

@@ -38,7 +38,7 @@ DOCUMENTS = {
         "P4: partner release",
         [
             "Fictional entity: Helm Demonstration Brokerage. Reference DEMO-FRN-000 — not an FCA registration.",
-            "Five fictional providers: Northgate, Bracken, Wellbrook, Cedar and Harbour. This is a panel search, not a whole-market claim.",
+        "Five fictional providers: Northgate Health, Cedar Mutual, ClearPath Insurance, MediFirst UK and PremiumCare. This is a panel search, not a whole-market claim.",
             "Only partners with active demo terms and authorised fixture status receive a minimised RFQ after G0/G1. Names and medical wording are excluded from the default RFQ.",
             "Remuneration: example commission is disclosed separately and cannot enter ranking scores. Premiums are paid directly to an insurer; this portal does not hold client money.",
             "A broker approves every recommendation. This document grants no real agency, insurer agreement or payment authority.",

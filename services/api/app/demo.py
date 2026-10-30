@@ -28,6 +28,8 @@ def seed_demo(db):
         ("compliance@helm.demo", "Sam Taylor", "compliance_officer", False),
         ("auditor@helm.demo", "Jamie Lee", "auditor", False),
         ("lead@helm.demo", "James Thornton", "authorised_broker", True),
+        ("pilot@helm.demo", "Taylor Demo", "authorised_broker", True),
+        ("legal@helm.demo", "Casey Demo", "legal_reviewer", False),
     ]:
         if not db.scalar(select(User).where(User.email == email)):
             db.add(
