@@ -1,4 +1,4 @@
-param([switch]$UseDefaultDns, [switch]$PrepareWheelhouse, [string]$Wheelhouse = '', [string]$BaseImage = '')
+param([switch]$UseDefaultDns, [switch]$PrepareWheelhouse, [string]$Wheelhouse = '', [string]$BaseImage = '', [ValidateSet('api', 'worker', 'web', 'partner-sim', 'mock-core')][string[]]$Service = @())
 $ErrorActionPreference = 'Stop'
 $brokerBuildRoot = Split-Path -Parent $PSScriptRoot
 $brokerComposePath = Join-Path $brokerBuildRoot 'docker-compose.yml'
@@ -64,6 +64,7 @@ if ($brokerContext) {
     $brokerArguments += @('-f', $brokerOverride)
 }
 $brokerArguments += 'build'
+$brokerArguments += $Service
 Push-Location -LiteralPath $brokerBuildRoot
 try {
     & docker @brokerArguments
