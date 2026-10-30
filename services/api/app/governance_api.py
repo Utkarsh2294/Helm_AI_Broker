@@ -3,6 +3,8 @@ from pydantic import Field
 from sqlalchemy import select, func
 from app.auth import identity
 from app.db.platform import EngineModel, EdgeCase, Playbook, GovernanceEvent
+from app.db.models import Case
+from app.case_access import visible_cases
 from app.main import database
 from app.schemas import DomainError, Model
 from app import governance
@@ -58,11 +60,34 @@ def rollback(model_id: str, request: Request, db=Depends(database, scope="functi
 
 @router.get("/edge-cases")
 def notebook(request: Request, db=Depends(database, scope="function")):
-    identity(db, request)
-    return [
-        {"id": row.id, "case_id": row.case_id, "status": row.status, "created_at": row.created_at, **row.body}
-        for row in db.scalars(select(EdgeCase).order_by(EdgeCase.created_at.desc()))
-    ]
+    from app.compliance.medical_firewall import safe_case
+    from app.db.store import latest
+
+    user, _ = identity(db, request)
+    result = []
+    for row in db.scalars(
+        select(EdgeCase)
+        .join(Case, EdgeCase.case_id == Case.id)
+        .where(visible_cases(user))
+        .order_by(EdgeCase.created_at.desc())
+        .limit(200)
+    ):
+        dnr = latest(db, row.case_id, "dnr")
+        safe = safe_case(
+            {
+                "dnr": dnr.body if dnr else {},
+                "entry": {
+                    "id": row.id,
+                    "case_id": row.case_id,
+                    "status": row.status,
+                    "created_at": row.created_at,
+                    **row.body,
+                },
+            },
+            user,
+        )
+        result.append(safe["entry"])
+    return result
 
 
 class NotebookReview(Model):
@@ -76,6 +101,11 @@ def review_edge(edge_id: str, body: NotebookReview, request: Request, db=Depends
     row = db.get(EdgeCase, edge_id)
     if not row:
         raise DomainError("Notebook entry not found", 404)
+    from app.service import get_case
+
+    get_case(db, row.case_id)
+    if len(body.finding.strip()) < 10:
+        raise DomainError("Record the review in at least 10 characters", 422)
     row.body, row.status = {**row.body, "finding": body.finding, "reviewer": user.id}, "reviewed"
     governance.event(db, user, "edge_case_reviewed", {"edge_id": row.id})
     return {"status": row.status}
