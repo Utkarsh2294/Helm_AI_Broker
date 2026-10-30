@@ -38,6 +38,7 @@ import TextArea from './components/TextArea';
 import PlanAssessment from './components/PlanAssessment';
 import ComplaintHold from './components/ComplaintHold';
 import CloseWithoutAdvice from './components/CloseWithoutAdvice';
+import ReferralControls from './components/ReferralControls';
 
 export default function CasePanel({ id, user, onClose }) {
   const dialog = useRef(null),
@@ -387,7 +388,15 @@ export default function CasePanel({ id, user, onClose }) {
                   }}
                 />
               )}
-              {c.state === 'UW_REFERRAL' && (
+              {broker && !dirtyRatings.length && (
+                <ReferralControls
+                  item={c}
+                  ratings={ratings}
+                  container={dialog.current}
+                  onSaved={refresh}
+                />
+              )}
+              {c.state === 'UW_REFERRAL' && !c.broker_referral && (
                 <div className="notice warning">
                   <div>
                     <h3>Underwriter confirmation required · G3</h3>
