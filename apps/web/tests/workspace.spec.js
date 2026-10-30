@@ -113,6 +113,14 @@ test('broker completes the five-agent workflow with real approval and evidence',
   await expect(panel.getByText('The consumer link expired.', { exact: false })).toBeVisible();
   await panel.getByRole('button', { name: 'Close case' }).click();
   await page.getByRole('button', { name: 'Learning & insights', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Run evaluation', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page).toHaveURL(/\/signed-out\/voluntary$/);
+  await page.goto('/login');
+  await page.getByLabel('Email address').fill('compliance@helm.demo');
+  await page.getByLabel('Password', { exact: true }).fill('HelmDemo!2026');
+  await page.getByRole('button', { name: 'Sign in to your workspace' }).click();
+  await page.getByRole('button', { name: 'Learning & insights', exact: true }).click();
   const evaluationResponse = page.waitForResponse(
     (r) => r.url().endsWith('/models/evaluate') && r.request().method() === 'POST',
   );
@@ -202,7 +210,10 @@ for (const width of [1440, 768, 390]) {
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);
-    await page.screenshot({ path: `../../.runtime/workspace-${width}.png`, fullPage: true });
+    await page.screenshot({
+      path: fileURLToPath(new URL(`../../../.runtime/qa/workspace-${width}.png`, import.meta.url)),
+      fullPage: true,
+    });
     await page.getByRole('button', { name: 'Open Asha Patel' }).click();
     const panel = page.getByRole('dialog', { name: 'Case workspace' });
     await expect(panel).toBeVisible();
@@ -210,7 +221,9 @@ for (const width of [1440, 768, 390]) {
     expect(bounds.y).toBe(0);
     expect(bounds.width).toBeLessThanOrEqual(width);
     expect(await panel.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
-    await page.screenshot({ path: `../../.runtime/case-${width}.png` });
+    await page.screenshot({
+      path: fileURLToPath(new URL(`../../../.runtime/qa/case-${width}.png`, import.meta.url)),
+    });
     await page.keyboard.press('Escape');
     await expect(panel).toHaveCount(0);
   });
