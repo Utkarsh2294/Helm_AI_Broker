@@ -39,6 +39,7 @@ import PlanAssessment from './components/PlanAssessment';
 import ComplaintHold from './components/ComplaintHold';
 import CloseWithoutAdvice from './components/CloseWithoutAdvice';
 import ReferralControls from './components/ReferralControls';
+import CaseDocuments from './components/CaseDocuments';
 
 export default function CasePanel({ id, user, onClose }) {
   const dialog = useRef(null),
@@ -466,6 +467,14 @@ export default function CasePanel({ id, user, onClose }) {
                       <dd>{label(c.dnr.needs.preferred_underwriting)}</dd>
                     </div>
                   </dl>
+                  {canRevealMedical && (
+                    <CaseDocuments
+                      item={c}
+                      revealed={medicalRevealed.current}
+                      onReveal={() => setMedicalPrompt(true)}
+                      editable={broker && ['FACTFIND_REVIEW', 'NEEDS_INFO'].includes(c.state)}
+                    />
+                  )}
                   <h4 className="field-caption">PRIORITIES, IN ORDER</h4>
                   <div className="priority-chips">
                     {c.dnr.needs.priorities.map((p, i) => (
