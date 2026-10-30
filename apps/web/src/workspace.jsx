@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useState, useRef, lazy, Suspense } from 'react';
 const AuditSearch = lazy(() => import('./components/AuditSearch'));
 const Governance = lazy(() => import('./components/Governance'));
+const DemoShowcase = lazy(() => import('./components/DemoShowcase'));
 import {
   ArrowRight,
   ArrowUpRight,
@@ -191,6 +192,11 @@ export default function Workspace({ page, user, setPage }) {
       'EVERY STEP, ACCOUNTED FOR',
       'A clear trail of every decision.',
       'Follow the facts, approvals and hand-offs behind each case.',
+    ],
+    demo: [
+      'THE COMPLETE DEMONSTRATION',
+      'See the whole journey.',
+      'Fictional documents, human review and a pilot-readiness rehearsal.',
     ],
   };
   const [eyebrow, title, subtitle] = headings[page];
@@ -583,6 +589,11 @@ export default function Workspace({ page, user, setPage }) {
       {page === 'learning' && (
         <Suspense fallback={<p role="status">Loading learning records…</p>}>
           <Governance user={user} />
+        </Suspense>
+      )}
+      {page === 'demo' && (
+        <Suspense fallback={<p role="status">Loading pilot showcase…</p>}>
+          <DemoShowcase user={user} />
         </Suspense>
       )}
       {page === 'audit' && (

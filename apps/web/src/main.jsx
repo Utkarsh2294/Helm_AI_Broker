@@ -50,6 +50,7 @@ const navigation = [
   ['learning', 'Learning & insights', ChartNoAxesCombined],
   ['audit', 'Activity & audit', History],
   ['security', 'Security & devices', Settings],
+  ['demo', 'Pilot showcase', Workflow],
 ];
 
 function App() {
@@ -64,6 +65,7 @@ function App() {
     learning: '/learning',
     audit: '/audit',
     security: '/security',
+    demo: '/demo',
   };
   const page = Object.keys(routes).find((key) => routes[key] === location.pathname) || 'workspace';
   const setPage = (key) => navigate(routes[key] || '/queue');
