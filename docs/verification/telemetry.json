@@ -1,0 +1,7 @@
+{
+  "verified": true,
+  "transport": "OTLP HTTP/protobuf to a local receiver",
+  "received_agent_spans": 1,
+  "medical_canary_absent": true,
+  "applicant_name_absent": true
+}
