@@ -93,12 +93,12 @@ test('workspace assistant streams grounded answers, parses files and opens from 
 test('case assistant saves snapshots and shares an authenticated read-only compliance link', async ({
   page,
 }) => {
-  test.setTimeout(90000);
+  test.setTimeout(120000);
   await login(page);
   await page.getByRole('button', { name: 'Start automatic demo' }).click();
   const panel = page.getByRole('dialog', { name: 'Case workspace' });
   await expect(panel.getByRole('heading', { name: 'Choose and rank three policies' })).toBeVisible({
-    timeout: 30000,
+    timeout: 60000,
   });
   await panel.getByRole('button', { name: 'Case assistant', exact: true }).click();
   const assistant = panel.locator('.case-assistant');

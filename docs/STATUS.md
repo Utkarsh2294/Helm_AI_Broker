@@ -1,5 +1,20 @@
 # Current build status
 
+The [31 October assistant upgrade](ASSISTANT_GUIDE.md) implements source-stamped
+streaming answers, private encrypted history, temporary local document extraction,
+case evidence, PDF/DOCX exports, expiring authenticated compliance links and pinned
+workspace/case panels. Light-only navigation and the two broker decisions remain.
+The guide records the bounded local reasoning, unavailable structured fields and
+browser/OCR requirements; no external LLM or Whisper service is connected.
+
+[Assistant verification](verification/assistant-upgrade.json) records 576 passing
+backend tests, affected security/evidence rechecks, nine frontend units, successful
+desktop/mobile and Docker assistant journeys, and zero axe violations across four
+assistant states. Local-preview and Docker APIs both serve the new response
+version. Real image/scanned-PDF OCR, PostgreSQL revision 011 and append-only SQL
+guards pass in Docker. Physical voice devices and independent acceptance remain
+outside these automated checks.
+
 The latest workspace simplification removes the agent-team page, team strip,
 dark-mode controls/styles and combined audit page. Each case row opens its own
 audit directly; existing evidence, agent execution and approval controls remain.

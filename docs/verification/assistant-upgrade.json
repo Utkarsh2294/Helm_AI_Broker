@@ -1,0 +1,168 @@
+{
+  "recorded_at": "2026-10-31T06:20:53.696092+00:00",
+  "product_revision": "fbe18965bd4128776914c92c5eebf71525fc35ac",
+  "specification": "docs/spec/HELM_ASSISTANT_MASTER_PROMPTS.md",
+  "implementation_guide": "docs/ASSISTANT_GUIDE.md",
+  "mode": "deterministic local saved-evidence companion; no external LLM or Whisper calls",
+  "features": [
+    "Case/workspace scope and existing access controls",
+    "Source-stamped SSE answers and three follow-ups",
+    "Bounded ten-turn session topic memory",
+    "Encrypted private last-20 history and search",
+    "Local file extraction with explicit case attachment",
+    "Browser speech recognition and read-aloud controls",
+    "Immutable case evidence and source snapshots",
+    "PDF/DOCX thread export and case-bundle appendix",
+    "24-hour authenticated compliance-only response links",
+    "Pinned panels and Ctrl/Cmd K shortcut"
+  ],
+  "preserved": [
+    "Light-only interface",
+    "Per-case audit navigation",
+    "Five workflow agents",
+    "Human selection/order and final signature",
+    "Existing cases, credentials, encryption keys and volumes"
+  ],
+  "checks": {
+    "backend_full_suite": {
+      "passed": 576,
+      "warnings": 66,
+      "seconds": 373.23
+    },
+    "backend_affected_recheck": {
+      "passed": 10,
+      "seconds": 70.17
+    },
+    "backend_final_security_assertions": {
+      "passed": 2,
+      "seconds": 17.54,
+      "covers": [
+        "Protected attached-extract download",
+        "Redacted evidence bundle",
+        "SQLite append-only SQL guard"
+      ]
+    },
+    "frontend_units": {
+      "passed": 9
+    },
+    "broad_browser_run": {
+      "passed": 8,
+      "covers": [
+        "Automated accessibility routes",
+        "Automatic two-decision flow",
+        "Assistant desktop/mobile",
+        "Case-row audit",
+        "Light-only preference"
+      ]
+    },
+    "final_browser_run": {
+      "passed": 7,
+      "covers": [
+        "Assistant desktop/mobile and mocked voice transcript review",
+        "Auth routes and reauthentication"
+      ]
+    },
+    "keyboard_recheck": {
+      "passed": 2,
+      "covers": [
+        "Workspace assistant",
+        "Command search Ctrl Shift K"
+      ]
+    },
+    "docker_assistant_browser_recheck": {
+      "passed": 2,
+      "base_url": "http://localhost:5184"
+    },
+    "axe_screens": [
+      {
+        "screen": "workspace assistant desktop with history and file",
+        "violations": []
+      },
+      {
+        "screen": "workspace assistant mobile",
+        "violations": []
+      },
+      {
+        "screen": "case assistant desktop",
+        "violations": []
+      },
+      {
+        "screen": "case assistant mobile",
+        "violations": []
+      }
+    ],
+    "production_web_build": "passed",
+    "docker_api_worker_web_build": "passed with retained wheel/apt caches; 70 Debian package downloads SHA256-verified against official package indexes on host",
+    "ruff_eslint_prettier_spectral": "passed",
+    "runtime_api_checks": [
+      {
+        "port": 5180,
+        "model_version": "helm-local-evidence-v2",
+        "response_stamped": true,
+        "history_verified": true
+      },
+      {
+        "port": 5184,
+        "model_version": "helm-local-evidence-v2",
+        "response_stamped": true,
+        "history_verified": true
+      }
+    ],
+    "docker_ocr_and_database": {
+      "image_ocr": true,
+      "scanned_pdf_ocr": true,
+      "postgres_revision": "011",
+      "assistant_sql_guard": true
+    },
+    "docker_services": [
+      {
+        "Service": "api",
+        "State": "running",
+        "Health": "healthy"
+      },
+      {
+        "Service": "mock-core",
+        "State": "running",
+        "Health": ""
+      },
+      {
+        "Service": "partner-sim",
+        "State": "running",
+        "Health": ""
+      },
+      {
+        "Service": "postgres",
+        "State": "running",
+        "Health": "healthy"
+      },
+      {
+        "Service": "redis",
+        "State": "running",
+        "Health": "healthy"
+      },
+      {
+        "Service": "web",
+        "State": "running",
+        "Health": ""
+      },
+      {
+        "Service": "worker",
+        "State": "running",
+        "Health": ""
+      }
+    ],
+    "interpretation": "Runs overlap and must not be added as unique tests. The full suite preceded final evidence/download and SQL-trigger assertions; the affected rechecks cover those changes. No final full-suite repeat is claimed."
+  },
+  "resolved_checks": [
+    "Made horizontally scrollable comparison table keyboard focusable after an axe finding",
+    "Allowed 60 seconds for cold CrewAI startup after the first Docker case completed shortly beyond the initial 30-second test deadline"
+  ],
+  "limits": [
+    "Browser microphone and speech hardware not manually tested; transcript behaviour tested with a browser recognition stub",
+    "No external LLM, Whisper fallback or web search connected",
+    "Document answers use bounded extracts and simple budget-conflict checks, not general semantic QA",
+    "Tesseract required for image/scanned-PDF OCR; verified in Docker, not installed in the Windows preview",
+    "No invented employer bands, renewal dates, insurer details or ranking criteria",
+    "No independent legal/regulatory or production acceptance claimed"
+  ]
+}

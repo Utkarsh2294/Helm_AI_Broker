@@ -43,6 +43,8 @@ are sent to an LLM**. The framework smoke test exercises all five CrewAI steps.
    Agent 5 evaluates the recorded choices automatically after delivery.
 
 See the [complete automatic demo walkthrough](docs/TWO_DECISION_DEMO.md).
+The [assistant guide](docs/ASSISTANT_GUIDE.md) covers streaming, citations, private
+history, local file analysis, voice controls, evidence, exports and reviewer links.
 Existing cases and the [manual pilot showcase](docs/DEMO_SHOWCASE.md) keep their
 explicit G0/G1 and guided review flow for exception demonstrations.
 
