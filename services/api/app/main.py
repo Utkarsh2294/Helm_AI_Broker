@@ -93,7 +93,8 @@ async def request_boundary(request, call_next):
         chunks, length = [], 0
         async for chunk in request.stream():
             length += len(chunk)
-            if length > 2_000_000:
+            limit = 29_000_000 if request.url.path == "/api/v1/workspace/assistant/files" else 2_000_000
+            if length > limit:
                 return secure_headers(JSONResponse({"detail": "Request body too large"}, status_code=413))
             chunks.append(chunk)
         request._body = b"".join(chunks)
@@ -391,6 +392,9 @@ from app.case_workspace import router as case_workspace_router  # noqa: E402
 from app.agentic_demo import router as agentic_demo_router  # noqa: E402
 
 app.include_router(case_workspace_router)
+from app.assistant import router as assistant_router  # noqa: E402
+
+app.include_router(assistant_router)
 app.include_router(agentic_demo_router)
 
 

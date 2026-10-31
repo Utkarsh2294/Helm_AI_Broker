@@ -32,7 +32,7 @@ def list_documents(case_id: str, request: Request, db=Depends(database, scope="f
     service.get_case(db, case_id)
     rows = db.scalars(
         select(Snapshot)
-        .where(Snapshot.case_id == case_id, Snapshot.kind == "case_document")
+        .where(Snapshot.case_id == case_id, Snapshot.kind.in_(["case_document", "assistant_document"]))
         .order_by(Snapshot.version)
     )
     return [
@@ -113,17 +113,25 @@ def read_document(case_id: str, document_id: str, request: Request, db=Depends(d
     require_medical_access(db, case, user, session)
     row = db.scalar(
         select(Snapshot).where(
-            Snapshot.id == document_id, Snapshot.case_id == case_id, Snapshot.kind == "case_document"
+            Snapshot.id == document_id,
+            Snapshot.case_id == case_id,
+            Snapshot.kind.in_(["case_document", "assistant_document"]),
         )
     )
     if not row:
         raise DomainError("Document not found", 404)
     audit(db, case_id, "document_accessed", f"broker:{user.id}", {"document_id": row.id})
+    content = (
+        row.body["text"].encode("utf-8")
+        if row.kind == "assistant_document"
+        else base64.b64decode(row.body["content_base64"])
+    )
     return Response(
-        base64.b64decode(row.body["content_base64"]),
+        content,
         media_type=row.body["mime"],
         headers={
             "Content-Disposition": f'attachment; filename="helm-document-{row.id}{".pdf" if row.body["mime"] == "application/pdf" else ".txt"}"',
-            "X-Content-SHA256": row.body["sha256"],
+            "X-Content-SHA256": hashlib.sha256(content).hexdigest(),
+            "X-Source-SHA256": row.body["sha256"],
         },
     )

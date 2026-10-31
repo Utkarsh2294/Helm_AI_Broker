@@ -197,7 +197,7 @@ def workspace_data(db, case, user):
                     "created_at": row.created_at,
                 }
                 for row in rows
-                if row.kind == "case_document"
+                if row.kind in {"case_document", "assistant_document"}
             ],
             "records": [
                 {
@@ -219,6 +219,8 @@ def workspace_data(db, case, user):
                     "publication",
                     "consumer_response",
                     "policy_bound",
+                    "assistant_document",
+                    "assistant_evidence",
                 }
             ],
             "selected_policies": [
@@ -249,10 +251,17 @@ def case_workspace(case_id: str, request: Request, db=Depends(database, scope="f
 class Question(Model):
     question: str = Field(min_length=1, max_length=1500)
     case_id: str | None = Field(default=None, max_length=100)
+    file_ids: list[str] = Field(default_factory=list, max_length=5)
 
 
 @router.post("/workspace/assistant")
 def assistant(body: Question, request: Request, db=Depends(database, scope="function")):
+    from app.assistant import respond
+
+    return respond(db, request, body)
+
+
+def saved_answer(body, request, db):
     user, _ = identity(db, request)
     query = body.question.casefold()
     if not body.case_id:
@@ -287,7 +296,12 @@ def assistant(body: Question, request: Request, db=Depends(database, scope="func
         sources = [{"label": "Digital client file · protected medical declaration", "view": "file"}]
     elif any(word in query for word in ("budget", "prefer", "need", "client", "patient", "profile")):
         needs = file["preferences"]
-        answer = f"{file['identity']['name']} requested {file['identity']['cover_type']} cover in {file['identity']['postcode']}. Annual budget: £{needs.get('budget_annual_pence', 0) / 100:,.2f}. Priorities in order: {', '.join(needs.get('priorities', []))}. Hospital list level: {needs.get('hospital_level', 'not provided')}. "
+        budget = (
+            f"£{needs['budget_annual_pence'] / 100:,.2f}"
+            if needs.get("budget_annual_pence") is not None
+            else "not provided"
+        )
+        answer = f"{file['identity']['name']} requested {file['identity']['cover_type']} cover in {file['identity']['postcode']}. Annual budget: {budget}. Priorities in order: {', '.join(needs.get('priorities', [])) or 'not provided'}. Hospital list level: {needs.get('hospital_level', 'not provided')}. "
         answer += (
             "Requested benefits: "
             + "; ".join(

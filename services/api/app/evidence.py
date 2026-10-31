@@ -8,6 +8,7 @@ from sqlalchemy import select
 from app.agents.review import canonical_hash
 from app.compliance.medical_firewall import safe_case
 from app.db.models import Activity, Approval, Snapshot, utcnow
+from app.db.assistant import AssistantLog
 from app.db.store import verify_chain
 from app.schemas import DomainError
 
@@ -34,6 +35,7 @@ CONTROLS = {
 
 
 def generate(db, case, user, include_medical=False):
+    include_medical = include_medical and user.role in {"authorised_broker", "compliance_officer"}
     snapshots = db.scalars(
         select(Snapshot).where(Snapshot.case_id == case.id).order_by(Snapshot.created_at, Snapshot.version)
     ).all()
@@ -100,6 +102,44 @@ def generate(db, case, user, include_medical=False):
                 "evidence": control_evidence(key, pack, last, approvals, events),
             }
             for key, description in CONTROLS.items()
+        ],
+        "assistant_evidence": [
+            {"version": s.version, "body_hash": s.body_hash, "body": s.body}
+            if include_medical or not s.body.get("protected")
+            else {
+                "version": s.version,
+                "body_hash": s.body_hash,
+                "body": "[Protected document analysis — verified medical access required]",
+            }
+            for s in snapshots
+            if s.kind == "assistant_evidence"
+        ],
+        "assistant_logs": [
+            {
+                "id": row.id,
+                "broker_id": row.broker_id,
+                "timestamp": row.created_at,
+                "model_version": row.model_version,
+                "confidence": row.confidence_level,
+                "body": row.body
+                if include_medical or not row.body.get("protected")
+                else "[Protected document analysis — verified medical access required]",
+            }
+            for row in db.scalars(
+                select(AssistantLog).where(AssistantLog.case_id == case.id).order_by(AssistantLog.created_at)
+            )
+            if row.broker_id == getattr(user, "id", None) or user.role == "compliance_officer"
+        ],
+        "assistant_documents": [
+            {
+                "version": s.version,
+                "body_hash": s.body_hash,
+                "body": s.body
+                if include_medical
+                else "[Protected document extract — verified medical access required]",
+            }
+            for s in snapshots
+            if s.kind == "assistant_document"
         ],
     }
     result = safe_case(sections, user, include_medical)
@@ -184,7 +224,9 @@ def pdf_bytes(data):
         "Content SHA-256: " + data["pack_hash"],
     ):
         story.extend([Spacer(1, 10), Paragraph(escape(text), styles["EvidenceBody"])])
-    section_keys = list(data)[:14]
+    section_keys = list(data)[:14] + [
+        key for key in ("assistant_evidence", "assistant_logs", "assistant_documents") if data.get(key)
+    ]
     for i, key in enumerate(section_keys, 1):
         story.extend(
             [

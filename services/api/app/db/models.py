@@ -181,3 +181,4 @@ for table in (Snapshot, Approval, Activity, Publication):
 
 # Register the concrete tables used by auth, integration and governance.
 from app.db import platform as platform_models  # noqa: E402,F401
+from app.db import assistant as assistant_models  # noqa: E402,F401

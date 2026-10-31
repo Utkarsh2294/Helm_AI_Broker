@@ -14,7 +14,7 @@ def secure_headers(response):
         {
             "Content-Security-Policy": CSP,
             "X-Frame-Options": "DENY",
-            "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
+            "Permissions-Policy": "geolocation=(), microphone=(self), camera=()",
             "X-Content-Type-Options": "nosniff",
             "Referrer-Policy": "no-referrer",
             "Cache-Control": "no-store",

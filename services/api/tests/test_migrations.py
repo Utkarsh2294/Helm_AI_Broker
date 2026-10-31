@@ -6,7 +6,8 @@ from sqlalchemy import text
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
 from app.config import ROOT
-from app.db.models import Case
+from app.db.models import Case, User
+from app.db.assistant import AssistantLog
 from app.db.store import audit, make_engine
 
 
@@ -24,11 +25,26 @@ def test_migration_enforces_immutability_against_raw_sql(tmp_path):
     with Session(engine) as db:
         case = Case(core_request_id="migrated", profile={"name": "Demo"})
         db.add(case)
+        user = User(email="migration@helm.demo", name="Migration fixture", password_hash="unused")
+        db.add(user)
         db.flush()
         audit(db, case.id, "created", "system")
+        db.add(
+            AssistantLog(
+                broker_id=user.id,
+                session_id="migration-fixture",
+                case_id=case.id,
+                body={"question": "Saved fixture", "answer": "Read-only fixture"},
+                model_version="test",
+                confidence_level="LOW",
+            )
+        )
         db.commit()
         with pytest.raises(DatabaseError, match="append-only"):
             db.execute(text("UPDATE activity_events SET type='tampered'"))
+        db.rollback()
+        with pytest.raises(DatabaseError, match="append-only"):
+            db.execute(text("UPDATE assistant_logs SET confidence_level='HIGH'"))
         db.rollback()
         with pytest.raises(DatabaseError, match="append-only"):
             db.execute(text("DELETE FROM activity_events"))
