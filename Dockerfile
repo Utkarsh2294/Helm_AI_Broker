@@ -11,6 +11,11 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     python -m venv .venv && \
     .venv/bin/python -m pip install --disable-pip-version-check --require-hashes --no-deps --prefer-binary --timeout 300 --retries 5 -r /tmp/requirements.lock && \
     uv sync --frozen --extra agents --extra build --no-dev --offline --no-build-isolation-package helm-engine
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean && \
+    apt-get -o Acquire::ForceIPv4=true -o Acquire::http::Timeout=30 -o Acquire::Retries=3 update && \
+    apt-get -o Acquire::ForceIPv4=true -o Acquire::http::Timeout=30 -o Acquire::Retries=3 install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng
 COPY services ./services
 COPY tools ./tools
 COPY alembic.ini ./
