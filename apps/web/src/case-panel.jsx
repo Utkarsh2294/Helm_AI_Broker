@@ -58,7 +58,13 @@ export default function CasePanel({ id, user, onClose, initialView = 'journey' }
   const [historical, setHistorical] = useState(false),
     [liveCase, setLiveCase] = useState(null);
   const [c, setCaseState] = useState(null),
-    [tab, setTab] = useState(initialView === 'audit' ? 'activity' : 'overview'),
+    [tab, setTab] = useState(
+      initialView === 'audit'
+        ? 'activity'
+        : ['file', 'assistant'].includes(initialView)
+          ? initialView
+          : 'overview',
+    ),
     [error, setError] = useState('');
   function setCase(value) {
     mutationEpoch.current += 1;

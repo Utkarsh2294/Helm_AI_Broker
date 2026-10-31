@@ -28,7 +28,7 @@ export default function CommandPalette({ cases, onCase, onPage }) {
   }, [query]);
   useEffect(() => {
     const handle = (event) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         setOpen((v) => !v);
       }
@@ -65,7 +65,7 @@ export default function CommandPalette({ cases, onCase, onPage }) {
       <Dialog.Trigger asChild>
         <button className="button small command-trigger">
           <Search size={14} />
-          Search <kbd>Ctrl K</kbd>
+          Search <kbd>Ctrl Shift K</kbd>
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>

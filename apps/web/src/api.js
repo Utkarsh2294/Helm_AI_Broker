@@ -6,14 +6,14 @@ let csrf = decodeURIComponent(
 );
 let refreshInFlight = null;
 export async function api(path, options = {}) {
-  const { retried = false, ...requestOptions } = options;
+  const { retried = false, responseType = 'json', ...requestOptions } = options;
   const response = await fetch(`/api/v1${path}`, {
     ...requestOptions,
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf, ...options.headers },
     ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
   });
-  const data = await response.json();
+  const data = response.ok && responseType !== 'json' ? null : await response.json();
   if (
     response.status === 401 &&
     data.detail === 'Sign in to continue' &&
@@ -40,9 +40,13 @@ export async function api(path, options = {}) {
     error.requires_step_up = Boolean(data.requires_step_up);
     throw error;
   }
-  if (data.csrf) csrf = data.csrf;
+  if (data?.csrf) csrf = data.csrf;
   if (path === '/auth/logout' || path === '/auth/logout-all') csrf = '';
-  return data;
+  return responseType === 'stream'
+    ? response.body
+    : responseType === 'blob'
+      ? response.blob()
+      : data;
 }
 export const money = (pence) =>
   new Intl.NumberFormat('en-GB', {

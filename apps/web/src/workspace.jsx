@@ -200,7 +200,7 @@ export default function Workspace({ page, user, setPage }) {
               Workspace assistant
             </button>
             <span className="muted">
-              Open a case to see its digital file, agent work and reasons.
+              Ctrl/Cmd K opens a pinned assistant. Open a case for its saved file and answers.
             </span>
           </div>
           {assistantOpen && <CaseAssistant onOpenCase={setSelected} />}
@@ -526,9 +526,7 @@ export default function Workspace({ page, user, setPage }) {
           <CasePanel
             key={`${selected}:${location.search}`}
             id={selected}
-            initialView={
-              new URLSearchParams(location.search).get('view') === 'audit' ? 'audit' : 'journey'
-            }
+            initialView={new URLSearchParams(location.search).get('view') || 'journey'}
             user={user}
             onClose={() => {
               setSelected(null);

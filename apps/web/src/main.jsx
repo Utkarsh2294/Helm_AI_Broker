@@ -14,6 +14,7 @@ import {
   Compass,
   HelpCircle,
   X,
+  MessageSquare,
 } from 'lucide-react';
 import { api, label } from './api';
 import './styles.css';
@@ -26,6 +27,7 @@ import { MotionConfig } from 'framer-motion';
 import { BrowserRouter, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Login, SignedOut, safeNext } from './auth-pages';
 import './design/components.css';
+import { AssistantDock, AssistantReview } from './components/Assistant';
 
 document.documentElement.dataset.theme = 'light';
 
@@ -179,6 +181,13 @@ function App() {
             <strong>{navigation.find((n) => n[0] === page)[1]}</strong>
           </span>
           <div className="topbar-actions">
+            <button
+              className="button small"
+              onClick={() => window.dispatchEvent(new CustomEvent('helm:assistant-open'))}
+            >
+              <MessageSquare size={16} />
+              Assistant <kbd>Ctrl K</kbd>
+            </button>
             <span className="demo-badge">
               <span className="status-dot" /> Demo environment
             </span>
@@ -191,13 +200,16 @@ function App() {
         )}
         <main id="main" className="main-content">
           <Suspense fallback={<p role="status">Loading workspace…</p>}>
-            {page === 'security' ? (
+            {location.pathname.startsWith('/assistant-review/') ? (
+              <AssistantReview />
+            ) : page === 'security' ? (
               <SecuritySettings />
             ) : (
               <Workspace page={page} user={user} setPage={setPage} />
             )}
           </Suspense>
         </main>
+        <AssistantDock />
         <footer className="app-footer">
           <span>
             HELM BROKER <span>·</span> A little more intelligence. A lot more confidence.

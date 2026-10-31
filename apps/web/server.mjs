@@ -35,7 +35,7 @@ export function createWebServer({
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'no-referrer');
-    res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=()');
+    res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=(self)');
     res.setHeader('Cache-Control', 'no-store');
     if (secure)
       res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');

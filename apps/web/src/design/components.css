@@ -321,6 +321,10 @@
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
+.assistant-message a {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
 .assistant-message .text-button {
   display: block;
   text-align: left;
@@ -342,6 +346,127 @@
   flex: 1;
   min-width: 0;
   min-height: 48px;
+}
+.assistant-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-block: 0.8rem;
+}
+.assistant-toolbar .button {
+  min-height: 44px;
+  white-space: normal;
+}
+.assistant-stamp {
+  display: block;
+  color: var(--muted);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.assistant-citations code,
+.assistant-review-answer,
+.assistant-evidence p,
+.assistant-history p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.assistant-history,
+.assistant-evidence {
+  border-block: 1px solid var(--line);
+  padding-block: 1rem;
+  max-height: 18rem;
+  overflow-y: auto;
+}
+.assistant-history input,
+.assistant-share input {
+  width: 100%;
+  min-width: 0;
+}
+.assistant-history > div {
+  padding-block: 0.7rem;
+  border-bottom: 1px solid var(--line);
+}
+.assistant-history small {
+  display: block;
+}
+.assistant-attachment {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  overflow-wrap: anywhere;
+}
+.assistant-attachment span {
+  min-width: 0;
+  flex: 1 1 100%;
+}
+.assistant-input select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+}
+.assistant-recording {
+  color: var(--danger, #923c32);
+  outline: 2px solid currentColor;
+}
+.assistant-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.assistant-table table {
+  min-width: 32rem;
+  width: 100%;
+  border-collapse: collapse;
+}
+.assistant-table th,
+.assistant-table td {
+  padding: 0.55rem;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+.assistant-table caption {
+  text-align: left;
+  padding-block: 0.5rem;
+  font-weight: 600;
+}
+.assistant-dock {
+  position: fixed;
+  z-index: 1000;
+  top: 5rem;
+  right: 1rem;
+  bottom: 1rem;
+  width: min(34rem, calc(100vw - 2rem));
+  box-shadow: 0 12px 48px #20382a26;
+  border-radius: var(--radius);
+  background: var(--paper);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.assistant-docked {
+  min-height: 100%;
+}
+.assistant-dock .assistant-messages {
+  max-height: 42vh;
+}
+.assistant-dock .assistant-input {
+  position: sticky;
+  bottom: -1.3rem;
+  padding-block: 0.8rem;
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+}
+.assistant-docked .section-header {
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+@media (max-width: 520px) {
+  .assistant-dock {
+    top: 0.5rem;
+    right: 0.5rem;
+    bottom: 0.5rem;
+    width: calc(100vw - 1rem);
+  }
 }
 .case-agent-summary {
   max-width: 220px;

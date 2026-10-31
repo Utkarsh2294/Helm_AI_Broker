@@ -96,7 +96,7 @@ for (const [scenario, state, count] of [
 
 test('keyboard command search, Quick Look and case filters work', async ({ page }) => {
   await login(page);
-  await page.keyboard.press('Control+k');
+  await page.keyboard.press('Control+Shift+k');
   const palette = page.getByRole('dialog', { name: 'Search your workspace' });
   await palette.getByLabel('Command search').fill('Asha');
   await expect(palette.getByRole('option').filter({ hasText: 'Asha Patel' })).toBeVisible();
