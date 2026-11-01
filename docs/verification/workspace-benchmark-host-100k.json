@@ -1,0 +1,72 @@
+{
+  "database": "helm_qa_20261101204919005660",
+  "rows": 100000,
+  "refresh_ms": 2350.0,
+  "endpoints": {
+    "volume": {
+      "cold_ms": 3592.62,
+      "warm_p95_ms": 557.19,
+      "p95_ms": 3592.62
+    },
+    "aging": {
+      "cold_ms": 634.71,
+      "warm_p95_ms": 287.09,
+      "p95_ms": 634.71
+    },
+    "time-to-close": {
+      "cold_ms": 3894.12,
+      "warm_p95_ms": 152.68,
+      "p95_ms": 3894.12
+    },
+    "satisfaction": {
+      "cold_ms": 579.42,
+      "warm_p95_ms": 202.34,
+      "p95_ms": 579.42
+    },
+    "insurer-performance": {
+      "cold_ms": 709.59,
+      "warm_p95_ms": 148.57,
+      "p95_ms": 709.59
+    },
+    "plan-patterns": {
+      "cold_ms": 3171.69,
+      "warm_p95_ms": 244.3,
+      "p95_ms": 3171.69
+    },
+    "broker-productivity": {
+      "cold_ms": 466.52,
+      "warm_p95_ms": 215.71,
+      "p95_ms": 466.52
+    },
+    "overview": {
+      "cold_ms": 1295.92,
+      "warm_p95_ms": 301.75,
+      "p95_ms": 1295.92
+    },
+    "cohorts": {
+      "cold_ms": 611.1,
+      "warm_p95_ms": 260.83,
+      "p95_ms": 611.1
+    },
+    "anomalies": {
+      "cold_ms": 7154.23,
+      "warm_p95_ms": 777.68,
+      "p95_ms": 7154.23
+    },
+    "drivers": {
+      "cold_ms": 1279.32,
+      "warm_p95_ms": 188.2,
+      "p95_ms": 1279.32
+    },
+    "dashboard": {
+      "cold_ms": 16702.85,
+      "warm_p95_ms": 2244.29,
+      "p95_ms": 16702.85
+    }
+  },
+  "limits": {
+    "refresh_ms": 2000,
+    "endpoint_p95_ms": 300
+  },
+  "note": "Isolated synthetic numeric operational projections; HTTP in-process ASGI TestClient, real asyncpg/PostgreSQL and Redis. Cold and warm results reported separately."
+}

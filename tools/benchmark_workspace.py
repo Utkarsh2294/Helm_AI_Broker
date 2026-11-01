@@ -8,6 +8,7 @@ import os
 import subprocess
 import sys
 import time
+import math
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,9 +29,12 @@ def main():
     )
     if not created.startswith("helm_qa_") or not created[8:].isdigit():
         raise RuntimeError("Unexpected benchmark database name")
+    container = os.environ.get("HELM_BENCHMARK_NETWORK") == "container"
+    database_host = "postgres:5432" if container else "127.0.0.1:55439"
+    redis_host = "redis:6379" if container else "127.0.0.1:56389"
     os.environ.update(
-        HELM_DATABASE_URL=f"postgresql+psycopg://helm:helm_local_demo_only@127.0.0.1:55439/{created}",
-        HELM_REDIS_URL="redis://127.0.0.1:56389/2",
+        HELM_DATABASE_URL=f"postgresql+psycopg://helm:helm_local_demo_only@{database_host}/{created}",
+        HELM_REDIS_URL=f"redis://{redis_host}/2",
         HELM_DEMO_BACKGROUND_JOBS="false",
         HELM_AUTH_RATE_LIMIT="500",
         HELM_LLM_ENABLED="false",
@@ -44,6 +48,13 @@ def main():
     )
     from fastapi.testclient import TestClient
     from app.main import app, SessionLocal
+
+    if reuse:
+        from app import main as application
+
+        # Reuse the authoritative synthetic fixture without reseeding/decrypting
+        # its original sample cases. Analytics reads numeric projections only.
+        application.seed_demo = lambda db: None
     from sqlalchemy import select, text
     from app.db.models import User, SecretJSON, utcnow
     from app.copilot_jobs import refresh_daily_view
@@ -106,7 +117,7 @@ def main():
         ]:
             event_client().incr("helm:insights:epoch")
             latencies = []
-            for _ in range(6):
+            for _ in range(21):
                 start = time.perf_counter()
                 response = client.get("/api/v1/insights/" + endpoint + params)
                 elapsed = (time.perf_counter() - start) * 1000
@@ -114,8 +125,9 @@ def main():
                 latencies.append(elapsed)
             results[endpoint] = {
                 "cold_ms": round(latencies[0], 2),
-                "warm_p95_ms": round(sorted(latencies[1:])[-1], 2),
-                "p95_ms": round(sorted(latencies)[-1], 2),
+                "warm_p95_ms": round(sorted(latencies[1:])[math.ceil(0.95 * len(latencies[1:])) - 1], 2),
+                "p95_ms": round(sorted(latencies)[math.ceil(0.95 * len(latencies)) - 1], 2),
+                "requests": len(latencies),
             }
         report = {
             "database": created,
@@ -123,11 +135,19 @@ def main():
             "refresh_ms": round(refresh_ms, 2),
             "endpoints": results,
             "limits": {"refresh_ms": 2000, "endpoint_p95_ms": 300},
-            "note": "Isolated synthetic numeric operational projections; HTTP in-process ASGI TestClient, real asyncpg/PostgreSQL and Redis. Cold and warm results reported separately.",
+            "note": f"Isolated synthetic numeric operational projections; in-process ASGI HTTP, real asyncpg/PostgreSQL/Redis; {'Docker internal network' if container else 'Windows host-to-Docker networking'}. Per endpoint: one explicitly cache-cold request plus twenty warm requests; nearest-rank p95 includes all 21. Cold latency reported separately. This is a cache/retrieval smoke benchmark, not a multi-user production load simulation.",
         }
         target = ROOT / ".runtime/qa/workspace-benchmark.json"
+        report["acceptance"] = {
+            "refresh": refresh_ms < 2000,
+            "endpoints": all(result["p95_ms"] < 300 for result in results.values()),
+        }
+        report["acceptance"]["passed"] = all(report["acceptance"].values())
+        target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(report, indent=2), encoding="utf-8")
         print(json.dumps(report, indent=2))
+        if not report["acceptance"]["passed"]:
+            raise SystemExit(1)
 
 
 if __name__ == "__main__":

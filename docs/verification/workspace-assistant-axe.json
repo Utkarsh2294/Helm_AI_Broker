@@ -1,0 +1,18 @@
+[
+  {
+    "screen": "workspace assistant desktop with history and file",
+    "violations": []
+  },
+  {
+    "screen": "workspace assistant mobile",
+    "violations": []
+  },
+  {
+    "screen": "case assistant desktop",
+    "violations": []
+  },
+  {
+    "screen": "case assistant mobile",
+    "violations": []
+  }
+]

@@ -1,0 +1,42 @@
+[
+  {
+    "screen": "workspace assistant",
+    "violations": []
+  },
+  {
+    "screen": "automatic policy selection desktop",
+    "violations": []
+  },
+  {
+    "screen": "digital client file",
+    "violations": []
+  },
+  {
+    "screen": "case assistant",
+    "violations": []
+  },
+  {
+    "screen": "readable agent audit",
+    "violations": []
+  },
+  {
+    "screen": "policy selection mobile",
+    "violations": []
+  },
+  {
+    "screen": "single final signoff desktop",
+    "violations": []
+  },
+  {
+    "screen": "single final signoff mobile",
+    "violations": []
+  },
+  {
+    "screen": "delivered and learning complete",
+    "violations": []
+  },
+  {
+    "screen": "completed case agent audit",
+    "violations": []
+  }
+]

@@ -1,0 +1,84 @@
+{
+  "database": "helm_qa_20261101204919005660",
+  "rows": 100000,
+  "refresh_ms": 892.24,
+  "endpoints": {
+    "volume": {
+      "cold_ms": 963.41,
+      "warm_p95_ms": 41.32,
+      "p95_ms": 43.38,
+      "requests": 21
+    },
+    "aging": {
+      "cold_ms": 141.54,
+      "warm_p95_ms": 37.14,
+      "p95_ms": 38.39,
+      "requests": 21
+    },
+    "time-to-close": {
+      "cold_ms": 3079.98,
+      "warm_p95_ms": 41.22,
+      "p95_ms": 42.28,
+      "requests": 21
+    },
+    "satisfaction": {
+      "cold_ms": 358.64,
+      "warm_p95_ms": 64.39,
+      "p95_ms": 66.2,
+      "requests": 21
+    },
+    "insurer-performance": {
+      "cold_ms": 307.29,
+      "warm_p95_ms": 37.06,
+      "p95_ms": 46.0,
+      "requests": 21
+    },
+    "plan-patterns": {
+      "cold_ms": 2547.07,
+      "warm_p95_ms": 64.16,
+      "p95_ms": 76.35,
+      "requests": 21
+    },
+    "broker-productivity": {
+      "cold_ms": 125.43,
+      "warm_p95_ms": 37.71,
+      "p95_ms": 43.37,
+      "requests": 21
+    },
+    "overview": {
+      "cold_ms": 200.97,
+      "warm_p95_ms": 45.34,
+      "p95_ms": 50.94,
+      "requests": 21
+    },
+    "cohorts": {
+      "cold_ms": 334.97,
+      "warm_p95_ms": 43.33,
+      "p95_ms": 46.38,
+      "requests": 21
+    },
+    "anomalies": {
+      "cold_ms": 2568.59,
+      "warm_p95_ms": 45.48,
+      "p95_ms": 47.29,
+      "requests": 21
+    },
+    "drivers": {
+      "cold_ms": 578.98,
+      "warm_p95_ms": 59.48,
+      "p95_ms": 67.45,
+      "requests": 21
+    },
+    "dashboard": {
+      "cold_ms": 9200.34,
+      "warm_p95_ms": 76.96,
+      "p95_ms": 89.55,
+      "requests": 21
+    }
+  },
+  "limits": {
+    "refresh_ms": 2000,
+    "endpoint_p95_ms": 300
+  },
+  "note": "Isolated synthetic numeric operational projections; in-process ASGI HTTP, real asyncpg/PostgreSQL/Redis; Docker internal network. Per endpoint: one explicitly cache-cold request plus twenty warm requests; nearest-rank p95 includes all 21. Cold latency reported separately. This is a cache/retrieval smoke benchmark, not a multi-user production load simulation."
+}

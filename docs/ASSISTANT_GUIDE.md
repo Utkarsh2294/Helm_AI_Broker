@@ -1,5 +1,9 @@
 # Helm saved-record assistants
 
+**Historical guide for the 31 October implementation.** The current controls,
+limits and browser-held history are documented in
+[Workspace assistant, task copilot and Insights](WORKSPACE_ASSISTANT_GUIDE.md).
+
 Implemented against the [31 October master prompts](spec/HELM_ASSISTANT_MASTER_PROMPTS.md).
 The broker's later workspace instructions remain in force: light mode only, no
 team page/strip and no combined audit page. The five workflow agents and the two
