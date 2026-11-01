@@ -49,6 +49,7 @@ def latest(db, case_id, kind):
 
 
 def save_snapshot(db, case_id, kind, body):
+    db.info.setdefault("metrics_dirty", set()).add(case_id)
     previous = latest(db, case_id, kind)
     snapshot = Snapshot(
         case_id=case_id,
@@ -112,9 +113,17 @@ def publish_committed_events(db):
             )
 
 
+@event.listens_for(Session, "before_commit")
+def project_workspace_events(db):
+    from app.copilot_projection import project_events
+
+    project_events(db, db.info.get("events_to_publish", []))
+
+
 @event.listens_for(Session, "after_rollback")
 def discard_rolled_back_events(db):
     db.info.pop("events_to_publish", None)
+    db.info.pop("metrics_dirty", None)
 
 
 @lru_cache(maxsize=1)
