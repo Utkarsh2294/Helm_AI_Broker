@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     llm_token_budget: int = 20000
     llm_daily_token_budget: int = 1000000
     llm_enabled: bool = False
+    push_enabled: bool = True
+    push_subject: str = "mailto:demo@helm.example"
+    speech_enabled: bool = True
+    speech_model: str = "base.en"
+    speech_model_directory: str = str(ROOT / ".runtime/whisper")
     min_quotes: int = 3
     min_new_comparisons: int = 30
     demo_clock_multiplier: int = 3600

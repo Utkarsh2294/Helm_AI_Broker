@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import Field
+from typing import Annotated
 from sqlalchemy import select, func
 from app import service
 from app.auth import identity
@@ -252,6 +253,11 @@ class Question(Model):
     question: str = Field(min_length=1, max_length=1500)
     case_id: str | None = Field(default=None, max_length=100)
     file_ids: list[str] = Field(default_factory=list, max_length=5)
+    previous_question: str = Field(default="", max_length=1500)
+    page: str = Field(default="workspace", pattern="^(workspace|queue|insights|case)$")
+    context_filters: dict[str, Annotated[str, Field(max_length=200)]] = Field(
+        default_factory=dict, max_length=6
+    )
 
 
 @router.post("/workspace/assistant")

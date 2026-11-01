@@ -25,6 +25,7 @@ class AssistantFile(Base):
     case_id: Mapped[str | None] = mapped_column(ForeignKey("cases.id"), index=True)
     body: Mapped[dict] = mapped_column(SecretJSON)
     expires_at: Mapped[str] = mapped_column(String(40))
+    cache_key: Mapped[str | None] = mapped_column(String(64), unique=True, index=True)
 
 
 class AssistantShare(Base):

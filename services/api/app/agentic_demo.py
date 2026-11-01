@@ -335,6 +335,11 @@ def process_job(db, case, job):
         )
         pack = {key: value for key, value in pack.items() if key != "pack_hash"}
         pack.update({"selection_hash": selection.body_hash, "workflow": FLOW, "feedback_collected": False})
+        from app.research import pack_research
+
+        research = pack_research(db, case.id)
+        if research:
+            pack["supporting_research"] = research
         pack["pack_hash"] = canonical_hash(pack)
         save_snapshot(db, case.id, "pack", pack)
         service.transition(

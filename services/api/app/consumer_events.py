@@ -15,7 +15,11 @@ from app.schemas import DomainError, Model, State
 class ConsumerEvent(Model):
     id: str = Field(min_length=1, max_length=100)
     type: Literal[
-        "consumer.responded", "consumer.magic_link_opened", "consumer.magic_link_expired", "consumer.bound"
+        "consumer.responded",
+        "consumer.magic_link_opened",
+        "consumer.magic_link_expired",
+        "consumer.bound",
+        "consumer.satisfaction",
     ]
     case_id: str = Field(min_length=1, max_length=100)
     pack_hash: str = Field(min_length=64, max_length=64)
@@ -27,6 +31,8 @@ class ConsumerEvent(Model):
     plan_id: str | None = Field(default=None, max_length=100)
     policy_number: str | None = Field(default=None, max_length=100)
     effective_date: date | None = None
+    score: int | None = Field(default=None, ge=1, le=5, strict=True)
+    comment: str = Field(default="", max_length=1000)
 
 
 def closure_pdf(case, pack, outcome, approval, dnr):
@@ -71,7 +77,36 @@ def handle(db, raw):
     if case.state not in (State.PUBLISHED, State.CLOSED):
         raise DomainError("No delivered recommendation can accept this event", 409)
     previous = latest(db, case.id, "consumer_response")
-    body = event.model_dump(mode="json")
+    body = event.model_dump(mode="json", exclude={"score", "comment"})
+    if event.type == "consumer.satisfaction":
+        from app.db.copilot import CaseSatisfaction
+
+        if event.score is None:
+            raise DomainError("A consumer satisfaction score from 1 to 5 is required", 422)
+        previous = db.get(CaseSatisfaction, event.id)
+        if previous:
+            if previous.case_id != case.id or previous.score != event.score:
+                raise DomainError("This satisfaction event was already recorded with different facts", 409)
+        else:
+            db.add(
+                CaseSatisfaction(
+                    id=event.id,
+                    case_id=case.id,
+                    score=event.score,
+                    body={
+                        "source": "signed_core_consumer_event",
+                        "comment_hash": hashlib.sha256(event.comment.encode()).hexdigest(),
+                    },
+                )
+            )
+            audit(
+                db,
+                case.id,
+                "consumer_satisfaction_recorded",
+                "core",
+                {"score": event.score, "source_event_id": event.id},
+            )
+        return case
     from app.service import transition
 
     if event.type == "consumer.responded":

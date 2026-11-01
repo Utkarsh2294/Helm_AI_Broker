@@ -19,6 +19,7 @@ class Notification(Base):
     body: Mapped[dict] = mapped_column(SecretJSON)
     actionable: Mapped[bool] = mapped_column(default=True)
     read_at: Mapped[str | None] = mapped_column(String(40))
+    push_sent_at: Mapped[str | None] = mapped_column(String(40))
     created_at: Mapped[str] = mapped_column(String(40), default=stamp)
 
 

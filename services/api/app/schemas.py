@@ -82,6 +82,8 @@ class QuoteRequest(Model):
     )
     vulnerability_flags: list[str] = Field(default_factory=list)
     missing_fields: list[str] = Field(default_factory=list)
+    consumer_reference: str | None = Field(default=None, max_length=100)
+    renewal_of_case_id: str | None = Field(default=None, max_length=36)
 
 
 class Fact(Model):

@@ -93,7 +93,18 @@ async def request_boundary(request, call_next):
         chunks, length = [], 0
         async for chunk in request.stream():
             length += len(chunk)
-            limit = 29_000_000 if request.url.path == "/api/v1/workspace/assistant/files" else 2_000_000
+            path = request.url.path
+            limit = (
+                132_000_000
+                if path == "/api/v1/assistant/parse-files"
+                else 27_000_000
+                if path == "/api/v1/assistant/transcribe"
+                else 35_000_000
+                if path == "/api/v1/workspace/assistant/files"
+                else 42_000_000
+                if path == "/api/v1/workspace/assistant/export"
+                else 3_000_000
+            )
             if length > limit:
                 return secure_headers(JSONResponse({"detail": "Request body too large"}, status_code=413))
             chunks.append(chunk)
@@ -125,6 +136,7 @@ async def domain_error(request, error):
         },
         status_code=error.status,
         media_type="application/problem+json",
+        headers={"Retry-After": str(error.flags["retry_after"])} if error.flags.get("retry_after") else None,
     )
 
 
@@ -392,9 +404,19 @@ from app.case_workspace import router as case_workspace_router  # noqa: E402
 from app.agentic_demo import router as agentic_demo_router  # noqa: E402
 
 app.include_router(case_workspace_router)
+from app.copilot_api import router as copilot_router  # noqa: E402
+from app import push_notifications  # noqa: E402,F401
+
+app.include_router(copilot_router)
+from app.broker_insights import router as broker_insights_router  # noqa: E402
+
+app.include_router(broker_insights_router)
 from app.assistant import router as assistant_router  # noqa: E402
 
 app.include_router(assistant_router)
+from app.assistant_tools import router as assistant_tools_router  # noqa: E402
+
+app.include_router(assistant_tools_router)
 app.include_router(agentic_demo_router)
 
 

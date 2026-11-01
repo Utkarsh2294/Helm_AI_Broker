@@ -97,6 +97,7 @@ async def receive_webhook(request: Request, db=Depends(database, scope="function
         "consumer.magic_link_opened",
         "consumer.magic_link_expired",
         "consumer.bound",
+        "consumer.satisfaction",
     }:
         from app.consumer_events import handle
 

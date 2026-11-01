@@ -1,9 +1,10 @@
 """Transactional, non-clinical projections. No model decides tasks or priorities."""
 
 import json
+import hashlib
 from collections import defaultdict
 from datetime import datetime
-from sqlalchemy import select, delete, text
+from sqlalchemy import select, delete, text, func, cast, DateTime, Integer, case as sql_case
 from app.db.models import Activity, Case, Snapshot, User, utcnow
 from app.db.platform import BrokerRating
 from app.db.copilot import CaseMetric, ProviderMetric, CaseSatisfaction, Notification
@@ -22,6 +23,32 @@ def priority_score(case, now):
     if case["state"] in {"BROKER_REVIEW", "AWAITING_BROKER_REVIEW"}:
         score += 30 * (1 - case.get("unrated_plan_fraction", 1))
     return score
+
+
+def priority_expression(dialect, now):
+    """SQL equivalent for cursor-paginated queues; the cursor freezes the clock."""
+    last = func.coalesce(CaseMetric.last_action_at, Case.created_at)
+    if dialect == "postgresql":
+        elapsed = func.greatest(
+            0, func.floor(func.extract("epoch", now - cast(last, DateTime(timezone=True))) / 86400)
+        )
+        least = func.least
+    else:
+        elapsed = func.max(0, cast(func.julianday(now.isoformat()) - func.julianday(last), Integer))
+        least = func.min
+    fraction = elapsed / 5.0
+    total = func.coalesce(CaseMetric.body["plans"].as_integer(), 0)
+    rated = func.coalesce(CaseMetric.body["rated"].as_integer(), 0)
+    rated_fraction = sql_case((total > 0, least(rated, total) * 1.0 / func.nullif(total, 0)), else_=0)
+    return (
+        sql_case((Case.state == "PAUSED_NEEDS_HUMAN", 100), else_=0)
+        + fraction * 50
+        + sql_case((fraction >= 1, 200), else_=0)
+        + sql_case(
+            (Case.state.in_(["BROKER_REVIEW", "AWAITING_BROKER_REVIEW"]), 30 * rated_fraction), else_=0
+        )
+        + func.coalesce(CaseMetric.body["priority_boost"].as_float(), 0)
+    )
 
 
 def project_case(db, case):
@@ -86,7 +113,15 @@ def project_case(db, case):
     )
     metric.csat = survey[-1].score if survey else None
     metric.updated_at = utcnow().isoformat()
+    previous_signal = (metric.body or {}).get("aging_signal")
+    valid_signal = bool(
+        previous_signal
+        and previous_signal["state"] == case.state
+        and previous_signal.get("state_entered_at") == entered
+    )
     metric.body = {
+        "aging_signal": previous_signal if valid_signal else None,
+        "priority_boost": 25 if valid_signal else 0,
         "automatic": case.profile.get("workflow") == "fictional-two-decisions-v1",
         "plans": len(top),
         "rated": len(ratings),
@@ -98,10 +133,14 @@ def project_case(db, case):
         "state_entered_at": entered,
         "selected_count": len(chosen),
         "accepted": saved.get("consumer_response", {}).get("decision") == "ACCEPTED",
-        "consumer_key": case.profile.get("consumer_reference"),
+        "bound": bool(saved.get("policy_bound")),
+        "consumer_key": hashlib.sha256(case.profile["consumer_reference"].encode()).hexdigest()
+        if case.profile.get("consumer_reference")
+        else None,
+        "renewal_of": case.profile.get("renewal_of_case_id"),
         "halt_code": next(
             (
-                e.payload.get("code", e.type)
+                e.type
                 for e in reversed(events)
                 if e.payload.get("to") in {"PAUSED_NEEDS_HUMAN", "UW_REFERRAL", "COMPLAINT_FLAGGED"}
             ),
@@ -149,6 +188,8 @@ def project_events(db, events):
     cases = {case.id: case for case in db.scalars(select(Case).where(Case.id.in_(case_ids)))}
     for case in cases.values():
         project_case(db, case)
+    if cases:
+        db.info["metrics_cache_invalidate"] = True
     for event in events:
         case = cases.get(event["case_id"])
         if not case:

@@ -6,6 +6,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from app.db.models import encryption_key
 
 PATTERNS = {
+    "NI": r"\b[A-CEGHJ-PR-TW-Z]{2}[ -]?\d{2}[ -]?\d{2}[ -]?\d{2}[ -]?[A-D]\b",
     "EMAIL": r"\b[\w.+-]+@[\w.-]+\.[a-zA-Z]{2,}\b",
     "NHS": r"\b\d{3}[ -]?\d{3}[ -]?\d{4}\b",
     "DOB": r"\b(?:\d{4}-\d{2}-\d{2}|\d{2}[/-]\d{2}[/-]\d{4})\b",

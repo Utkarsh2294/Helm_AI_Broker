@@ -43,6 +43,52 @@ async def daily_learning(ctx):
             db.commit()
 
 
+async def copilot_maintenance(ctx):
+    def run():
+        from app.copilot_jobs import maintenance
+
+        with SessionLocal() as db:
+            maintenance(db)
+            db.commit()
+
+    await asyncio.to_thread(run)
+
+
+async def refresh_insights(ctx):
+    def run():
+        from app.copilot_jobs import refresh_daily_view
+
+        with SessionLocal() as db:
+            refresh_daily_view(db)
+            db.commit()
+
+    await asyncio.to_thread(run)
+
+
+async def browser_push(ctx):
+    def run():
+        from app.push_notifications import deliver_pending
+
+        with SessionLocal() as db:
+            deliver_pending(db)
+            db.commit()
+
+    await asyncio.to_thread(run)
+
+
+async def satisfaction_drivers(ctx):
+    def run():
+        from app.broker_insights import compute_drivers
+        from app.copilot_jobs import detect_aging
+
+        with SessionLocal() as db:
+            compute_drivers(db)
+            detect_aging(db)
+            db.commit()
+
+    await asyncio.to_thread(run)
+
+
 class WorkerSettings:
     @staticmethod
     async def on_startup(ctx):
@@ -51,12 +97,25 @@ class WorkerSettings:
 
         configure()
         await asyncio.to_thread(prepare_runtime, settings().agent_runtime)
+        await refresh_insights(ctx)
 
     redis_settings = RedisSettings.from_dsn(settings().redis_url)
-    functions = [poll_jobs, daily_learning, nightly_verify]
+    functions = [
+        poll_jobs,
+        daily_learning,
+        nightly_verify,
+        copilot_maintenance,
+        refresh_insights,
+        browser_push,
+        satisfaction_drivers,
+    ]
     cron_jobs = [
         cron(poll_jobs, second=set(range(60))),
         cron(daily_learning, minute=0),
         cron(nightly_verify, hour=3, minute=0),
+        cron(copilot_maintenance, minute=set(range(60))),
+        cron(refresh_insights, minute={0, 15, 30, 45}),
+        cron(browser_push, second={0, 10, 20, 30, 40, 50}),
+        cron(satisfaction_drivers, hour=2, minute=30),
     ]
-    max_jobs = 1
+    max_jobs = 2

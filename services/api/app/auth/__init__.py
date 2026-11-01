@@ -55,6 +55,13 @@ def new_session(db, user):
         expires_at=(utcnow() + timedelta(minutes=15)).isoformat(),
     )
     db.add(row)
+    from app.db.copilot import CopilotPreferences
+    preference = db.get(CopilotPreferences,user.id)
+    if not preference:
+        preference=CopilotPreferences(broker_id=user.id)
+        db.add(preference)
+    preference.previous_login=preference.last_login or utcnow().date().isoformat()
+    preference.last_login=utcnow().isoformat()
     return row, token
 
 

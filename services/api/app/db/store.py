@@ -102,6 +102,11 @@ def audit(db, case_id, event_type, actor, payload=None):
 @event.listens_for(Session, "after_commit")
 def publish_committed_events(db):
     events = db.info.pop("events_to_publish", [])
+    if db.info.pop("metrics_cache_invalidate", False):
+        try:
+            event_client().incr("helm:insights:epoch")
+        except Exception:
+            pass
     if events:
         try:
             redis = event_client()
@@ -124,6 +129,7 @@ def project_workspace_events(db):
 def discard_rolled_back_events(db):
     db.info.pop("events_to_publish", None)
     db.info.pop("metrics_dirty", None)
+    db.info.pop("metrics_cache_invalidate", None)
 
 
 @lru_cache(maxsize=1)

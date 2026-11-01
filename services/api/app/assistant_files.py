@@ -1,6 +1,7 @@
 """Bounded local extraction. Uploaded prose is data, never assistant instructions."""
 
 import csv
+import json
 import io
 import shutil
 import subprocess
@@ -10,9 +11,26 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 from app.schemas import DomainError
 
-MAX_BYTES = 20 * 1024 * 1024
-MAX_TEXT = 60_000
-ACCEPTED = {"pdf", "docx", "xlsx", "csv", "png", "jpg", "jpeg", "webp", "txt"}
+MAX_BYTES = 25 * 1024 * 1024
+MAX_TEXT = 50_000
+MAX_COMBINED_TEXT = 150_000
+AUDIO = {"mp3", "wav", "m4a", "webm"}
+ACCEPTED = {
+    "pdf",
+    "docx",
+    "xlsx",
+    "xls",
+    "csv",
+    "png",
+    "jpg",
+    "jpeg",
+    "webp",
+    "tif",
+    "tiff",
+    "txt",
+    "md",
+    "json",
+} | AUDIO
 
 
 def ocr(raw, extension):
@@ -39,15 +57,21 @@ def ocr(raw, extension):
 def parse_file(raw, filename):
     extension = Path(filename).suffix.lower().lstrip(".")
     if extension not in ACCEPTED:
-        raise DomainError("Supported: PDF, DOCX, XLSX, CSV, PNG, JPG, WebP and UTF-8 text", 422)
+        raise DomainError(
+            "Supported: PDF, Word, Excel, CSV, images/TIFF, UTF-8 text/Markdown/JSON and MP3/WAV/M4A/WebM audio",
+            422,
+        )
     if not raw or len(raw) > MAX_BYTES:
-        raise DomainError("Upload a non-empty file of at most 20 MB", 413)
+        raise DomainError("Upload a non-empty file of at most 25 MB", 413)
     method = "local_text"
+    pages = None
+    limited = False
     try:
         if extension == "pdf":
             import pymupdf
 
             with pymupdf.open(stream=raw, filetype="pdf") as document:
+                pages = len(document)
                 if document.is_encrypted or len(document) > 50:
                     raise DomainError("Use an unlocked PDF of at most 50 pages", 422)
                 parts = []
@@ -69,13 +93,18 @@ def parse_file(raw, filename):
                     raise DomainError("The expanded Office document is too large", 413)
                 if extension == "docx":
                     root = ET.fromstring(archive.read("word/document.xml"))
-                    text = "\n".join(node.text or "" for node in root.iter() if node.tag.endswith("}t"))
+                    namespace = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+                    text = "\n".join(
+                        "".join(node.text or "" for node in paragraph.iter(namespace + "t"))
+                        for paragraph in root.iter(namespace + "p")
+                    )
                 else:
                     shared = []
                     if "xl/sharedStrings.xml" in archive.namelist():
                         root = ET.fromstring(archive.read("xl/sharedStrings.xml"))
                         shared = ["".join(node.itertext()) for node in root]
                     parts = []
+                    length = 0
                     for name in sorted(archive.namelist()):
                         if name.startswith("xl/worksheets/sheet") and name.endswith(".xml"):
                             sheet = ET.fromstring(archive.read(name))
@@ -84,21 +113,64 @@ def parse_file(raw, filename):
                                 for cell in row:
                                     value = "".join(cell.itertext())
                                     values.append(shared[int(value)] if cell.get("t") == "s" else value)
-                                parts.append(" | ".join(values))
-                                if len(parts) >= 200:
+                                line = " | ".join(values)
+                                parts.append(line)
+                                length += len(line)
+                                if length >= MAX_TEXT:
+                                    limited = True
                                     break
-                            if len(parts) >= 200:
+                            if limited:
                                 break
                     text = "\n".join(parts)
-                    method = "local_rows_sample_200"
-        elif extension in {"csv", "txt"}:
+                    method = "local_sheet_text"
+        elif extension == "xls":
+            import xlrd
+
+            with xlrd.open_workbook(file_contents=raw, on_demand=True) as workbook:
+                parts = []
+                length = 0
+                for sheet in workbook.sheets():
+                    for row in sheet.get_rows():
+                        line = " | ".join(str(cell.value) for cell in row)
+                        parts.append(line)
+                        length += len(line)
+                        if length >= MAX_TEXT:
+                            limited = True
+                            break
+                    if limited:
+                        break
+                text = "\n".join(parts)
+                method = "local_sheet_text"
+        elif extension in {"csv", "txt", "md", "json"}:
             text = raw.decode("utf-8-sig", errors="strict")
+            if extension == "json":
+                text = json.dumps(json.loads(text), ensure_ascii=False, indent=2)
             if extension == "csv":
                 csv.field_size_limit(MAX_TEXT)
                 rows = csv.reader(io.StringIO(text))
-                text = "\n".join(" | ".join(row) for _, row in zip(range(200), rows))
-                method = "local_rows_sample_200"
+                parts = []
+                length = 0
+                for row in rows:
+                    line = " | ".join(row)
+                    parts.append(line)
+                    length += len(line)
+                    if length >= MAX_TEXT:
+                        limited = True
+                        break
+                text = "\n".join(parts)
+                method = "local_csv_text"
+        elif extension in AUDIO:
+            from app.speech import transcribe
+
+            transcript = transcribe(raw, max_seconds=600)
+            text, method = transcript["text"], transcript["method"]
         else:
+            from PIL import Image
+
+            with Image.open(io.BytesIO(raw)) as image:
+                pages = getattr(image, "n_frames", 1)
+                if pages > 5 or image.width * image.height > 20_000_000:
+                    raise DomainError("OCR images are limited to five pages and 20 megapixels per page", 422)
             text = ocr(raw, extension)
             method = "local_ocr"
     except DomainError:
@@ -107,4 +179,10 @@ def parse_file(raw, filename):
         raise DomainError("Unreadable file. Check the format and upload an unlocked, valid document", 422)
     if not text.strip():
         raise DomainError("No readable text was found in this file", 422)
-    return {"text": text[:MAX_TEXT], "method": method, "truncated": len(text) > MAX_TEXT}
+    return {
+        "text": text[:MAX_TEXT],
+        "method": method,
+        "truncated": limited or len(text) > MAX_TEXT,
+        "pages": pages,
+        "characters": min(len(text), MAX_TEXT),
+    }

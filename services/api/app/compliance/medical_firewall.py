@@ -41,6 +41,17 @@ def safe_case(data, user, include_medical=False):
 
         def redact(value):
             if isinstance(value, dict):
+                if value.get("protected") is True:
+                    value = {
+                        key: (
+                            []
+                            if key == "sources"
+                            else "[REDACTED]"
+                            if key in {"answer", "question", "text", "excerpt", "preview", "base64", "name"}
+                            else item
+                        )
+                        for key, item in value.items()
+                    }
                 if value.get("kind") in {
                     "medical_review",
                     "broker_pause",

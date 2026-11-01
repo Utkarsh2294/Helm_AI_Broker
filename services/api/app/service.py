@@ -79,12 +79,24 @@ def import_request(db, request: QuoteRequest, *, defer_intake=False):
     existing = db.scalar(select(Case).where(Case.core_request_id == request.id))
     if existing:
         return existing
+    if request.renewal_of_case_id:
+        previous = get_case(db, request.renewal_of_case_id)
+        if (
+            not request.consumer_reference
+            or request.consumer_reference != previous.profile.get("consumer_reference")
+            or previous.state not in {State.CLOSED, State.PUBLISHED}
+        ):
+            raise DomainError(
+                "A renewal needs a matching saved consumer reference and a delivered/closed source case", 422
+            )
     case = Case(
         core_request_id=request.id,
         profile={
             "name": request.name,
             "cover_type": request.cover_type,
             "postcode": request.postcode_district,
+            "consumer_reference": request.consumer_reference,
+            "renewal_of_case_id": request.renewal_of_case_id,
         },
     )
     db.add(case)
@@ -325,6 +337,11 @@ def act(db, case_id, action, user, session, body):
                 "ratings_broker_id": user.id,
             }
         )
+        from app.research import pack_research
+
+        research = pack_research(db, case.id)
+        if research:
+            pack["supporting_research"] = research
         pack["pack_hash"] = canonical_hash(pack)
         save_snapshot(db, case.id, "pack", pack)
         save_snapshot(
