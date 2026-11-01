@@ -25,9 +25,11 @@ $qaDatabase = if ($ReuseDatabase) { (Get-ChildItem -LiteralPath $qaDirectory -Fi
 if (-not $qaDatabase) { throw 'No QA fixture database available' }
 $env:HELM_DATABASE_URL = 'sqlite:///' + $qaDatabase.Replace('\', '/')
 if ($Postgres) {
-    $qaDatabaseName = if ($ReuseDatabase) { & $qaPython (Join-Path $qaRoot 'tools\create_qa_database.py') --latest } else { & $qaPython (Join-Path $qaRoot 'tools\create_qa_database.py') }
+    $qaDatabaseMarker = Join-Path $qaDirectory 'browser-postgres-name.txt'
+    $qaDatabaseName = if ($ReuseDatabase -and (Test-Path -LiteralPath $qaDatabaseMarker)) { (Get-Content -LiteralPath $qaDatabaseMarker -Raw).Trim() } elseif ($ReuseDatabase) { & $qaPython (Join-Path $qaRoot 'tools\create_qa_database.py') --latest } else { & $qaPython (Join-Path $qaRoot 'tools\create_qa_database.py') }
     if ($LASTEXITCODE) { throw 'QA PostgreSQL database creation failed' }
     if ($qaDatabaseName -notmatch '^helm_qa_\d+$') { throw 'Unexpected QA database name' }
+    $qaDatabaseName | Set-Content -LiteralPath $qaDatabaseMarker
     $env:HELM_DATABASE_URL = "postgresql+psycopg://helm:helm_local_demo_only@127.0.0.1:55439/$qaDatabaseName"
 }
 $env:HELM_REDIS_URL = 'redis://127.0.0.1:56389/1'

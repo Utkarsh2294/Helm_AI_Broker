@@ -70,6 +70,9 @@ async def lifespan(app):
             task.cancel()
             with suppress(asyncio.CancelledError):
                 await task
+        from app.db.async_session import close_engines
+
+        await close_engines()
 
 
 app = FastAPI(

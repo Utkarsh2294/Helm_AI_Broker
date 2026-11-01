@@ -70,10 +70,14 @@ def notification_data(row):
     }
 
 
-def task_cards(db, user, broker_id=None, include_snoozed=False):
+def task_cards(db, user, broker_id=None, include_snoozed=False, case_id=None):
     now = utcnow()
     rows = db.scalars(
-        select(CaseMetric).where(metric_scope(user, broker_id), CaseMetric.state.in_(TASKS))
+        select(CaseMetric).where(
+            metric_scope(user, broker_id),
+            CaseMetric.state.in_(TASKS),
+            CaseMetric.case_id == case_id if case_id else True,
+        )
     ).all()
     snoozes = {
         (r.case_id, r.task_key): r
@@ -133,9 +137,16 @@ def task_cards(db, user, broker_id=None, include_snoozed=False):
 
 
 @router.get("/tasks/rail")
-def rail(request: Request, broker_id: str | None = None, db=Depends(database, scope="function")):
+def rail(
+    request: Request,
+    broker_id: str | None = None,
+    case_id: str | None = None,
+    db=Depends(database, scope="function"),
+):
     user, _ = identity(db, request)
-    cards = task_cards(db, user, broker_id)
+    if case_id:
+        service.get_case(db, case_id)
+    cards = task_cards(db, user, broker_id, case_id=case_id)
     names = (
         {
             case.id: case.profile.get("name", "Saved case")
