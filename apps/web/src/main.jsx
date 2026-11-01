@@ -22,12 +22,20 @@ import './design/tokens.css';
 import './design/semantic.css';
 import './design/light.css';
 const SecuritySettings = lazy(() => import('./security-settings'));
+const BrokerInsights = lazy(() => import('./components/BrokerInsights'));
 import { Settings } from 'lucide-react';
 import { MotionConfig } from 'framer-motion';
 import { BrowserRouter, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Login, SignedOut, safeNext } from './auth-pages';
 import './design/components.css';
 import { AssistantDock, AssistantReview } from './components/Assistant';
+import {
+  NotificationProvider,
+  NotificationBell,
+  NotificationInbox,
+  PriorityBanner,
+} from './components/Notifications';
+import TaskCopilotRail from './components/TaskCopilotRail';
 
 document.documentElement.dataset.theme = 'light';
 
@@ -49,6 +57,7 @@ const navigation = [
   ['workspace', 'Workspace', LayoutDashboard],
   ['partners', 'Partners', Building2],
   ['learning', 'Learning & insights', ChartNoAxesCombined],
+  ['insights', 'Broker insights', ChartNoAxesCombined],
   ['security', 'Security & devices', Settings],
   ['demo', 'Pilot showcase', Workflow],
 ];
@@ -64,6 +73,8 @@ function App() {
     learning: '/learning',
     security: '/security',
     demo: '/demo',
+    notifications: '/notifications',
+    insights: '/insights',
   };
   const page = Object.keys(routes).find((key) => routes[key] === location.pathname) || 'workspace';
   const setPage = (key) => navigate(routes[key] || '/queue');
@@ -178,9 +189,10 @@ function App() {
         <header className="topbar">
           <span>
             Helm advisory <span className="divider">/</span>{' '}
-            <strong>{navigation.find((n) => n[0] === page)[1]}</strong>
+            <strong>{navigation.find((n) => n[0] === page)?.[1] || 'Notifications'}</strong>
           </span>
           <div className="topbar-actions">
+            <NotificationBell />
             <button
               className="button small"
               onClick={() => window.dispatchEvent(new CustomEvent('helm:assistant-open'))}
@@ -199,9 +211,14 @@ function App() {
           </p>
         )}
         <main id="main" className="main-content">
+          {page === 'workspace' && <PriorityBanner />}
           <Suspense fallback={<p role="status">Loading workspace…</p>}>
             {location.pathname.startsWith('/assistant-review/') ? (
               <AssistantReview />
+            ) : page === 'insights' ? (
+              <BrokerInsights />
+            ) : page === 'notifications' ? (
+              <NotificationInbox />
             ) : page === 'security' ? (
               <SecuritySettings />
             ) : (
@@ -210,6 +227,7 @@ function App() {
           </Suspense>
         </main>
         <AssistantDock />
+        <TaskCopilotRail />
         <footer className="app-footer">
           <span>
             HELM BROKER <span>·</span> A little more intelligence. A lot more confidence.
@@ -264,7 +282,9 @@ createRoot(document.getElementById('root')).render(
   <QueryClientProvider client={queryClient}>
     <MotionConfig reducedMotion="user">
       <BrowserRouter>
-        <App />
+        <NotificationProvider>
+          <App />
+        </NotificationProvider>
       </BrowserRouter>
     </MotionConfig>
   </QueryClientProvider>,

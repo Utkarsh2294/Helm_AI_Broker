@@ -7,11 +7,18 @@ let csrf = decodeURIComponent(
 let refreshInFlight = null;
 export async function api(path, options = {}) {
   const { retried = false, responseType = 'json', ...requestOptions } = options;
+  const multipart = options.body instanceof FormData;
   const response = await fetch(`/api/v1${path}`, {
     ...requestOptions,
     credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf, ...options.headers },
-    ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
+    headers: {
+      ...(multipart ? {} : { 'Content-Type': 'application/json' }),
+      'X-CSRF-Token': csrf,
+      ...options.headers,
+    },
+    ...(options.body !== undefined
+      ? { body: multipart ? options.body : JSON.stringify(options.body) }
+      : {}),
   });
   const data = response.ok && responseType !== 'json' ? null : await response.json();
   if (
@@ -41,7 +48,10 @@ export async function api(path, options = {}) {
     throw error;
   }
   if (data?.csrf) csrf = data.csrf;
-  if (path === '/auth/logout' || path === '/auth/logout-all') csrf = '';
+  if (path === '/auth/logout' || path === '/auth/logout-all') {
+    csrf = '';
+    window.dispatchEvent(new CustomEvent('helm:assistant-clear-session'));
+  }
   return responseType === 'stream'
     ? response.body
     : responseType === 'blob'

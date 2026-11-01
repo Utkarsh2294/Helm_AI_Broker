@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCheck, Circle, Clock3, FileSearch, ShieldCheck } from 'lucide-react';
 import { api, label, money } from '../api';
-import CaseAssistant from './Assistant';
-export { default as CaseAssistant } from './Assistant';
+import { AssistantLauncher as CaseAssistant } from './Assistant';
+export { CaseAssistant };
 
 export function useCaseWorkspace(item) {
   const [data, setData] = useState(null),

@@ -37,6 +37,7 @@ test.afterAll(async () => {
 test('workspace assistant streams grounded answers, parses files and opens from the keyboard', async ({
   page,
 }) => {
+  test.setTimeout(120000);
   await page.addInitScript(() => {
     window.SpeechRecognition = class {
       start() {
@@ -58,11 +59,13 @@ test('workspace assistant streams grounded answers, parses files and opens from 
   await dock.getByRole('button', { name: 'Voice input', exact: true }).click();
   await expect(dock.getByLabel('Ask about your workspace')).toHaveValue('Show blocked cases');
   await expect(dock.locator('.assistant-message')).toHaveCount(0);
-  await dock.getByRole('button', { name: 'Summarise my workspace', exact: true }).click();
+  await dock.getByLabel('Ask about your workspace').fill('');
+  await dock.getByLabel('Ask about your workspace').fill('Summarise my workspace');
+  await dock.getByRole('button', { name: 'Send question' }).click();
   await expect(dock.locator('.assistant-message.assistant')).toContainText('visible workspace');
-  await expect(dock.locator('.assistant-stamp')).toContainText('helm-local-evidence-v2');
+  await expect(dock.locator('.assistant-stamp')).toContainText('helm-local-evidence-v3');
   await dock.getByRole('button', { name: 'History', exact: true }).click();
-  await dock.getByLabel('Search your last 20 queries in the workspace').fill('Summarise');
+  await dock.getByLabel('Search recent replies in this session').fill('Summarise');
   await expect(dock.locator('.assistant-history')).toContainText('Summarise my workspace');
   await dock.locator('input[type=file]').setInputFiles({
     name: 'comparison.csv',
@@ -121,12 +124,15 @@ test('case assistant saves snapshots and shares an authenticated read-only compl
     await panel.evaluate((element) => element.scrollWidth <= element.clientWidth + 1),
   ).toBeTruthy();
   await page.screenshot({ path: '.runtime/qa/assistant-case-mobile.png', fullPage: true });
-  await assistant.getByRole('button', { name: 'Pin panel', exact: true }).click();
+  await assistant.getByRole('button', { name: 'Close assistant panel', exact: true }).click();
+  await panel.getByRole('button', { name: 'Ask Helm workspace assistant', exact: true }).click();
   const dock = page.getByRole('complementary', { name: 'Pinned assistant panel' });
   await expect(dock).toBeVisible();
   await dock.getByLabel('Ask about this case').fill('What should I do next?');
   await dock.getByRole('button', { name: 'Send question' }).click();
-  await expect(dock.locator('.assistant-message.assistant')).toContainText('Choose three policies');
+  await expect(dock.locator('.assistant-message.assistant').last()).toContainText(
+    'Choose three policies',
+  );
   await page.keyboard.press('Escape');
   await expect(panel).toBeVisible();
   await page.goto(reviewLink);

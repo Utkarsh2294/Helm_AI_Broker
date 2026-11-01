@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, CheckCheck, ShieldCheck } from 'lucide-react';
 import { api, label, money } from '../api';
+import SupportingResearch from './SupportingResearch';
 import { AgentWork, CaseAssistant, DigitalClientFile, useCaseWorkspace } from './CaseIntelligence';
 
 const declaration =
@@ -275,6 +276,7 @@ function FinalSignoff({ item, user, busy, onSubmit }) {
         <h4>Suitability statement</h4>
         <p>{pack.suitability_final}</p>
       </section>
+      <SupportingResearch pack={pack} caseId={item.id} />
       <section className="file-section">
         <h4>Terms and disclosures</h4>
         <p>{pack.search_basis}</p>
@@ -427,7 +429,10 @@ export default function AgenticCase({ item, user, onSaved, initialView = 'journe
         <button className="button small" onClick={() => setView('audit')}>
           Audit trail
         </button>
-        <button className="button small" onClick={() => setView('assistant')}>
+        <button
+          className="button small"
+          onClick={() => window.dispatchEvent(new CustomEvent('helm:assistant-open'))}
+        >
           Case assistant
         </button>
         <a

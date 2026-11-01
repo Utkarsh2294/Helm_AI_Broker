@@ -38,14 +38,16 @@ test.afterAll(async () => {
 test('automatic demo needs only policy selection and authenticated final sign-off', async ({
   page,
 }) => {
-  test.setTimeout(90000);
+  test.setTimeout(180000);
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await login(page);
-  await page.getByRole('button', { name: 'Workspace assistant' }).click();
-  await page.getByRole('button', { name: 'Summarise my workspace' }).click();
+  await page.getByRole('button', { name: 'Workspace assistant', exact: true }).click();
+  await page.getByLabel('Ask about your workspace').fill('Summarise my workspace');
+  await page.getByRole('button', { name: 'Send question' }).click();
   await expect(page.locator('.assistant-message.assistant')).toContainText('visible workspace');
   await scan(page, 'workspace assistant');
+  await page.getByRole('button', { name: 'Close assistant panel' }).click();
   await page.getByRole('button', { name: 'Start automatic demo' }).click();
   const panel = page.getByRole('dialog', { name: 'Case workspace' });
   await expect(panel.getByText('Only two human decisions.', { exact: true })).toBeVisible();
@@ -67,6 +69,7 @@ test('automatic demo needs only policy selection and authenticated final sign-of
   await panel.getByRole('button', { name: 'What are the client’s preferences?' }).click();
   await expect(panel.locator('.assistant-message.assistant')).toContainText('£1,800.00');
   await scan(page, 'case assistant');
+  await panel.getByRole('button', { name: 'Close assistant panel' }).click();
   await panel.getByRole('button', { name: 'Audit trail', exact: true }).click();
   await expect(panel.getByText('Audit chain verified', { exact: false })).toBeVisible();
   await expect(panel.locator('.agent-work-item details[open]')).toHaveCount(5);

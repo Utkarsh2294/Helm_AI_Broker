@@ -20,7 +20,6 @@ import { api, label } from './api';
 const CasePanel = lazy(() => import('./case-panel'));
 import CommandPalette from './components/CommandPalette';
 import QuickLook from './components/QuickLook';
-import { CaseAssistant } from './components/CaseIntelligence';
 
 const states = {
   FACTFIND_REVIEW: 'Fact-find review',
@@ -56,9 +55,22 @@ export default function Workspace({ page, user, setPage }) {
   const selected = location.pathname.startsWith('/case/')
     ? decodeURIComponent(location.pathname.slice(6))
     : null;
-  const setSelected = (id) => navigate(id ? `/case/${encodeURIComponent(id)}` : '/queue');
+  const setSelected = (id) =>
+    navigate(
+      id ? `/case/${encodeURIComponent(id)}` : `/queue${location.state?.returnQueue || ''}`,
+      id
+        ? {
+            state: {
+              returnQueue:
+                location.pathname === '/queue' ? location.search : location.state?.returnQueue,
+            },
+          }
+        : {},
+    );
   const [error, setError] = useState('');
-  const [sort, setSort] = useState('newest'),
+  const [sort, setSort] = useState(
+      () => new URLSearchParams(location.search).get('sort') || 'newest',
+    ),
     [assignee, setAssignee] = useState(''),
     [priority, setPriority] = useState('');
   const moreRef = useRef(null);
@@ -67,13 +79,23 @@ export default function Workspace({ page, user, setPage }) {
   const [creating, setCreating] = useState(false),
     [partners, setPartners] = useState([]);
   const [quick, setQuick] = useState(null);
-  const [assistantOpen, setAssistantOpen] = useState(false);
+  const ageRange = new URLSearchParams(location.search).get('age_range') || '';
+  useEffect(() => {
+    if (location.pathname === '/queue')
+      setSort(new URLSearchParams(location.search).get('sort') || 'newest');
+  }, [location.pathname, location.search]);
+  function changeSort(value) {
+    setSort(value);
+    const params = new URLSearchParams(location.search);
+    params.set('sort', value);
+    navigate(`${location.pathname}?${params}`, { replace: true });
+  }
   const listing = useInfiniteQuery({
-    queryKey: ['cases', user.id, query, filter, sort, assignee, priority],
+    queryKey: ['cases', user.id, query, filter, sort, assignee, priority, ageRange],
     initialPageParam: '',
     queryFn: ({ pageParam }) =>
       api(
-        `/cases?limit=50&cursor=${encodeURIComponent(pageParam)}&q=${encodeURIComponent(query)}&state=${filter}&sort=${sort}&assignee=${assignee}&priority=${priority}`,
+        `/cases?limit=50&cursor=${encodeURIComponent(pageParam)}&q=${encodeURIComponent(query)}&state=${filter}&sort=${sort}&assignee=${assignee}&priority=${priority}&age_range=${encodeURIComponent(ageRange)}`,
       ),
     getNextPageParam: (last) => last.next_cursor ?? undefined,
     refetchInterval: 3000,
@@ -194,8 +216,7 @@ export default function Workspace({ page, user, setPage }) {
           <div className="workspace-assistant-toggle">
             <button
               className="button small"
-              aria-expanded={assistantOpen}
-              onClick={() => setAssistantOpen((value) => !value)}
+              onClick={() => window.dispatchEvent(new CustomEvent('helm:assistant-open'))}
             >
               Workspace assistant
             </button>
@@ -203,7 +224,6 @@ export default function Workspace({ page, user, setPage }) {
               Ctrl/Cmd K opens a pinned assistant. Open a case for its saved file and answers.
             </span>
           </div>
-          {assistantOpen && <CaseAssistant onOpenCase={setSelected} />}
           <div className="metrics-grid">
             {[
               [Users, 'Open cases', openCases, 'People, not paperwork', 'neutral'],
@@ -285,8 +305,9 @@ export default function Workspace({ page, user, setPage }) {
                   <select
                     aria-label="Sort cases"
                     value={sort}
-                    onChange={(e) => setSort(e.target.value)}
+                    onChange={(e) => changeSort(e.target.value)}
                   >
+                    <option value="priority">Highest task priority</option>
                     <option value="newest">Newest first</option>
                     <option value="oldest">Oldest first</option>
                     <option value="name">Client name</option>

@@ -28,6 +28,7 @@ import useSSE from './hooks/useSSE';
 import AgentPill from './components/AgentPill';
 import QuotesBoard from './components/QuotesBoard';
 import RankingTools from './components/RankingTools';
+import SupportingResearch from './components/SupportingResearch';
 import ReviewChecklist, { reviewComplete } from './components/GuidedReview';
 import BottomSheet from './components/BottomSheet';
 import Reauthenticate from './components/Reauthenticate';
@@ -1150,6 +1151,7 @@ export default function CasePanel({ id, user, onClose, initialView = 'journey' }
                           </div>
                         ))}
                       </div>
+                      <SupportingResearch pack={c.pack} caseId={id} />
                       <label className="suitability-label">
                         Suitability statement
                         <textarea
