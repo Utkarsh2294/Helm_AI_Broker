@@ -80,6 +80,20 @@ def refresh_daily_view(db):
     db.info["metrics_cache_invalidate"] = True
 
 
+def preview_operational(session_factory, refresh=False, drivers=False):
+    """Same scheduled work for the single-process local preview without Arq."""
+    with session_factory() as db:
+        maintenance(db)
+        if refresh:
+            refresh_daily_view(db)
+        if drivers:
+            from app.broker_insights import compute_drivers
+
+            compute_drivers(db)
+            detect_aging(db)
+        db.commit()
+
+
 def detect_aging(db):
     from datetime import timedelta
     from app.broker_insights import anomaly_report, build_context

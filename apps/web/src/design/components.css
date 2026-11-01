@@ -295,6 +295,10 @@
   text-align: center;
   margin-block: 1rem;
 }
+:root {
+  --forest: var(--green);
+  --sage: var(--helm-tone-668257);
+}
 .case-assistant {
   border: 1px solid var(--line);
   border-radius: var(--radius);

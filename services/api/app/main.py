@@ -47,10 +47,25 @@ async def lifespan(app):
 
     async def demo_jobs():
         from app.agentic_demo import poll_agentic
+        from app.copilot_jobs import preview_operational
+        from zoneinfo import ZoneInfo
+
+        next_maintenance = next_refresh = 0
+        driver_day = None
 
         while True:
             try:
                 await asyncio.to_thread(poll_agentic, SessionLocal)
+                now = asyncio.get_running_loop().time()
+                if now >= next_maintenance:
+                    london = utcnow().astimezone(ZoneInfo("Europe/London"))
+                    daily = london.hour >= 2 and driver_day != london.date()
+                    await asyncio.to_thread(preview_operational, SessionLocal, now >= next_refresh, daily)
+                    next_maintenance = now + 60
+                    if now >= next_refresh:
+                        next_refresh = now + 900
+                    if daily:
+                        driver_day = london.date()
             except Exception:
                 # Never log encrypted case content or exception messages here.
                 import logging

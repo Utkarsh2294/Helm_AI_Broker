@@ -92,3 +92,18 @@ def test_one_stream_lease_and_broker_rate_limit(client):
         with pytest.raises(DomainError) as error:
             rate_limit(user.id)
         assert error.value.status == 429 and error.value.flags["retry_after"] == 60
+
+
+def test_preview_operational_jobs_match_worker_and_are_idempotent(client):
+    from app.copilot_jobs import preview_operational
+    from app.db.copilot import SatisfactionDrivers
+    from app.db.models import User
+
+    preview_operational(main.SessionLocal, refresh=True, drivers=True)
+    with main.SessionLocal() as db:
+        before = {row.id for row in db.scalars(select(Notification))}
+        user = db.scalar(select(User).where(User.email == "broker@helm.demo"))
+        assert db.get(SatisfactionDrivers, user.id).body["status"] == "not_enough_observations"
+    preview_operational(main.SessionLocal, refresh=True, drivers=True)
+    with main.SessionLocal() as db:
+        assert {row.id for row in db.scalars(select(Notification))} == before
