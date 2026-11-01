@@ -35,9 +35,9 @@ def plan(tags_path, requirements_path):
     }
     packages = {
         (canonicalize_name(p["name"]), p["version"]): p
-        for p in tomllib.loads(
-            (Path(__file__).resolve().parents[1] / "uv.lock").read_text(encoding="utf8")
-        )["package"]
+        for p in tomllib.loads((Path(__file__).resolve().parents[1] / "uv.lock").read_text(encoding="utf8"))[
+            "package"
+        ]
     }
     bootstrap = json.loads((Path(__file__).with_name("bootstrap-wheel.json")).read_text(encoding="utf8"))
     selected, unavailable = [bootstrap], []
@@ -58,7 +58,17 @@ def plan(tags_path, requirements_path):
             if supported:
                 choices.append((min(supported), filename, wheel))
         if not choices:
-            unavailable.append(requirement.name)
+            source = package.get("sdist")
+            if source:
+                selected.append(
+                    {
+                        "filename": unquote(urlparse(source["url"]).path.rsplit("/", 1)[-1]),
+                        **source,
+                        "source": True,
+                    }
+                )
+            else:
+                unavailable.append(requirement.name)
         else:
             _, filename, wheel = min(choices, key=lambda item: item[0])
             selected.append({"filename": filename, **wheel})
@@ -158,7 +168,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     wheels = plan(args.tags, args.requirements)
     print(
-        f"Locked compatible wheels: {len(wheels)}; {sum(w.get('size', 0) for w in wheels) / 1024 / 1024:.1f} MiB",
+        f"Locked compatible artifacts: {len(wheels)}; {sum(w.get('size', 0) for w in wheels) / 1024 / 1024:.1f} MiB",
         flush=True,
     )
     if not args.plan_only:

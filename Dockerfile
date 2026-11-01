@@ -4,12 +4,14 @@ WORKDIR /app
 COPY tools/bootstrap-linux.txt /tmp/bootstrap-linux.txt
 RUN pip install --no-cache-dir --require-hashes --no-deps -r /tmp/bootstrap-linux.txt
 COPY pyproject.toml uv.lock ./
+COPY tools/build-backend-linux.txt /tmp/build-backend-linux.txt
 COPY packages/engine ./packages/engine
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=cache,target=/root/.cache/pip \
     uv export --frozen --extra agents --extra build --no-emit-package helm-engine --no-dev --format requirements-txt --output-file /tmp/requirements.lock >/dev/null && \
     python -m venv .venv && \
-    .venv/bin/python -m pip install --disable-pip-version-check --require-hashes --no-deps --prefer-binary --timeout 300 --retries 5 -r /tmp/requirements.lock && \
+    .venv/bin/python -m pip install --disable-pip-version-check --require-hashes --no-deps -r /tmp/build-backend-linux.txt && \
+    .venv/bin/python -m pip install --disable-pip-version-check --require-hashes --no-deps --no-build-isolation --prefer-binary --timeout 300 --retries 5 -r /tmp/requirements.lock && \
     uv sync --frozen --extra agents --extra build --no-dev --offline --no-build-isolation-package helm-engine
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
