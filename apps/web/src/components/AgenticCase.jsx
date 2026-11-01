@@ -448,9 +448,11 @@ export default function AgenticCase({ item, user, onSaved, initialView = 'journe
           {error || loadError}
         </p>
       )}
-      <div hidden={view !== 'assistant'}>
-        <CaseAssistant caseId={item.id} onNavigate={setView} />
-      </div>
+      {view === 'assistant' && (
+        <div>
+          <CaseAssistant caseId={item.id} onNavigate={setView} />
+        </div>
+      )}
       {view === 'file' && <DigitalClientFile data={data} />}
       {view === 'audit' && <AgentWork data={data} detailed />}
       {view === 'journey' && (

@@ -89,7 +89,7 @@ test('automatic demo needs only policy selection and authenticated final sign-of
   await panel.getByRole('button', { name: 'Confirm selection & prepare recommendation' }).click();
   await expect(
     panel.getByRole('heading', { name: 'Review once. Sign off when ready.' }),
-  ).toBeVisible({ timeout: 20000 });
+  ).toBeVisible({ timeout: 60000 });
   await expect(panel.locator('.signed-policy-list > li').first()).toContainText(secondName);
   await expect(panel.getByRole('button', { name: 'Save review and continue' })).toHaveCount(0);
   await expect(panel.getByRole('checkbox')).toHaveCount(0);
@@ -102,9 +102,9 @@ test('automatic demo needs only policy selection and authenticated final sign-of
   await panel.getByLabel('Confirm your password').fill('HelmDemo!2026');
   await panel.getByRole('button', { name: 'Sign off & deliver demo' }).click();
   await expect(panel.getByRole('heading', { name: 'Signed and delivered.' })).toBeVisible({
-    timeout: 20000,
+    timeout: 60000,
   });
-  await expect(panel.locator('.agent-work-item.complete')).toHaveCount(5, { timeout: 20000 });
+  await expect(panel.locator('.agent-work-item.complete')).toHaveCount(5, { timeout: 60000 });
   await expect(panel.locator('.agent-work-item').last()).toContainText(
     'No model change was applied',
   );

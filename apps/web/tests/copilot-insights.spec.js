@@ -56,6 +56,7 @@ test('priority banner, scoped task rail, live notification inbox and filtered in
   await expect(page).toHaveURL(new RegExp(`/case/${item.id}`));
   const panel = page.getByRole('dialog', { name: 'Case workspace' });
   await expect(panel).toBeVisible();
+  await expect(page.getByRole('complementary', { name: 'Pinned assistant panel' })).toHaveCount(0);
   await expect(panel.getByRole('heading', { name: 'Choose and rank three policies' })).toBeVisible({
     timeout: 60000,
   });
