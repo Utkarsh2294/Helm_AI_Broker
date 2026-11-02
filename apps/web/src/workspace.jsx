@@ -79,11 +79,21 @@ export default function Workspace({ page, user, setPage }) {
   const [creating, setCreating] = useState(false),
     [partners, setPartners] = useState([]);
   const [quick, setQuick] = useState(null);
+  const caseworkRef = useRef(null);
   const ageRange = new URLSearchParams(location.search).get('age_range') || '';
   useEffect(() => {
     if (location.pathname === '/queue')
       setSort(new URLSearchParams(location.search).get('sort') || 'newest');
   }, [location.pathname, location.search]);
+  useEffect(() => {
+    if (location.pathname !== '/queue' || location.hash !== '#casework') return;
+    setQuery('');
+    setFilter('');
+    setAssignee('');
+    setPriority('');
+    caseworkRef.current?.focus({ preventScroll: true });
+    caseworkRef.current?.scrollIntoView({ block: 'start' });
+  }, [location.key, location.pathname, location.hash]);
   function changeSort(value) {
     setSort(value);
     const params = new URLSearchParams(location.search);
@@ -241,16 +251,23 @@ export default function Workspace({ page, user, setPage }) {
               </div>
             ))}
           </div>
-          <section className="case-section">
+          <section className="case-section" id="casework" aria-labelledby="casework-heading">
             <div className="section-header">
               <div>
-                <h2>Your casework</h2>
+                <h2 id="casework-heading" ref={caseworkRef} tabIndex={-1}>
+                  {sort === 'priority' ? 'Your priority queue' : 'Your casework'}
+                </h2>
                 <span className="count-badge">{matchedCases}</span>
               </div>
               <span className="table-hint">
                 <span className="status-dot" /> Updated as your agents work
               </span>
             </div>
+            {sort === 'priority' && (
+              <p className="priority-queue-description" role="status">
+                Open cases, highest task priority first. Select a client to review their case.
+              </p>
+            )}
             <div className="table-toolbar">
               <div className="filter-tabs">
                 <button className={!filter ? 'active' : ''} onClick={() => setFilter('')}>
