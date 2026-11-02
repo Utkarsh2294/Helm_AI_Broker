@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   LogOut,
   LayoutDashboard,
+  ListOrdered,
   Workflow,
   Building2,
   ChartNoAxesCombined,
@@ -55,6 +56,7 @@ export function Brand({ light = false }) {
 
 const navigation = [
   ['workspace', 'Workspace', LayoutDashboard],
+  ['priority', 'Priority queue', ListOrdered],
   ['partners', 'Partners', Building2],
   ['learning', 'Learning & insights', ChartNoAxesCombined],
   ['insights', 'Broker insights', ChartNoAxesCombined],
@@ -69,6 +71,7 @@ function App() {
     location = useLocation();
   const routes = {
     workspace: '/queue',
+    priority: '/priority-queue',
     partners: '/partners',
     learning: '/learning',
     security: '/security',
@@ -76,7 +79,11 @@ function App() {
     notifications: '/notifications',
     insights: '/insights',
   };
-  const page = Object.keys(routes).find((key) => routes[key] === location.pathname) || 'workspace';
+  const page =
+    Object.keys(routes).find((key) => routes[key] === location.pathname) ||
+    (location.pathname.startsWith('/case/') && location.state?.returnQueuePath === '/priority-queue'
+      ? 'priority'
+      : 'workspace');
   const setPage = (key) => navigate(routes[key] || '/queue');
   const [guide, setGuide] = useState(false);
   const [logoutError, setLogoutError] = useState('');
@@ -222,7 +229,7 @@ function App() {
             ) : page === 'security' ? (
               <SecuritySettings />
             ) : (
-              <Workspace page={page} user={user} setPage={setPage} />
+              <Workspace key={page} page={page} user={user} setPage={setPage} />
             )}
           </Suspense>
         </main>

@@ -52,24 +52,28 @@ export function Status({ state }) {
 export default function Workspace({ page, user, setPage }) {
   const location = useLocation(),
     navigate = useNavigate();
+  const isPriorityQueue = page === 'priority';
   const selected = location.pathname.startsWith('/case/')
     ? decodeURIComponent(location.pathname.slice(6))
     : null;
-  const setSelected = (id) =>
+  const setSelected = (id, view) =>
     navigate(
-      id ? `/case/${encodeURIComponent(id)}` : `/queue${location.state?.returnQueue || ''}`,
+      id
+        ? `/case/${encodeURIComponent(id)}${view ? `?view=${view}` : ''}`
+        : location.state?.returnQueuePath || `/queue${location.state?.returnQueue || ''}`,
       id
         ? {
             state: {
-              returnQueue:
-                location.pathname === '/queue' ? location.search : location.state?.returnQueue,
+              returnQueuePath: selected
+                ? location.state?.returnQueuePath
+                : `${location.pathname}${location.search}`,
             },
           }
         : {},
     );
   const [error, setError] = useState('');
-  const [sort, setSort] = useState(
-      () => new URLSearchParams(location.search).get('sort') || 'newest',
+  const [sort, setSort] = useState(() =>
+      isPriorityQueue ? 'priority' : new URLSearchParams(location.search).get('sort') || 'newest',
     ),
     [assignee, setAssignee] = useState(''),
     [priority, setPriority] = useState('');
@@ -79,21 +83,19 @@ export default function Workspace({ page, user, setPage }) {
   const [creating, setCreating] = useState(false),
     [partners, setPartners] = useState([]);
   const [quick, setQuick] = useState(null);
-  const caseworkRef = useRef(null);
-  const ageRange = new URLSearchParams(location.search).get('age_range') || '';
+  const headingRef = useRef(null);
+  const ageRange = isPriorityQueue
+    ? ''
+    : new URLSearchParams(location.search).get('age_range') || '';
   useEffect(() => {
     if (location.pathname === '/queue')
       setSort(new URLSearchParams(location.search).get('sort') || 'newest');
   }, [location.pathname, location.search]);
   useEffect(() => {
-    if (location.pathname !== '/queue' || location.hash !== '#casework') return;
-    setQuery('');
-    setFilter('');
-    setAssignee('');
-    setPriority('');
-    caseworkRef.current?.focus({ preventScroll: true });
-    caseworkRef.current?.scrollIntoView({ block: 'start' });
-  }, [location.key, location.pathname, location.hash]);
+    if (location.pathname !== '/priority-queue') return;
+    headingRef.current?.focus({ preventScroll: true });
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
   function changeSort(value) {
     setSort(value);
     const params = new URLSearchParams(location.search);
@@ -171,6 +173,11 @@ export default function Workspace({ page, user, setPage }) {
     }
   }
   const headings = {
+    priority: [
+      'YOUR NEXT CASE, FIRST',
+      'Priority queue',
+      'Open cases ranked by holds, deadlines and review progress. Highest priority first.',
+    ],
     workspace: [
       'YOUR DAY, AT A GLANCE',
       'Good advice starts with clarity.',
@@ -198,13 +205,20 @@ export default function Workspace({ page, user, setPage }) {
       <div className="page-heading">
         <div>
           <span className="eyebrow">{eyebrow}</span>
-          <h1>{title}</h1>
+          <h1 ref={headingRef} tabIndex={-1}>
+            {title}
+          </h1>
           <p className="muted">{subtitle}</p>
         </div>
         {page === 'workspace' && user.role === 'authorised_broker' && (
           <button className="button primary" onClick={newRequest} disabled={creating}>
             <Plus size={16} />
             {creating ? 'Starting agents…' : 'Start automatic demo'}
+          </button>
+        )}
+        {isPriorityQueue && (
+          <button className="button small" onClick={() => setPage('workspace')}>
+            Back to workspace
           </button>
         )}
       </div>
@@ -221,141 +235,140 @@ export default function Workspace({ page, user, setPage }) {
           </button>
         </p>
       )}
-      {page === 'workspace' && (
+      {(page === 'workspace' || isPriorityQueue) && (
         <>
-          <div className="workspace-assistant-toggle">
-            <button
-              className="button small"
-              onClick={() => window.dispatchEvent(new CustomEvent('helm:assistant-open'))}
-            >
-              Workspace assistant
-            </button>
-            <span className="muted">
-              Ctrl/Cmd K opens a pinned assistant. Open a case for its saved file and answers.
-            </span>
-          </div>
-          <div className="metrics-grid">
-            {[
-              [Users, 'Open cases', openCases, 'People, not paperwork', 'neutral'],
-              [ClipboardCheck, 'Your review', review, 'Ready for your expertise', 'green'],
-              [Clock3, 'With partners', pending, 'Quotations in progress', 'amber'],
-              [CheckCheck, 'Demo delivered', delivered, 'Approved by a human', 'neutral'],
-            ].map(([Icon, name, value, detail, tone]) => (
-              <div className={`metric ${tone}`} key={name}>
-                <div>
-                  <span>{name}</span>
-                  <Icon size={17} />
-                </div>
-                <strong>{value.toString().padStart(2, '0')}</strong>
-                <small>{detail}</small>
+          {!isPriorityQueue && (
+            <>
+              <div className="workspace-assistant-toggle">
+                <button
+                  className="button small"
+                  onClick={() => window.dispatchEvent(new CustomEvent('helm:assistant-open'))}
+                >
+                  Workspace assistant
+                </button>
+                <span className="muted">
+                  Ctrl/Cmd K opens a pinned assistant. Open a case for its saved file and answers.
+                </span>
               </div>
-            ))}
-          </div>
+              <div className="metrics-grid">
+                {[
+                  [Users, 'Open cases', openCases, 'People, not paperwork', 'neutral'],
+                  [ClipboardCheck, 'Your review', review, 'Ready for your expertise', 'green'],
+                  [Clock3, 'With partners', pending, 'Quotations in progress', 'amber'],
+                  [CheckCheck, 'Demo delivered', delivered, 'Approved by a human', 'neutral'],
+                ].map(([Icon, name, value, detail, tone]) => (
+                  <div className={`metric ${tone}`} key={name}>
+                    <div>
+                      <span>{name}</span>
+                      <Icon size={17} />
+                    </div>
+                    <strong>{value.toString().padStart(2, '0')}</strong>
+                    <small>{detail}</small>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
           <section className="case-section" id="casework" aria-labelledby="casework-heading">
             <div className="section-header">
               <div>
-                <h2 id="casework-heading" ref={caseworkRef} tabIndex={-1}>
-                  {sort === 'priority' ? 'Your priority queue' : 'Your casework'}
-                </h2>
+                <h2 id="casework-heading">{isPriorityQueue ? 'Ranked cases' : 'Your casework'}</h2>
                 <span className="count-badge">{matchedCases}</span>
               </div>
               <span className="table-hint">
                 <span className="status-dot" /> Updated as your agents work
               </span>
             </div>
-            {sort === 'priority' && (
-              <p className="priority-queue-description" role="status">
-                Open cases, highest task priority first. Select a client to review their case.
-              </p>
+            {!isPriorityQueue && (
+              <div className="table-toolbar">
+                <div className="filter-tabs">
+                  <button className={!filter ? 'active' : ''} onClick={() => setFilter('')}>
+                    All cases<span>{totalCases}</span>
+                  </button>
+                  <button
+                    className={filter === 'FACTFIND_REVIEW' ? 'active' : ''}
+                    onClick={() => setFilter('FACTFIND_REVIEW')}
+                  >
+                    Fact-find
+                  </button>
+                  <button
+                    className={filter === 'BROKER_REVIEW' ? 'active' : ''}
+                    onClick={() => setFilter('BROKER_REVIEW')}
+                  >
+                    Compare
+                  </button>
+                  <button
+                    className={filter === 'AWAIT_APPROVAL' ? 'active' : ''}
+                    onClick={() => setFilter('AWAIT_APPROVAL')}
+                  >
+                    To approve
+                  </button>
+                </div>
+                <div className="table-controls">
+                  <label className="search-field">
+                    <Search size={15} />
+                    <input
+                      aria-label="Search cases"
+                      placeholder="Search your cases…"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                    />
+                  </label>
+                  <label className="filter-select">
+                    <SlidersHorizontal size={15} />
+                    <select
+                      aria-label="Filter case status"
+                      value={filter}
+                      onChange={(e) => setFilter(e.target.value)}
+                    >
+                      <option value="">All statuses</option>
+                      {Object.keys(states).map((s) => (
+                        <option value={s} key={s}>
+                          {stateLabel(s)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Sort
+                    <select
+                      aria-label="Sort cases"
+                      value={sort}
+                      onChange={(e) => changeSort(e.target.value)}
+                    >
+                      <option value="priority">Highest task priority</option>
+                      <option value="newest">Newest first</option>
+                      <option value="oldest">Oldest first</option>
+                      <option value="name">Client name</option>
+                    </select>
+                  </label>
+                  <label>
+                    Assignee
+                    <select
+                      aria-label="Filter assignee"
+                      value={assignee}
+                      onChange={(e) => setAssignee(e.target.value)}
+                    >
+                      <option value="">Everyone</option>
+                      <option value="me">Assigned to me</option>
+                      <option value="unassigned">Unassigned</option>
+                    </select>
+                  </label>
+                  <label>
+                    Priority
+                    <select
+                      aria-label="Filter priority"
+                      value={priority}
+                      onChange={(e) => setPriority(e.target.value)}
+                    >
+                      <option value="">All priorities</option>
+                      <option value="urgent">Urgent</option>
+                      <option value="normal">Normal</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
             )}
-            <div className="table-toolbar">
-              <div className="filter-tabs">
-                <button className={!filter ? 'active' : ''} onClick={() => setFilter('')}>
-                  All cases<span>{totalCases}</span>
-                </button>
-                <button
-                  className={filter === 'FACTFIND_REVIEW' ? 'active' : ''}
-                  onClick={() => setFilter('FACTFIND_REVIEW')}
-                >
-                  Fact-find
-                </button>
-                <button
-                  className={filter === 'BROKER_REVIEW' ? 'active' : ''}
-                  onClick={() => setFilter('BROKER_REVIEW')}
-                >
-                  Compare
-                </button>
-                <button
-                  className={filter === 'AWAIT_APPROVAL' ? 'active' : ''}
-                  onClick={() => setFilter('AWAIT_APPROVAL')}
-                >
-                  To approve
-                </button>
-              </div>
-              <div className="table-controls">
-                <label className="search-field">
-                  <Search size={15} />
-                  <input
-                    aria-label="Search cases"
-                    placeholder="Search your cases…"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                  />
-                </label>
-                <label className="filter-select">
-                  <SlidersHorizontal size={15} />
-                  <select
-                    aria-label="Filter case status"
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                  >
-                    <option value="">All statuses</option>
-                    {Object.keys(states).map((s) => (
-                      <option value={s} key={s}>
-                        {stateLabel(s)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Sort
-                  <select
-                    aria-label="Sort cases"
-                    value={sort}
-                    onChange={(e) => changeSort(e.target.value)}
-                  >
-                    <option value="priority">Highest task priority</option>
-                    <option value="newest">Newest first</option>
-                    <option value="oldest">Oldest first</option>
-                    <option value="name">Client name</option>
-                  </select>
-                </label>
-                <label>
-                  Assignee
-                  <select
-                    aria-label="Filter assignee"
-                    value={assignee}
-                    onChange={(e) => setAssignee(e.target.value)}
-                  >
-                    <option value="">Everyone</option>
-                    <option value="me">Assigned to me</option>
-                    <option value="unassigned">Unassigned</option>
-                  </select>
-                </label>
-                <label>
-                  Priority
-                  <select
-                    aria-label="Filter priority"
-                    value={priority}
-                    onChange={(e) => setPriority(e.target.value)}
-                  >
-                    <option value="">All priorities</option>
-                    <option value="urgent">Urgent</option>
-                    <option value="normal">Normal</option>
-                  </select>
-                </label>
-              </div>
-            </div>
             <div className="table-scroll">
               <table className="case-table">
                 <thead>
@@ -381,14 +394,20 @@ export default function Workspace({ page, user, setPage }) {
                           }}
                           onClick={() => setSelected(c.id)}
                         >
-                          <span className={`client-avatar avatar-${i % 4}`}>
-                            {c.name
-                              .split(' ')
-                              .filter((n) => n !== '&')
-                              .slice(0, 2)
-                              .map((n) => n[0])
-                              .join('')}
-                          </span>
+                          {isPriorityQueue ? (
+                            <span className="priority-rank" aria-label={`Priority rank ${i + 1}`}>
+                              #{i + 1}
+                            </span>
+                          ) : (
+                            <span className={`client-avatar avatar-${i % 4}`}>
+                              {c.name
+                                .split(' ')
+                                .filter((n) => n !== '&')
+                                .slice(0, 2)
+                                .map((n) => n[0])
+                                .join('')}
+                            </span>
+                          )}
                           <span>
                             <strong>{c.name}</strong>
                             <small>{c.postcode} · Fictional client</small>
@@ -400,6 +419,17 @@ export default function Workspace({ page, user, setPage }) {
                       </td>
                       <td>
                         <Status state={c.state} />
+                        {isPriorityQueue && (
+                          <small
+                            className="block priority-score"
+                            data-priority-score={c.priority_score}
+                          >
+                            Priority score:{' '}
+                            {new Intl.NumberFormat('en-GB', { maximumFractionDigits: 1 }).format(
+                              c.priority_score,
+                            )}
+                          </small>
+                        )}
                         {c.workflow === 'fictional-two-decisions-v1' && (
                           <small className="block case-agent-summary">
                             {c.state === 'BROKER_REVIEW'
@@ -426,7 +456,7 @@ export default function Workspace({ page, user, setPage }) {
                           <button
                             className="button small case-audit-button"
                             aria-label={`Audit trail for ${c.name}`}
-                            onClick={() => navigate(`/case/${encodeURIComponent(c.id)}?view=audit`)}
+                            onClick={() => setSelected(c.id, 'audit')}
                           >
                             Audit trail
                           </button>
@@ -446,11 +476,19 @@ export default function Workspace({ page, user, setPage }) {
               {!visible.length && (
                 <div className="empty-state">
                   <FileSearch size={25} />
-                  <h3>{loading ? 'Loading your cases…' : 'No matching cases'}</h3>
+                  <h3>
+                    {loading
+                      ? 'Loading your cases…'
+                      : isPriorityQueue
+                        ? 'Your priority queue is clear'
+                        : 'No matching cases'}
+                  </h3>
                   <p>
                     {loading
                       ? 'Getting your workspace ready.'
-                      : 'Try another search or change the status filter.'}
+                      : isPriorityQueue
+                        ? 'No open cases need review right now.'
+                        : 'Try another search or change the status filter.'}
                   </p>
                 </div>
               )}
@@ -472,28 +510,31 @@ export default function Workspace({ page, user, setPage }) {
               Load more cases
             </button>
           )}
-          <div className="workspace-bottom">
-            <div className="human-banner">
-              <span className="banner-icon">
-                <ShieldCheck size={24} strokeWidth={1.5} />
-              </span>
-              <div>
-                <h3>Intelligent support. Human assurance.</h3>
-                <p>
-                  Your agents gather, compare and prepare. Every recommendation is yours to approve.
-                </p>
+          {!isPriorityQueue && (
+            <div className="workspace-bottom">
+              <div className="human-banner">
+                <span className="banner-icon">
+                  <ShieldCheck size={24} strokeWidth={1.5} />
+                </span>
+                <div>
+                  <h3>Intelligent support. Human assurance.</h3>
+                  <p>
+                    Your agents gather, compare and prepare. Every recommendation is yours to
+                    approve.
+                  </p>
+                </div>
+                <span className="subtle-badge">HUMAN IN THE LOOP</span>
               </div>
-              <span className="subtle-badge">HUMAN IN THE LOOP</span>
+              <button className="learning-link" onClick={() => setPage('learning')}>
+                <BrainCircuit size={22} />
+                <span>
+                  <strong>A little better, every day.</strong>
+                  <small>Explore feedback & learning</small>
+                </span>
+                <ArrowUpRight size={18} />
+              </button>
             </div>
-            <button className="learning-link" onClick={() => setPage('learning')}>
-              <BrainCircuit size={22} />
-              <span>
-                <strong>A little better, every day.</strong>
-                <small>Explore feedback & learning</small>
-              </span>
-              <ArrowUpRight size={18} />
-            </button>
-          </div>
+          )}
         </>
       )}
       {page === 'partners' && (

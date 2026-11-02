@@ -11,7 +11,7 @@ human decisions requirements remain in force.
    Use `-Install` on a new checkout to install the locked dependencies.
 2. Open `http://127.0.0.1:5180` and sign in as `broker@helm.demo` with the
    existing fictional demo password `HelmDemo!2026`.
-3. Choose **Review priority queue** in the banner. It clears earlier search/status/assignee/priority and aging filters, moves focus to **Your priority queue**, and shows open cases ordered by the deterministic task score. The button also works when you are already viewing that queue.
+3. Choose **Review priority queue** in the banner, or **Priority queue** in the navigation. This opens a separate page at `/priority-queue` containing only the open-case queue, with numbered ranks (#1, #2, #3…) and priority scores, highest first. Dashboard filters do not carry over. Open any case or its audit trail; closing it returns to the ranked queue. Use **Back to workspace** to return to the dashboard.
    **Tasks** opens the right rail on any authenticated page. Open a task to reach
    its case; **Why this matters** explains the saved state and cites its source.
    A snooze hides a task for one hour, retaining its outstanding state and reason.

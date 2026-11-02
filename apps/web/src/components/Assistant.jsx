@@ -94,7 +94,7 @@ export default function Assistant({ caseId, onNavigate, onOpenCase, docked = fal
     ? 'case'
     : location.pathname === '/insights'
       ? 'insights'
-      : location.pathname === '/queue'
+      : ['/queue', '/priority-queue'].includes(location.pathname)
         ? 'queue'
         : 'workspace';
   const scope = caseId || 'workspace',

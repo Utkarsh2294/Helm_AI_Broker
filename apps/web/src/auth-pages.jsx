@@ -17,7 +17,7 @@ import PasskeyOrigin, { passkeysAvailable } from './components/PasskeyOrigin';
 
 export function safeNext(value) {
   return typeof value === 'string' &&
-    /^\/(queue|partners|learning|security|notifications|insights|case\/[^/?#]+|assistant-review\/[A-Za-z0-9_-]+)(\?[^#]*)?$/.test(
+    /^\/(queue|priority-queue|partners|learning|security|notifications|insights|case\/[^/?#]+|assistant-review\/[A-Za-z0-9_-]+)(\?[^#]*)?$/.test(
       value,
     ) &&
     !value.includes('\\')

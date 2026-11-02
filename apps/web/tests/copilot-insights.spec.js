@@ -31,8 +31,8 @@ test('priority banner, scoped task rail, live notification inbox and filtered in
   await login(page);
   await expect(page.getByRole('region', { name: 'Your login priorities' })).toBeVisible();
   await page.getByRole('button', { name: 'Review priority queue' }).click();
-  await expect(page).toHaveURL(/sort=priority/);
-  await expect(page.getByLabel('Sort cases')).toHaveValue('priority');
+  await expect(page).toHaveURL(/\/priority-queue$/);
+  await expect(page.getByRole('heading', { name: 'Priority queue', exact: true })).toBeVisible();
   // Create a fresh fictional case while the SSE subscriber is mounted.
   const csrf = (await page.context().cookies()).find((cookie) => cookie.name === 'helm_csrf').value;
   const created = await page.request.post('/api/v1/demo/journeys', {

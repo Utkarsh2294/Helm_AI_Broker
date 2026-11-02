@@ -481,17 +481,23 @@
 .priority-banner p {
   margin: 0.35rem 0 0;
 }
-.priority-queue-description {
-  margin: 0 23px 20px;
+.priority-rank {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  min-height: 42px;
+  padding: 0.35rem;
+  border-radius: 10px;
+  background: var(--soft);
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 700;
+}
+.priority-score {
+  margin-top: 0.5rem;
   color: var(--muted);
-}
-#casework-heading {
-  scroll-margin-top: 1.5rem;
-}
-@media (max-width: 760px) {
-  #casework-heading {
-    scroll-margin-top: 9rem;
-  }
 }
 .notification-menu {
   z-index: 1500;

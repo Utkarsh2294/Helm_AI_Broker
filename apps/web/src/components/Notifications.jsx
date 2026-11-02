@@ -226,7 +226,7 @@ export function PriorityBanner() {
           {data.overdue} overdue · {data.new} new since your last login · {data.halted} on hold
         </p>
       </div>
-      <button className="button small" onClick={() => navigate(`${data.href}#casework`)}>
+      <button className="button small" onClick={() => navigate('/priority-queue')}>
         Review priority queue <ArrowUpRight size={15} />
       </button>
       <button
