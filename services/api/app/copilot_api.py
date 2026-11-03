@@ -133,6 +133,9 @@ def task_cards(db, user, broker_id=None, include_snoozed=False, case_id=None):
                 else None,
             }
         )
+    from app.buying_tasks import task_cards as buying_cards
+
+    result.extend(buying_cards(db, user, broker_id, include_snoozed, case_id))
     return sorted(result, key=lambda t: (-t["priority_score"], t["last_action_at"], t["case_id"]))
 
 

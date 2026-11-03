@@ -85,6 +85,9 @@ const cardTypes = Object.fromEntries(
     'resolve_complaint',
     'resolve_referral',
     'missing_information',
+    'review_ipid_response',
+    'review_declaration',
+    'review_submission_package',
   ].map((name) => [name, TaskCard]),
 );
 
