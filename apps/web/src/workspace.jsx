@@ -392,7 +392,7 @@ export default function Workspace({ page, user, setPage }) {
                               setQuick(c);
                             }
                           }}
-                          onClick={() => setSelected(c.id)}
+                          onClick={() => c.buying_href ? navigate(c.buying_href) : setSelected(c.id)}
                         >
                           {isPriorityQueue ? (
                             <span className="priority-rank" aria-label={`Priority rank ${i + 1}`}>
@@ -463,7 +463,7 @@ export default function Workspace({ page, user, setPage }) {
                           <button
                             className="open-case"
                             aria-label={`Open ${c.name}`}
-                            onClick={() => setSelected(c.id)}
+                            onClick={() => c.buying_href ? navigate(c.buying_href) : setSelected(c.id)}
                           >
                             <ArrowUpRight size={16} />
                           </button>

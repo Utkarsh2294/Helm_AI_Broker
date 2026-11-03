@@ -57,3 +57,18 @@ def test_recommendation_lifecycle_stays_separate():
     assert State.PUBLISHED == "PUBLISHED"
     assert State.CLOSED == "CLOSED"
     assert not set(BuyingStage) & set(State)
+
+
+def test_unactioned_consumer_response_has_halt_priority():
+    from datetime import datetime, timezone
+    from app.copilot_projection import priority_score
+
+    now = datetime(2026, 11, 4, tzinfo=timezone.utc)
+    case = {
+        "state": "PUBLISHED",
+        "last_action_at": now.isoformat(),
+        "coverage_type": "individual",
+        "pending_consumer_response": True,
+    }
+    assert priority_score(case, now) == 100
+    assert priority_score({**case, "state": "PAUSED_NEEDS_HUMAN"}, now) == 100

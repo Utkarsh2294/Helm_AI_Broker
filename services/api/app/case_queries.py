@@ -3,6 +3,7 @@ from sqlalchemy import select, func, or_, and_
 from app.auth import identity
 from app.db.models import Case, utcnow
 from app.db.copilot import CaseMetric
+from app.db.policy_buying import BuyingCase
 from app.copilot_projection import priority_expression
 from datetime import datetime, timedelta
 from app.main import database
@@ -57,7 +58,20 @@ def cases(
         if end:
             query = query.where(Case.created_at >= (now - timedelta(days=end)).isoformat())
     if (sort == "priority" and not state) or age_range:
-        query = query.where(Case.state.not_in(["CLOSED", "PUBLISHED"]))
+        pending_buying = (
+            select(BuyingCase.id)
+            .where(
+                BuyingCase.case_id == Case.id,
+                BuyingCase.closed_at.is_(None),
+                BuyingCase.pending_response.is_(True),
+            )
+            .exists()
+        )
+        query = query.where(
+            or_(Case.state.not_in(["CLOSED", "PUBLISHED"]), and_(Case.state == "PUBLISHED", pending_buying))
+            if sort == "priority"
+            else Case.state.not_in(["CLOSED", "PUBLISHED"])
+        )
     scores = {}
     score = None
     if sort == "priority":
@@ -119,6 +133,13 @@ def cases(
         rows = fetch(query.offset(offset).limit(limit + 1) if limit else query)
         more = bool(limit and len(rows) > limit)
         rows = rows[:limit] if limit else rows
+    buying_ids = set(
+        db.scalars(
+            select(BuyingCase.case_id).where(
+                BuyingCase.case_id.in_([row.id for row in rows]), BuyingCase.closed_at.is_(None)
+            )
+        )
+    )
     items = [
         {
             "id": r.id,
@@ -128,6 +149,7 @@ def cases(
             "priority": r.priority,
             "created_at": r.created_at,
             "version": r.version,
+            "buying_href": f"/policy-buying/cases/{r.id}" if r.id in buying_ids else None,
             **({"priority_score": scores[r.id]} if sort == "priority" else {}),
         }
         for r in rows

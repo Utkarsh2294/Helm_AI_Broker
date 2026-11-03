@@ -17,7 +17,9 @@ def priority_score(case, now):
     """WA §10.8 formula, with an explicit clock for reproducible results."""
     elapsed = max(0, (now - datetime.fromisoformat(case["last_action_at"])).days)
     fraction = elapsed / SLA_DAYS.get(case["coverage_type"], 5)
-    score = (100 if case["state"] == "PAUSED_NEEDS_HUMAN" else 0) + fraction * 50
+    score = (
+        100 if case["state"] == "PAUSED_NEEDS_HUMAN" or case.get("pending_consumer_response") else 0
+    ) + fraction * 50
     if fraction >= 1:
         score += 200
     if case["state"] in {"BROKER_REVIEW", "AWAITING_BROKER_REVIEW"}:
@@ -27,6 +29,17 @@ def priority_score(case, now):
 
 def priority_expression(dialect, now):
     """SQL equivalent for cursor-paginated queues; the cursor freezes the clock."""
+    from app.db.policy_buying import BuyingCase
+
+    pending = (
+        select(BuyingCase.id)
+        .where(
+            BuyingCase.case_id == Case.id,
+            BuyingCase.pending_response.is_(True),
+            BuyingCase.closed_at.is_(None),
+        )
+        .exists()
+    )
     last = func.coalesce(CaseMetric.last_action_at, Case.created_at)
     if dialect == "postgresql":
         elapsed = func.greatest(
@@ -41,7 +54,7 @@ def priority_expression(dialect, now):
     rated = func.coalesce(CaseMetric.body["rated"].as_integer(), 0)
     rated_fraction = sql_case((total > 0, least(rated, total) * 1.0 / func.nullif(total, 0)), else_=0)
     return (
-        sql_case((Case.state == "PAUSED_NEEDS_HUMAN", 100), else_=0)
+        sql_case(((Case.state == "PAUSED_NEEDS_HUMAN") | pending, 100), else_=0)
         + fraction * 50
         + sql_case((fraction >= 1, 200), else_=0)
         + sql_case(
