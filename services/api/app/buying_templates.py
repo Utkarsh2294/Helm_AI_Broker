@@ -87,6 +87,44 @@ def toba():
     }
 
 
+def fmu_questionnaire():
+    return {
+        "title": "Full Medical Underwriting Questionnaire",
+        "demo": True,
+        "watermark": WATERMARK,
+        "sections": [
+            section(
+                "Personal details and GP",
+                "Consumer to complete afresh: full name, date of birth, address, GP name, practice address and contact details. Do not copy answers from past notes.",
+            ),
+            section(
+                "Lifestyle",
+                "Consumer to complete: height, weight, smoking status and alcohol use. No answer is inferred or pre-filled by the agent.",
+            ),
+            section(
+                "Medical history — repeatable entries",
+                "Demo default: the previous five years. The real disclosure window and questions depend on the insurer rule book. For each condition, symptom, surgery, admission or prescription provide date/period, description, treatment, current status and medication. Add another entry for each item; explicitly answer if none.",
+            ),
+            section(
+                "Optional insurer-specific family history",
+                "Complete only when required by the insurer's questionnaire. This generic fixture does not impose an inferred disclosure requirement.",
+            ),
+            section(
+                "GP information release consent",
+                "I consent, for this simulated application, to the fictional insurer requesting relevant information from my GP. Real consent and access arrangements must be separately established.",
+            ),
+            section(
+                "Accuracy declaration",
+                "I confirm the above information is complete and accurate to the best of my knowledge",
+            ),
+            section(
+                "Signature and medical firewall",
+                "The consumer must explicitly complete and sign this version. Seeded fictional responses are encrypted and shown only through verified broker medical access. No model reads or summarises completed medical answers.",
+            ),
+        ],
+    }
+
+
 def ipid(buying):
     plan = buying.body["plan"]
     premium, excess = plan["annualPremiumPence"] / 100, plan.get("excessPence", 0) / 100

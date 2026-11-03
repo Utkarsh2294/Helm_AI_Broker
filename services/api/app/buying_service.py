@@ -158,4 +158,9 @@ def prepare_initial(db, buying):
             moratorium(buying, case.profile.get("name", "Fictional consumer")),
         )
         set_document_state(buying, "moratorium_declaration", declaration, "draft")
+    else:
+        from app.buying_templates import fmu_questionnaire
+
+        declaration = add_document(db, buying, "fmu_questionnaire", fmu_questionnaire())
+        set_document_state(buying, "fmu_questionnaire", declaration, "draft")
     record_update(db, buying, "ipid_generated", "Local demo agent prepared the IPID for broker review")

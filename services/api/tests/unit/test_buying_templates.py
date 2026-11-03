@@ -46,3 +46,12 @@ def test_toba_is_fictional_and_has_no_internal_commission_percentage():
     assert "eight weeks" in text and "six months" in text
     assert "DEMO-NOT-REGISTERED" in text
     assert "commissionPct" not in text and "%" not in text
+
+
+def test_fmu_is_blank_with_fresh_answer_and_consent_requirements():
+    from app.buying_templates import fmu_questionnaire
+    import json
+
+    text = json.dumps(fmu_questionnaire())
+    assert "five years" in text and "GP information release consent" in text
+    assert "afresh" in text and "medical_answers" not in text
