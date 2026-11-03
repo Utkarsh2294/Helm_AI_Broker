@@ -87,6 +87,7 @@ def buying_detail(case_id: str, request: Request, db=Depends(database, scope="fu
         "baseline_acknowledged": bool(buying.body.get("baseline_acknowledged")),
         "consumer_query": buying.body.get("consumer_query"),
         "banking_received": bool(buying.body.get("banking_received")),
+        "package_hash": buying.body.get("package_hash"),
         "banking_verified": bool(buying.body.get("banking_verified")),
         "submission_reviewed": buying.body.get("submission_reviewed") == buying.body.get("package_hash")
         and bool(buying.body.get("package_hash")),
@@ -239,6 +240,28 @@ class ConsumerResponse(DocumentAction):
 
 class DeclarationSignature(DocumentAction):
     confirm_signature: Literal[True]
+
+
+class FinalSubmission(DocumentAction):
+    package_hash: str = Field(min_length=64, max_length=64)
+    confirm_send: Literal[True]
+
+
+@router.post("/policy-buying/cases/{case_id}/submission/send")
+def submission_send(
+    case_id: str, body: FinalSubmission, request: Request, db=Depends(database, scope="function")
+):
+    from app.buying_submission import send_package
+
+    user, _ = identity(db, request)
+    broker(user)
+    require_demo()
+    case, buying = load_buying(db, case_id)
+    if not buying.closed_at:
+        if case.state != "PUBLISHED":
+            raise DomainError("The source case must be published and free of holds")
+        require_version(buying, body.expected_version)
+    return send_package(db, case, buying, body.document_id, body.package_hash, user)
 
 
 @router.post("/policy-buying/cases/{case_id}/submission/review")

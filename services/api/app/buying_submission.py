@@ -8,6 +8,81 @@ from app.buying_templates import WATERMARK, section
 from app.buying_updates import record_update
 from app.db.policy_buying import BuyingMedicalResponse
 from app.schemas import DomainError
+from app.clock import get_clock
+from app.db.models import stamp
+from app.policy_buying import next_buying_stage
+
+
+class InsurerSubmissionAdapter:
+    """DEMO STUB; no insurer, email service or bank is contacted.
+
+    TODO: replace after real insurer contracts, authenticated transport and
+    reconciliation are approved. This adapter must never perform live sales.
+    """
+
+    def submit(self, package):
+        import re
+        import secrets
+
+        code = re.sub(r"[^A-Z0-9]", "", package["insurer"].upper())[:12] or "DEMO"
+        return {
+            "status": "issued",
+            "policy_number": f"DEMO-{code}-{secrets.randbelow(100_000_000):08d}",
+            "issued_at": get_clock().now().isoformat(),
+            "demo": True,
+        }
+
+
+def send_package(db, case, buying, document_id, package_hash, user):
+    from app import service
+
+    if not user.can_approve:
+        raise DomainError("Broker approval authority is required", 403)
+    document = current_document(db, buying, "submission_package", document_id)
+    if buying.closed_at:
+        if buying.body.get("package_hash") == package_hash:
+            return {"policy_number": buying.policy_number, "demo": True, "replayed": True}
+        raise DomainError("This case already has a completed demo issuance")
+    package = manifest(db, case, buying)
+    if (
+        buying.stage != "SUBMISSION_PACKAGE_READY"
+        or buying.body.get("submission_reviewed") != package_hash
+        or canonical_hash(package) != package_hash
+        or document.content.get("manifest") != package
+    ):
+        raise DomainError("Review the current complete package before sending")
+    buying.stage = next_buying_stage(buying.stage, "submission_sent")
+    record_update(
+        db,
+        buying,
+        "sent_to_insurer",
+        f"Submission sent to {buying.body['plan']['insurerId']} (demo)",
+        f"broker:{user.id}",
+    )
+    result = InsurerSubmissionAdapter().submit(package)
+    buying.policy_number = result["policy_number"]
+    buying.stage = next_buying_stage(buying.stage, "policy_issued")
+    buying.closed_at = stamp()
+    buying.pending_response = False
+    set_document_state(buying, "submission_package", document, "confirmed")
+    buying.body = {**buying.body, "issuance": result}
+    service.transition(
+        db,
+        case,
+        ["PUBLISHED"],
+        "CLOSED",
+        "POLICY_BOUND",
+        f"broker:{user.id}",
+        {"demo": True, "pb_case_id": buying.id, "policy_number": buying.policy_number},
+    )
+    record_update(
+        db,
+        buying,
+        "policy_issued",
+        f"Policy number {buying.policy_number} issued (demo) — case complete",
+        f"broker:{user.id}",
+    )
+    return result
 
 
 def manifest(db, case, buying):
