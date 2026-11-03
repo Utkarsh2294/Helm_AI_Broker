@@ -1,8 +1,8 @@
 """Demo buying records; customer-bearing bodies use existing AES-256-GCM storage."""
 
-from sqlalchemy import CheckConstraint, ForeignKey, String
+from sqlalchemy import CheckConstraint, ForeignKey, String, UniqueConstraint, event
 from sqlalchemy.orm import Mapped, mapped_column
-from app.db.models import Base, SecretJSON, uid, stamp
+from app.db.models import Base, SecretJSON, uid, stamp, immutable
 
 
 class BuyingCase(Base):
@@ -28,3 +28,21 @@ class BuyingCase(Base):
     closed_at: Mapped[str | None] = mapped_column(String(40))
     policy_number: Mapped[str | None] = mapped_column(String(80), unique=True)
     __mapper_args__ = {"version_id_col": version}
+
+
+class BuyingDocument(Base):
+    __tablename__ = "pb_documents"
+    __table_args__ = (UniqueConstraint("pb_case_id", "doc_type", "version"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    pb_case_id: Mapped[str] = mapped_column(ForeignKey("policy_buying_cases.id"), index=True)
+    doc_type: Mapped[str] = mapped_column(String(40))
+    version: Mapped[int] = mapped_column()
+    content: Mapped[dict] = mapped_column(SecretJSON)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    edited_by_broker: Mapped[bool] = mapped_column(default=False)
+    actor: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[str] = mapped_column(String(40), default=stamp)
+
+
+event.listen(BuyingDocument, "before_update", immutable)
+event.listen(BuyingDocument, "before_delete", immutable)
