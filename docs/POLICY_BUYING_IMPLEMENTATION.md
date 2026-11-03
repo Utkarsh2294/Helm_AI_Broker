@@ -12,6 +12,14 @@ checklist and an unchanged copy of the supplied specification. It does not yet
 add routes, database records or screens. No existing case is migrated or advanced.
 Development resumes after the user checks the first commit's identity.
 
+The user subsequently verified GitHub account **GarvGupta25** and authorised
+continuation. Author and committer use Garv Gupta and that account's public
+numeric-ID noreply address. The first checkpoint was corrected before development
+continued. PB-0 through PB-6 are implemented; final acceptance and the operating
+guide are recorded in [the acceptance report](verification/POLICY_BUYING_2026-11-04.md)
+and [demo guide](POLICY_BUYING_GUIDE.md). The delivery includes more than the 30
+planned commits because testing also identified substantive fixes.
+
 Foundation verification: the 14 new lifecycle checks and three existing clock
 checks pass on Python 3.12; Ruff lint and formatting checks pass for the new code.
 The copied source specification matches the supplied file's SHA-256 hash.

@@ -43,6 +43,9 @@ are sent to an LLM**. The framework smoke test exercises all five CrewAI steps.
    Agent 5 evaluates the recorded choices automatically after delivery.
 
 See the [complete automatic demo walkthrough](docs/TWO_DECISION_DEMO.md).
+Continue a published recommendation through the new [Policy Buying demo](docs/POLICY_BUYING_GUIDE.md),
+including Moratorium/FMU review and mock issuance. The [buying acceptance record](docs/verification/POLICY_BUYING_2026-11-04.md)
+records checks and simulation boundaries.
 The [assistant guide](docs/ASSISTANT_GUIDE.md) covers streaming, citations, private
 history, local file analysis, voice controls, evidence, exports and reviewer links.
 Existing cases and the [manual pilot showcase](docs/DEMO_SHOWCASE.md) keep their
