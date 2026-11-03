@@ -1,12 +1,20 @@
 """Watermarked demo exports with measured IPID pagination; facts are never trimmed."""
 
 import io
+import re
 from xml.sax.saxutils import escape
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
 from app.buying_templates import WATERMARK
 from app.schemas import DomainError
+
+
+def formatted_text(value):
+    value = escape(value)
+    value = re.sub(r"\*\*([^*]+)\*\*", r"<b>\1</b>", value)
+    value = re.sub(r"\*([^*]+)\*", r"<i>\1</i>", value)
+    return value.replace("\n", "<br/>")
 
 
 def build_pdf(content, kind):
@@ -26,7 +34,7 @@ def build_pdf(content, kind):
         story.extend(
             [
                 Paragraph(escape(section["heading"]), styles["Heading3"]),
-                Paragraph(escape(section["text"]).replace("\n", "<br/>"), styles["BodyText"]),
+                Paragraph(formatted_text(section["text"]), styles["BodyText"]),
                 Spacer(1, 8),
             ]
         )

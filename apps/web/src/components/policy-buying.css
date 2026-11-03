@@ -52,13 +52,42 @@
 .pb-feed p {
   margin: 0.3rem 0;
 }
-.pb-edit-block { display: block; margin: 1rem 0; font-weight: 600; }
-.pb-doc-actions textarea { display: block; width: 100%; min-height: 100px; margin: .5rem 0; }
-.pb-doc-actions .button { margin: .3rem .3rem .3rem 0; }
+.pb-edit-block {
+  display: block;
+  margin: 1rem 0;
+  font-weight: 600;
+}
+.pb-doc-actions textarea {
+  display: block;
+  width: 100%;
+  min-height: 100px;
+  margin: 0.5rem 0;
+}
+.pb-doc-actions .button {
+  margin: 0.3rem 0.3rem 0.3rem 0;
+}
 .pb-updates .button {
   margin: 0.3rem 0;
 }
-.pb-success { border-left: 5px solid #416847; padding: 1.25rem; background: var(--soft); margin: 1rem 0; border-radius: 10px; }
+.pb-success {
+  border-left: 5px solid #416847;
+  padding: 1.25rem;
+  background: var(--soft);
+  margin: 1rem 0;
+  border-radius: 10px;
+}
+.pb-working a[href^='#document-'] {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.5rem 0;
+}
+.pb-updates summary,
+.pb-success summary {
+  min-height: 44px;
+  padding: 0.75rem 0;
+  cursor: pointer;
+}
 @media (max-width: 1200px) {
   .pb-workspace {
     grid-template-columns: 1fr;

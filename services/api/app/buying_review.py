@@ -99,6 +99,14 @@ def revise_document(db, buying, kind, document_id, sections, instruction, actor)
         if [row["heading"] for row in sections] != [row["heading"] for row in content["sections"]]:
             raise DomainError("Keep every required section and its heading", 422)
         content["sections"] = sections
+    if kind == "moratorium_declaration":
+        from app.buying_templates import MORATORIUM_STATEMENT
+
+        core = next(
+            row["text"] for row in content["sections"] if row["heading"] == "Underwriting declaration"
+        )
+        if core.replace("*", "") != MORATORIUM_STATEMENT:
+            raise DomainError("Keep the required Moratorium declaration wording unchanged", 422)
     if kind == "ipid":
         from app.buying_pdf import build_pdf
 
