@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { api, money } from '../api';
 import { buyingStages, stageLabels } from './PolicyBuying';
 import BuyingFeed from './BuyingFeed';
@@ -13,6 +13,7 @@ import { RichText } from './BuyingRichText';
 import { useState } from 'react';
 
 export default function PolicyBuyingCase({ caseId, user }) {
+  const location = useLocation();
   const heading = useRef(null);
   const [actionError, setActionError] = useState('');
   const query = useQuery({
@@ -23,6 +24,23 @@ export default function PolicyBuyingCase({ caseId, user }) {
   useEffect(() => {
     heading.current?.focus();
   }, [query.data?.id]);
+  const requestedStep = new URLSearchParams(location.search).get('step');
+  useEffect(() => {
+    if (!query.data?.id || !requestedStep) return;
+    const targets = {
+      ipid: 'document-ipid',
+      banking: 'buying-banking',
+      submission: 'buying-submission',
+    };
+    const target =
+      requestedStep === 'underwriting'
+        ? window.document.querySelector('.pb-document details[open]')?.closest('article')
+        : window.document.getElementById(targets[requestedStep]);
+    if (!target) return;
+    target.querySelector('details')?.setAttribute('open', '');
+    target.focus({ preventScroll: true });
+    target.scrollIntoView({ block: 'start' });
+  }, [query.data?.id, requestedStep]);
   const item = query.data;
   if (query.error)
     return (
@@ -34,6 +52,19 @@ export default function PolicyBuyingCase({ caseId, user }) {
       </p>
     );
   if (!item) return <p role="status">Opening buying case…</p>;
+  const declarationKind =
+    item.underwriting_basis === 'fmu' ? 'fmu_questionnaire' : 'moratorium_declaration';
+  const activeDocument = ['IPID_DRAFTING', 'AWAITING_IPID_CONFIRMATION'].includes(item.stage)
+    ? 'ipid'
+    : item.stage === 'UNDERWRITING_IN_PROGRESS'
+      ? item.documents.find((row) => row.doc_type === 'toba')?.status === 'confirmed'
+        ? declarationKind
+        : 'toba'
+      : item.stage === 'AWAITING_BANKING_DETAILS'
+        ? item.banking_received
+          ? 'banking_summary'
+          : 'banking_request'
+        : 'submission_package';
   return (
     <>
       <Link className="button small" to={item.closed_at ? '/closed-cases' : '/policy-buying'}>
@@ -96,7 +127,11 @@ export default function PolicyBuyingCase({ caseId, user }) {
           <p>
             {item.underwriting_basis === 'fmu' ? 'Full Medical Underwriting (FMU)' : 'Moratorium'}
           </p>
-          <Link className="button small" to={`/case/${caseId}?view=audit`}>
+          <Link
+            className="button small"
+            to={`/case/${caseId}?view=audit`}
+            state={{ returnQueuePath: `/policy-buying/cases/${caseId}` }}
+          >
             Case audit trail
           </Link>
         </aside>
@@ -155,41 +190,49 @@ export default function PolicyBuyingCase({ caseId, user }) {
                 className="pb-document"
                 key={document.id}
                 id={`document-${document.doc_type}`}
+                tabIndex={-1}
               >
-                <h3>{document.content.title || document.doc_type.replaceAll('_', ' ')}</h3>
-                <p>
-                  Version {document.version} · {document.status}
-                </p>
-                <a
-                  className="button small"
-                  href={`/api/v1/policy-buying/cases/${caseId}/documents/${document.id}.pdf`}
-                  download
-                >
-                  Download demo PDF
-                </a>
-                {document.content.sections?.map((section) => (
-                  <div key={section.heading}>
-                    <h4>{section.heading}</h4>
-                    <RichText value={section.text} />
-                  </div>
-                ))}
-                <BuyingDocumentActions
-                  item={item}
-                  document={document}
-                  user={user}
-                  onChanged={() => query.refetch()}
-                />
-                <BuyingConsumerResponse
-                  item={item}
-                  document={document}
-                  onChanged={() => query.refetch()}
-                />
-                <BuyingUnderwriting
-                  item={item}
-                  document={document}
-                  user={user}
-                  onChanged={() => query.refetch()}
-                />
+                <details open={document.doc_type === activeDocument}>
+                  <summary>
+                    <h3>{document.content.title || document.doc_type.replaceAll('_', ' ')}</h3>
+                    <span>
+                      Version {document.version} · {document.status}
+                    </span>
+                  </summary>
+                  <p>
+                    Version {document.version} · {document.status}
+                  </p>
+                  <a
+                    className="button small"
+                    href={`/api/v1/policy-buying/cases/${caseId}/documents/${document.id}.pdf`}
+                    download
+                  >
+                    Download demo PDF
+                  </a>
+                  {document.content.sections?.map((section) => (
+                    <div key={section.heading}>
+                      <h4>{section.heading}</h4>
+                      <RichText value={section.text} />
+                    </div>
+                  ))}
+                  <BuyingDocumentActions
+                    item={item}
+                    document={document}
+                    user={user}
+                    onChanged={() => query.refetch()}
+                  />
+                  <BuyingConsumerResponse
+                    item={item}
+                    document={document}
+                    onChanged={() => query.refetch()}
+                  />
+                  <BuyingUnderwriting
+                    item={item}
+                    document={document}
+                    user={user}
+                    onChanged={() => query.refetch()}
+                  />
+                </details>
               </article>
             ))
           ) : (

@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { api } from '../api';
 
+function actorLabel(actor) {
+  if (actor.startsWith('demo-consumer:')) return 'Demo consumer';
+  if (actor.startsWith('broker:')) return 'Broker';
+  return actor === 'demo-agent' ? 'Local demo agent' : actor;
+}
+
 export default function BuyingFeed({ item, onRead }) {
   const [error, setError] = useState('');
   async function read() {
@@ -37,7 +43,7 @@ export default function BuyingFeed({ item, onRead }) {
           <li key={event.seq}>
             <p>{event.message}</p>
             <small>
-              {event.actor} ·{' '}
+              {actorLabel(event.actor)} ·{' '}
               <time dateTime={event.created_at}>
                 {new Date(event.created_at).toLocaleString('en-GB')}
               </time>
@@ -55,7 +61,7 @@ export default function BuyingFeed({ item, onRead }) {
               <li key={event.seq}>
                 <p>{event.message}</p>
                 <small>
-                  #{event.seq} · {event.actor}
+                  #{event.seq} · {actorLabel(event.actor)}
                 </small>
               </li>
             ))}
@@ -66,8 +72,14 @@ export default function BuyingFeed({ item, onRead }) {
         <ul>
           {item.history.map((document) => (
             <li key={document.id}>
-              {document.doc_type.replaceAll('_', ' ')} · v{document.version} ·{' '}
-              {document.edited_by_broker ? 'Broker edited' : 'Demo agent draft'}
+              <a
+                className="button small"
+                href={`/api/v1/policy-buying/cases/${item.case_id}/documents/${document.id}.pdf`}
+                download
+              >
+                {document.doc_type.replaceAll('_', ' ')} · v{document.version}
+              </a>{' '}
+              · {document.edited_by_broker ? 'Broker edited' : 'Demo agent draft'}
             </li>
           ))}
         </ul>

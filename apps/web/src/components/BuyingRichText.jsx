@@ -8,9 +8,9 @@ export function RichText({ value }) {
         {line
           .split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g)
           .map((part, position) =>
-            part.startsWith('**') && part.endsWith('**') ? (
+            part.length > 4 && part.startsWith('**') && part.endsWith('**') ? (
               <strong key={position}>{part.slice(2, -2)}</strong>
-            ) : part.startsWith('*') && part.endsWith('*') ? (
+            ) : part.length > 2 && part.startsWith('*') && part.endsWith('*') ? (
               <em key={position}>{part.slice(1, -1)}</em>
             ) : (
               part

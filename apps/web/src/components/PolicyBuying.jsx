@@ -144,8 +144,12 @@ export default function PolicyBuying({ user, closed = false }) {
         ) : (
           <div className="empty-state">
             <FileCheck2 size={28} />
-            <h3>No cases in Policy Buying yet</h3>
-            <p>Open a published recommendation and simulate the consumer choosing one plan.</p>
+            <h3>{closed ? 'No issued demo policies yet' : 'No cases in Policy Buying yet'}</h3>
+            <p>
+              {closed
+                ? 'Successfully completed Policy Buying cases appear here with their fictional policy numbers.'
+                : 'Open a published recommendation and simulate the consumer choosing one plan.'}
+            </p>
             <Link className="button small" to="/queue">
               Open workspace
             </Link>

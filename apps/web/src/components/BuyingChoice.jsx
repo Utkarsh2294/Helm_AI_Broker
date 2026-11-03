@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, money } from '../api';
+import './policy-buying.css';
 
 export default function BuyingChoice({ caseId, user }) {
   const [choice, setChoice] = useState(''),

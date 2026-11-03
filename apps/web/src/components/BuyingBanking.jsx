@@ -35,7 +35,12 @@ export default function BuyingBanking({ item, onChanged }) {
     }
   }
   return (
-    <section className="pb-demo" aria-label="Fictional banking setup">
+    <section
+      className="pb-demo"
+      id="buying-banking"
+      tabIndex={-1}
+      aria-label="Fictional banking setup"
+    >
       <h3>Banking details</h3>
       <p>
         Only seeded dummy details are used. Annual payment matches the IPID. No live mandate is
@@ -65,15 +70,22 @@ export default function BuyingBanking({ item, onChanged }) {
               title="Verify to reveal fictional banking details once"
               actionLabel="Reveal dummy banking details"
               onVerified={async (proof) => {
-                setRaw(
-                  await api(`/policy-buying/cases/${item.case_id}/banking/reveal`, {
-                    method: 'POST',
-                    body: { expected_version: item.version },
-                    headers: { 'X-Step-Up': proof },
-                  }),
-                );
-                setPrompt(false);
-                await onChanged();
+                setBusy(true);
+                try {
+                  const revealed = await api(
+                    `/policy-buying/cases/${item.case_id}/banking/reveal`,
+                    {
+                      method: 'POST',
+                      body: { expected_version: item.version },
+                      headers: { 'X-Step-Up': proof },
+                    },
+                  );
+                  await onChanged();
+                  setRaw(revealed);
+                  setPrompt(false);
+                } finally {
+                  setBusy(false);
+                }
               }}
             />
           )}{' '}

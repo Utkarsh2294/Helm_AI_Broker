@@ -10,10 +10,17 @@ export default function BuyingSubmission({ item, onChanged }) {
     setBusy(true);
     setError('');
     try {
-      await api(`/policy-buying/cases/${item.case_id}/submission/${send === true ? 'send' : 'review'}`, {
-        method: 'POST',
-        body: { expected_version: item.version, document_id: document.id, ...(send === true ? { package_hash: item.package_hash, confirm_send: true } : {}) },
-      });
+      await api(
+        `/policy-buying/cases/${item.case_id}/submission/${send === true ? 'send' : 'review'}`,
+        {
+          method: 'POST',
+          body: {
+            expected_version: item.version,
+            document_id: document.id,
+            ...(send === true ? { package_hash: item.package_hash, confirm_send: true } : {}),
+          },
+        },
+      );
       await onChanged();
     } catch (cause) {
       setError(cause.message);
@@ -23,7 +30,12 @@ export default function BuyingSubmission({ item, onChanged }) {
     }
   }
   return (
-    <section className="pb-demo" aria-label="Final submission review">
+    <section
+      className="pb-demo"
+      id="buying-submission"
+      tabIndex={-1}
+      aria-label="Final submission review"
+    >
       <h3>Ready for your final review</h3>
       <p>The demo agent has prepared everything for {item.plan.insurerId}.</p>
       {error && (
@@ -46,14 +58,24 @@ export default function BuyingSubmission({ item, onChanged }) {
           <ul>
             {Object.entries(document.content.manifest.documents).map(([kind, version]) => (
               <li key={kind}>
-                <a href={`#document-${kind}`}>
+                <a
+                  href={`#document-${kind}`}
+                  onClick={() =>
+                    window.document
+                      .getElementById(`document-${kind}`)
+                      ?.querySelector('details')
+                      ?.setAttribute('open', '')
+                  }
+                >
                   Review {kind.replaceAll('_', ' ')} · v{version.version}
                 </a>
               </li>
             ))}
           </ul>
           <p>Edits reopen the affected confirmations and require a new package review.</p>
-          <button className="button primary" disabled={busy} onClick={() => review(true)}>Send to mock insurer</button>
+          <button className="button primary" disabled={busy} onClick={() => review(true)}>
+            Send to mock insurer
+          </button>
         </div>
       )}
     </section>

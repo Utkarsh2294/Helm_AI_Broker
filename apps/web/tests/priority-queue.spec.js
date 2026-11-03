@@ -48,15 +48,25 @@ for (const viewport of [
         await rows.evaluateAll((elements) => elements.map((element) => element.dataset.caseId)),
       ).toEqual(expected.items.map((item) => item.id));
       expect(
-        expected.items.every((item) => !['CLOSED', 'PUBLISHED'].includes(item.state)),
+        expected.items.every(
+          (item) => item.state !== 'CLOSED' && (item.state !== 'PUBLISHED' || item.buying_href),
+        ),
       ).toBeTruthy();
 
       await rows
         .first()
         .getByRole('button', { name: /^Open / })
         .click();
-      await expect(page.getByRole('dialog', { name: 'Case workspace' })).toBeVisible();
-      await page.getByRole('button', { name: 'Close case', exact: true }).click();
+      if (expected.items[0].buying_href) {
+        await expect(page).toHaveURL(new RegExp(expected.items[0].buying_href));
+        await expect(
+          page.getByRole('complementary', { name: 'Digital client file' }),
+        ).toBeVisible();
+        await page.getByRole('button', { name: 'Priority queue', exact: true }).click();
+      } else {
+        await expect(page.getByRole('dialog', { name: 'Case workspace' })).toBeVisible();
+        await page.getByRole('button', { name: 'Close case', exact: true }).click();
+      }
       await expect(page).toHaveURL(/\/priority-queue$/);
       await rows
         .first()
