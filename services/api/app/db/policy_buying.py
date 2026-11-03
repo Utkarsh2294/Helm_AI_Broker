@@ -94,3 +94,12 @@ class BuyingMedicalResponse(Base):
 
 event.listen(BuyingMedicalResponse, "before_update", immutable)
 event.listen(BuyingMedicalResponse, "before_delete", immutable)
+
+
+class BuyingBanking(Base):
+    __tablename__ = "pb_banking_details"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    request_document_id: Mapped[str] = mapped_column(ForeignKey("pb_documents.id"), unique=True)
+    body: Mapped[dict] = mapped_column(SecretJSON)
+    revealed_at: Mapped[str | None] = mapped_column(String(40))
+    created_at: Mapped[str] = mapped_column(String(40), default=stamp)

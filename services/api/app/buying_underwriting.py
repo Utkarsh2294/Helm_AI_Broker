@@ -28,6 +28,9 @@ def approve_declaration(db, case, buying, document_id, user, session):
     set_document_state(buying, kind, document, "confirmed")
     buying.body = {**buying.body, "declaration_approved": stamp()}
     buying.stage = next_buying_stage(buying.stage, "underwriting_approved")
+    from app.buying_banking import request_banking
+
+    request_banking(db, buying)
     buying.pending_response = False
     record_update(
         db,

@@ -237,6 +237,17 @@ class DeclarationSignature(DocumentAction):
     confirm_signature: Literal[True]
 
 
+@router.post("/policy-buying/cases/{case_id}/banking/complete")
+def banking_complete(
+    case_id: str, body: DeclarationSignature, request: Request, db=Depends(database, scope="function")
+):
+    from app.buying_banking import complete_banking
+
+    user, _, _, buying = action_context(db, case_id, request, body.expected_version)
+    complete_banking(db, buying, body.document_id, f"demo-consumer:{user.id}")
+    return {"received": True, "account_ending": "1234", "demo": True}
+
+
 @router.post("/policy-buying/cases/{case_id}/declaration/approve")
 def declaration_approve(
     case_id: str, body: DocumentAction, request: Request, db=Depends(database, scope="function")
