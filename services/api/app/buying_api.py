@@ -233,6 +233,21 @@ class ConsumerResponse(DocumentAction):
     note: str = Field(default="", max_length=2000)
 
 
+class DeclarationSignature(DocumentAction):
+    confirm_signature: Literal[True]
+
+
+@router.post("/policy-buying/cases/{case_id}/declaration/complete")
+def declaration_complete(
+    case_id: str, body: DeclarationSignature, request: Request, db=Depends(database, scope="function")
+):
+    from app.buying_underwriting import complete_declaration
+
+    user, _, _, buying = action_context(db, case_id, request, body.expected_version)
+    complete_declaration(db, buying, body.document_id, f"demo-consumer:{user.id}")
+    return {"completed": True, "broker_approval_required": True}
+
+
 @router.post("/policy-buying/cases/{case_id}/documents/{kind}/respond")
 def simulate_response(
     case_id: str, kind: str, body: ConsumerResponse, request: Request, db=Depends(database, scope="function")

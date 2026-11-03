@@ -3,6 +3,7 @@
 from app.clock import get_clock
 
 WATERMARK = "DEMO — NOT A REAL POLICY DOCUMENT"
+MORATORIUM_STATEMENT = "I understand that any medical condition present, symptomatic, or treated in the last 5 years will be excluded from cover until I have been completely free of treatment, medication, and advice for that condition for a continuous period of 2 full years after the policy starts."
 IPID_HEADINGS = (
     "Insurer and product",
     "What is this type of insurance?",
@@ -23,6 +24,29 @@ def section(heading, text):
 
 def illustrative_start():
     return get_clock().now().date().isoformat()
+
+
+def moratorium(buying, name):
+    return {
+        "title": "Moratorium Declaration",
+        "demo": True,
+        "watermark": WATERMARK,
+        "sections": [
+            section(
+                "Consumer and policy reference",
+                f"Fictional consumer: {name}. Quote: {buying.selected_plan_id}. Demo only; no policy is in force.",
+            ),
+            section("Underwriting declaration", MORATORIUM_STATEMENT),
+            section(
+                "What this means",
+                "In this fictional illustration, a related claim may fall outside cover during the exclusion window. Only insurer terms and underwriting determine actual cover. Review the underwriting baseline and ask the broker if unclear.",
+            ),
+            section(
+                "Signature",
+                "A fresh explicit demo acceptance is required for this document version. No real electronic signature or insurance contract is created. The broker must review and sign off afterwards.",
+            ),
+        ],
+    }
 
 
 def toba():

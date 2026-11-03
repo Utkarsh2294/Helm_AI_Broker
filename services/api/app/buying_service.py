@@ -147,4 +147,15 @@ def prepare_initial(db, buying):
     from app.buying_review import set_document_state
 
     set_document_state(buying, "toba", terms, "draft")
+    if buying.underwriting_basis == "moratorium":
+        from app.buying_templates import moratorium
+
+        case = service.get_case(db, buying.case_id)
+        declaration = add_document(
+            db,
+            buying,
+            "moratorium_declaration",
+            moratorium(buying, case.profile.get("name", "Fictional consumer")),
+        )
+        set_document_state(buying, "moratorium_declaration", declaration, "draft")
     record_update(db, buying, "ipid_generated", "Local demo agent prepared the IPID for broker review")
