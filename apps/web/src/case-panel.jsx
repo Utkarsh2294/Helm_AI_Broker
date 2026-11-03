@@ -1,5 +1,6 @@
 import { passkeysAvailable } from './components/PasskeyOrigin';
 import SurveySheet from './components/SurveySheet';
+import BuyingChoice from './components/BuyingChoice';
 import { startAuthentication } from '@simplewebauthn/browser';
 import ReplayScrubber from './components/ReplayScrubber';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -260,6 +261,7 @@ export default function CasePanel({ id, user, onClose, initialView = 'journey' }
             <X size={21} />
           </button>
         </header>
+        {c?.state === 'PUBLISHED' && <BuyingChoice caseId={c.id} user={user} />}
         {c && !c.demo_workflow && (
           <>
             <div className="case-stages">

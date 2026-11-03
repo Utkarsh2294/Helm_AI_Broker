@@ -4,6 +4,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { ArrowUpRight, FileCheck2 } from 'lucide-react';
 import { api, money } from '../api';
 import './policy-buying.css';
+import PolicyBuyingCase from './PolicyBuyingCase';
 
 export const buyingStages = [
   'QUOTE_SELECTED',
@@ -38,7 +39,7 @@ export default function PolicyBuying({ user }) {
     getNextPageParam: (last) => last.next_offset ?? undefined,
     refetchInterval: 5000,
   });
-  if (caseId) return <p role="status">Opening Policy Buying case…</p>;
+  if (caseId) return <PolicyBuyingCase caseId={caseId} user={user} />;
   const rows = query.data?.pages.flatMap((page) => page.items) || [];
   return (
     <>

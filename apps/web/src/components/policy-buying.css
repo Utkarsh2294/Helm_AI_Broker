@@ -35,6 +35,71 @@
   font-weight: 700;
   overflow-wrap: anywhere;
 }
+.pb-workspace {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(0, 2fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+.pb-file,
+.pb-working,
+.pb-updates {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.25rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pb-file dt {
+  color: var(--muted);
+  text-transform: capitalize;
+  margin-top: 0.8rem;
+}
+.pb-file dd {
+  margin: 0.25rem 0;
+}
+.pb-stepper {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  padding: 0;
+}
+.pb-stepper li {
+  font-size: 12px;
+  padding: 0.5rem;
+  border-bottom: 2px solid var(--line);
+}
+.pb-stepper .reached {
+  border-color: var(--ink);
+}
+.pb-stepper [aria-current='step'] {
+  background: var(--soft);
+  font-weight: 700;
+}
+.pb-stepper span {
+  margin-right: 0.5rem;
+}
+.pb-document {
+  padding: 1.5rem 0;
+  border-top: 1px solid var(--line);
+}
+.pb-choice {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0;
+}
+.pb-choice small {
+  display: block;
+  margin-top: 0.3rem;
+}
+@media (max-width: 900px) {
+  .pb-workspace {
+    grid-template-columns: 1fr;
+  }
+}
 .pb-list p {
   margin: 0.5rem 0;
 }
