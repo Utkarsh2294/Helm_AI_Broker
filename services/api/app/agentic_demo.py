@@ -1,6 +1,7 @@
 """Fictional, durable two-decision journey. Automated preparation is never human approval."""
 
 from datetime import timedelta
+from typing import Literal
 from fastapi import APIRouter, Depends, Request
 from pydantic import Field
 from sqlalchemy import select
@@ -70,19 +71,25 @@ def poll_agentic(session_factory):
 
 
 @router.post("/demo/journeys")
-def start_demo(request: Request, db=Depends(database, scope="function")):
+def start_demo(
+    request: Request,
+    underwriting: Literal["moratorium", "fmu"] = "moratorium",
+    db=Depends(database, scope="function"),
+):
     demo_only()
     user, _ = identity(db, request)
     service.require_broker(user)
     if settings().partner_mode not in {"simulator", "http_simulator"}:
         raise DomainError("The automatic demo requires fictional partners", 403)
-    # Fixed safe fixture: this endpoint accepts no customer payload or override flags.
+    # Two predefined fictional paths; no customer payload or approval override flags.
     source = QuoteRequest.model_validate(
         {
             "id": "agentic-demo-" + uid(),
             "name": "Morgan Demo",
             "postcode_district": "M20",
             "needs": {
+                "preferred_underwriting": "FMU" if underwriting == "fmu" else "moratorium",
+                "allowed_underwriting": ["FMU"] if underwriting == "fmu" else ["moratorium", "FMU"],
                 "budget_annual_pence": 180000,
                 "coverage": {"cancer": {"level": 3, "must_have": True}, "outpatient": {"level": 3}},
             },

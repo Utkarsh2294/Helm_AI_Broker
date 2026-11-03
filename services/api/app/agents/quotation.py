@@ -113,6 +113,10 @@ def simulate_responses(
                 Plan(
                     id=plan_id,
                     insurerId=partner["id"],
+                    underwritingType="FMU"
+                    if str(rfq.body.get("needs", {}).get("preferred_underwriting", "moratorium")).lower()
+                    == "fmu"
+                    else "moratorium",
                     name=f"{partner['name']} {tier}",
                     basePremiumPence=base,
                     annualPremiumPence=premium_with_tax(base, tax_rate)

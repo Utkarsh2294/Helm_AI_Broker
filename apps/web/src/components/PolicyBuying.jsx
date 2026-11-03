@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { ArrowUpRight, FileCheck2 } from 'lucide-react';
 import { api, money } from '../api';
@@ -29,6 +29,21 @@ export const stageLabels = [
 
 export default function PolicyBuying({ user, closed = false }) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [starting, setStarting] = useState(false),
+    [startError, setStartError] = useState('');
+  async function startExample(basis) {
+    setStarting(true);
+    setStartError('');
+    try {
+      const item = await api(`/demo/journeys?underwriting=${basis}`, { method: 'POST' });
+      navigate(`/case/${item.id}`);
+    } catch (cause) {
+      setStartError(cause.message);
+    } finally {
+      setStarting(false);
+    }
+  }
   const caseId = location.pathname.startsWith('/policy-buying/cases/')
     ? decodeURIComponent(location.pathname.slice('/policy-buying/cases/'.length))
     : null;
@@ -56,6 +71,29 @@ export default function PolicyBuying({ user, closed = false }) {
         <strong>Demo only.</strong> Consumer responses and insurer submission are simulated. No real
         policy is purchased.
       </p>
+      {!closed && ['authorised_broker', 'lead_broker'].includes(user.role) && (
+        <div className="assistant-toolbar">
+          <button
+            className="button small"
+            disabled={starting}
+            onClick={() => startExample('moratorium')}
+          >
+            Start Moratorium demo
+          </button>
+          <button className="button small" disabled={starting} onClick={() => startExample('fmu')}>
+            Start FMU demo
+          </button>
+          <p>
+            These create fictional fact-finds. Policy selection and final recommendation sign-off
+            remain your decisions.
+          </p>
+        </div>
+      )}
+      {startError && (
+        <p className="error" role="alert">
+          {startError}
+        </p>
+      )}
       {query.error && (
         <p className="error" role="alert">
           {query.error.message}
@@ -80,7 +118,9 @@ export default function PolicyBuying({ user, closed = false }) {
                     {row.client}
                     <ArrowUpRight size={16} />
                   </Link>
-                  {row.policy_number && <p className="state-badge green">Demo policy issued · {row.policy_number}</p>}
+                  {row.policy_number && (
+                    <p className="state-badge green">Demo policy issued · {row.policy_number}</p>
+                  )}
                   <p>
                     {row.plan.name} · {row.plan.insurerId}
                   </p>
