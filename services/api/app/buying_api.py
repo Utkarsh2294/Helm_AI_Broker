@@ -237,6 +237,36 @@ class DeclarationSignature(DocumentAction):
     confirm_signature: Literal[True]
 
 
+@router.get("/policy-buying/cases/{case_id}/medical-response")
+def medical_response(case_id: str, request: Request, db=Depends(database, scope="function")):
+    from app.medical_access import require_medical_access
+    from app.db.platform import MedicalAccess
+    from app.db.policy_buying import BuyingMedicalResponse
+    from app.db.store import audit
+
+    user, session = identity(db, request)
+    case, buying = load_buying(db, case_id)
+    require_medical_access(db, case, user, session)
+    reference = buying.body.get("declaration_response") or {}
+    current = current_documents(db, buying.id).get("fmu_questionnaire")
+    row = db.scalar(
+        select(BuyingMedicalResponse).where(BuyingMedicalResponse.document_id == reference.get("document_id"))
+    )
+    if not row or not current or current.id != row.document_id:
+        raise DomainError("No current completed FMU response is recorded", 404)
+    audit(db, case.id, "pb.medical_response_viewed", f"broker:{user.id}", {"document_id": current.id})
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        {
+            "answers": row.body["answers"],
+            "fictional": True,
+            "expires_at": db.get(MedicalAccess, (session.id, case.id)).expires_at,
+        },
+        headers={"Cache-Control": "no-store"},
+    )
+
+
 @router.post("/policy-buying/cases/{case_id}/declaration/complete")
 def declaration_complete(
     case_id: str, body: DeclarationSignature, request: Request, db=Depends(database, scope="function")

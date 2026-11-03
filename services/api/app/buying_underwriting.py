@@ -14,8 +14,28 @@ def complete_declaration(db, buying, document_id, actor):
         or buying.body["documents"].get(kind, {}).get("status") != "sent"
     ):
         raise DomainError("Send the current declaration before simulating a signature")
-    if buying.underwriting_basis != "moratorium":
-        raise DomainError("Use the seeded FMU questionnaire completion path", 422)
+    if buying.underwriting_basis == "fmu":
+        from app.db.policy_buying import BuyingMedicalResponse
+
+        db.add(
+            BuyingMedicalResponse(
+                document_id=document.id,
+                body={
+                    "fictional": True,
+                    "answers": {
+                        "Personal details": "Demo patient, fictional details supplied afresh",
+                        "GP practice": "Fictional Demo Practice — no real GP contact",
+                        "Height and weight": "172 cm; 70 kg — fixture values",
+                        "Smoking and alcohol": "Non-smoker; zero units — fixture values",
+                        "Medical history entries": "Seeded fictional entry: resolved demo symptom in 2024; fictional consultation; no current fixture medication. Not a real medical history.",
+                        "Family history": "Not required by this generic demo insurer",
+                        "GP release consent": "Explicitly accepted in this simulation",
+                        "Accuracy declaration": "I confirm the above information is complete and accurate to the best of my knowledge",
+                    },
+                    "signed_at": stamp(),
+                },
+            )
+        )
     buying.body = {
         **buying.body,
         "declaration_response": {"document_id": document.id, "signed_at": stamp(), "fictional": True},
@@ -26,6 +46,6 @@ def complete_declaration(db, buying, document_id, actor):
         db,
         buying,
         "declaration_completed",
-        "Demo consumer explicitly accepted the Moratorium Declaration; broker sign-off is required",
+        "Demo consumer completed and signed the current underwriting declaration; broker sign-off is required",
         actor,
     )

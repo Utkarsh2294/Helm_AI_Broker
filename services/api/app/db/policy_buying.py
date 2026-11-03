@@ -82,3 +82,15 @@ class BuyingAgreement(Base):
 
 event.listen(BuyingAgreement, "before_update", immutable)
 event.listen(BuyingAgreement, "before_delete", immutable)
+
+
+class BuyingMedicalResponse(Base):
+    __tablename__ = "pb_medical_responses"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    document_id: Mapped[str] = mapped_column(ForeignKey("pb_documents.id"), unique=True)
+    body: Mapped[dict] = mapped_column(SecretJSON)
+    created_at: Mapped[str] = mapped_column(String(40), default=stamp)
+
+
+event.listen(BuyingMedicalResponse, "before_update", immutable)
+event.listen(BuyingMedicalResponse, "before_delete", immutable)
