@@ -611,6 +611,10 @@ app.router.routes = [
 app.include_router(case_queries_router)
 
 
+from app.buying_api import router as buying_router  # noqa: E402
+
+app.include_router(buying_router)
+
 _application_template = app
 
 
