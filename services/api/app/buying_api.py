@@ -16,6 +16,7 @@ from app.buying_documents import current_documents, document_versions
 from app.buying_updates import mark_read
 from app.case_access import visible_cases
 from app.policy_buying import BuyingStage
+from app.buying_service import require_version, acknowledge_baseline
 
 router = APIRouter(prefix="/api/v1")
 
@@ -129,6 +130,28 @@ def buying_read(case_id: str, body: ReadPosition, request: Request, db=Depends(d
 def broker(user):
     if user.role not in {"authorised_broker", "senior_broker", "lead_broker", "admin"}:
         raise DomainError("An authorised broker must perform this demo action", 403)
+
+
+class BuyingAction(Model):
+    expected_version: int = Field(ge=1, strict=True)
+
+
+def action_context(db, case_id, request, expected_version):
+    user, session = identity(db, request)
+    require_demo()
+    broker(user)
+    case, buying = load_buying(db, case_id)
+    if case.state != "PUBLISHED":
+        raise DomainError("Buying actions are unavailable while the source case is on hold or closed")
+    require_version(buying, expected_version)
+    return user, session, case, buying
+
+
+@router.post("/policy-buying/cases/{case_id}/baseline")
+def baseline(case_id: str, body: BuyingAction, request: Request, db=Depends(database, scope="function")):
+    user, _, _, buying = action_context(db, case_id, request, body.expected_version)
+    acknowledge_baseline(db, buying, f"broker:{user.id}")
+    return {"acknowledged": True}
 
 
 class QuoteSelection(Model):

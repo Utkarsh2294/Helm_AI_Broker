@@ -24,6 +24,26 @@ def load_buying(db, case_id):
     return case, buying
 
 
+def require_version(buying, expected_version):
+    if buying.version != expected_version:
+        raise DomainError("This buying case changed. Reload before recording your decision")
+    if buying.closed_at:
+        raise DomainError("This demo policy has already been issued")
+
+
+def acknowledge_baseline(db, buying, actor):
+    if buying.body.get("baseline_acknowledged"):
+        return
+    buying.body = {**buying.body, "baseline_acknowledged": stamp()}
+    record_update(
+        db,
+        buying,
+        "baseline_acknowledged",
+        "Broker acknowledged the original underwriting basis and demo limitations",
+        actor,
+    )
+
+
 def published_choices(db, case):
     pack = latest(db, case.id, "pack")
     publication = db.scalar(select(Publication).where(Publication.case_id == case.id))

@@ -4,9 +4,11 @@ import { Link } from 'react-router-dom';
 import { api, money } from '../api';
 import { buyingStages, stageLabels } from './PolicyBuying';
 import BuyingFeed from './BuyingFeed';
+import { useState } from 'react';
 
 export default function PolicyBuyingCase({ caseId }) {
   const heading = useRef(null);
+  const [actionError, setActionError] = useState('');
   const query = useQuery({
     queryKey: ['buying-case', caseId],
     queryFn: () => api(`/policy-buying/cases/${caseId}`),
@@ -68,6 +70,8 @@ export default function PolicyBuyingCase({ caseId }) {
           </Link>
         </aside>
         <section className="pb-working" aria-label="Buying steps">
+        {!item.baseline_acknowledged && <div className="pb-demo"><h3>Review the underwriting baseline</h3><p>{item.underwriting_basis === 'moratorium' ? 'This consumer chose Moratorium underwriting. In this fictional demonstration, conditions present, symptomatic or treated in the previous five years are excluded until two continuous years without related treatment, medication or advice. Actual insurer terms must be checked.' : 'This consumer chose Full Medical Underwriting. They must provide fresh answers to a medical questionnaire. The insurer determines any personal exclusions before cover is issued; the demo agent does not interpret medical answers.'}</p><button className="button primary" onClick={async () => { try { await api(`/policy-buying/cases/${caseId}/baseline`, { method: 'POST', body: { expected_version: item.version } }); setActionError(''); query.refetch(); } catch (cause) { setActionError(cause.message); query.refetch(); } }}>I acknowledge this underwriting basis</button></div>}
+        {actionError && <p role="alert" className="error">{actionError}</p>}
           <h2>Buying steps</h2>
           <ol className="pb-stepper">
             {stageLabels.map((label, index) => (
