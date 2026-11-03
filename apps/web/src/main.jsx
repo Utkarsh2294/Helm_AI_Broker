@@ -60,6 +60,7 @@ const navigation = [
   ['workspace', 'Workspace', LayoutDashboard],
   ['priority', 'Priority queue', ListOrdered],
   ['buying', 'Policy Buying', FileCheck2],
+  ['closedBuying', 'Closed Cases', FileCheck2],
   ['partners', 'Partners', Building2],
   ['learning', 'Learning & insights', ChartNoAxesCombined],
   ['insights', 'Broker insights', ChartNoAxesCombined],
@@ -76,6 +77,7 @@ function App() {
     workspace: '/queue',
     priority: '/priority-queue',
     buying: '/policy-buying',
+    closedBuying: '/closed-cases',
     partners: '/partners',
     learning: '/learning',
     security: '/security',
@@ -233,6 +235,8 @@ function App() {
               <BrokerInsights />
             ) : page === 'buying' ? (
               <PolicyBuying user={user} />
+            ) : page === 'closedBuying' ? (
+              <PolicyBuying user={user} closed />
             ) : page === 'notifications' ? (
               <NotificationInbox />
             ) : page === 'security' ? (

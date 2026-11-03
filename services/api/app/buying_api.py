@@ -78,6 +78,9 @@ def buying_detail(case_id: str, request: Request, db=Depends(database, scope="fu
     case, buying = load_buying(db, case_id)
     documents = current_documents(db, buying.id)
     statuses = buying.body.get("documents", {})
+    from app.db.policy_buying import BuyingDelivery
+
+    delivery = db.scalar(select(BuyingDelivery).where(BuyingDelivery.pb_case_id == buying.id))
     return {
         **summary(db, buying, case, user),
         "stages": list(BuyingStage),
@@ -86,6 +89,7 @@ def buying_detail(case_id: str, request: Request, db=Depends(database, scope="fu
         },
         "baseline_acknowledged": bool(buying.body.get("baseline_acknowledged")),
         "consumer_query": buying.body.get("consumer_query"),
+        "confirmation_message": delivery.body if delivery else None,
         "banking_received": bool(buying.body.get("banking_received")),
         "package_hash": buying.body.get("package_hash"),
         "banking_verified": bool(buying.body.get("banking_verified")),

@@ -27,15 +27,15 @@ export const stageLabels = [
   'Policy issued',
 ];
 
-export default function PolicyBuying({ user }) {
+export default function PolicyBuying({ user, closed = false }) {
   const location = useLocation();
   const caseId = location.pathname.startsWith('/policy-buying/cases/')
     ? decodeURIComponent(location.pathname.slice('/policy-buying/cases/'.length))
     : null;
   const query = useInfiniteQuery({
-    queryKey: ['policy-buying', user.id],
+    queryKey: ['policy-buying', user.id, closed],
     initialPageParam: 0,
-    queryFn: ({ pageParam }) => api(`/policy-buying?offset=${pageParam}`),
+    queryFn: ({ pageParam }) => api(`/policy-buying?offset=${pageParam}&closed=${closed}`),
     getNextPageParam: (last) => last.next_offset ?? undefined,
     refetchInterval: 5000,
   });
@@ -46,7 +46,7 @@ export default function PolicyBuying({ user }) {
       <div className="page-heading">
         <div>
           <span className="eyebrow">FROM RECOMMENDATION TO COMPLETION</span>
-          <h1>Policy Buying</h1>
+          <h1>{closed ? 'Closed Cases' : 'Policy Buying'}</h1>
           <p className="muted">
             One selected quote. Every document, response and approval in one place.
           </p>
@@ -66,7 +66,7 @@ export default function PolicyBuying({ user }) {
       )}
       <section aria-label="Policy Buying pipeline" className="pb-pipeline">
         <div className="section-header">
-          <h2>In progress</h2>
+          <h2>{closed ? 'Successfully issued demo policies' : 'In progress'}</h2>
           <span className="count-badge">{query.data?.pages[0]?.total || 0}</span>
         </div>
         {query.isPending ? (
@@ -74,12 +74,13 @@ export default function PolicyBuying({ user }) {
         ) : rows.length ? (
           <ul className="pb-list">
             {rows.map((row) => (
-              <li key={row.id}>
+              <li key={row.id} className={row.closed_at ? 'pb-success' : ''}>
                 <div>
                   <Link className="pb-client" to={`/policy-buying/cases/${row.case_id}`}>
                     {row.client}
                     <ArrowUpRight size={16} />
                   </Link>
+                  {row.policy_number && <p className="state-badge green">Demo policy issued · {row.policy_number}</p>}
                   <p>
                     {row.plan.name} · {row.plan.insurerId}
                   </p>

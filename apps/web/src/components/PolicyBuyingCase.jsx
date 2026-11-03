@@ -35,8 +35,8 @@ export default function PolicyBuyingCase({ caseId, user }) {
   if (!item) return <p role="status">Opening buying case…</p>;
   return (
     <>
-      <Link className="button small" to="/policy-buying">
-        Back to Policy Buying
+      <Link className="button small" to={item.closed_at ? '/closed-cases' : '/policy-buying'}>
+        {item.closed_at ? 'Back to Closed Cases' : 'Back to Policy Buying'}
       </Link>
       <div className="page-heading">
         <div>
@@ -51,6 +51,7 @@ export default function PolicyBuyingCase({ caseId, user }) {
         <strong>Demo only.</strong> Simulated responses, fictional documents and a mock insurer. No
         live policy or payment.
       </p>
+      {item.closed_at && <section className="pb-success" aria-label="Demo policy issued"><h2>Demo policy issued</h2><p><strong>{item.policy_number}</strong></p><p>The workflow is complete. No real policy was purchased.</p>{item.confirmation_message && <details><summary>View local confirmation email</summary><p>Stored in the demo outbox only; no email was sent.</p><p>To: {item.confirmation_message.to}</p><h3>{item.confirmation_message.subject}</h3><p>{item.confirmation_message.message}</p><a className="button small" href={`/api/v1/policy-buying/cases/${caseId}/documents/${item.confirmation_message.ipid_document_id}.pdf`} download>Download final accepted IPID</a></details>}</section>}
       <div className="pb-workspace">
         <aside className="pb-file" aria-label="Digital client file">
           <h2>Digital client file</h2>

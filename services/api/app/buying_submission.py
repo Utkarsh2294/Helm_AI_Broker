@@ -66,6 +66,20 @@ def send_package(db, case, buying, document_id, package_hash, user):
     buying.pending_response = False
     set_document_state(buying, "submission_package", document, "confirmed")
     buying.body = {**buying.body, "issuance": result}
+    from app.db.policy_buying import BuyingDelivery
+
+    db.add(
+        BuyingDelivery(
+            pb_case_id=buying.id,
+            body={
+                "subject": "Your fictional Helm policy confirmation",
+                "to": case.profile.get("email") or "consumer@helm.example",
+                "message": f"Welcome to the Helm demonstration. Fictional policy number: {buying.policy_number}. No insurance contract was created and no premium is collected.",
+                "ipid_document_id": package["documents"]["ipid"]["id"],
+                "delivery": "local_demo_outbox_only",
+            },
+        )
+    )
     service.transition(
         db,
         case,

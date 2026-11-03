@@ -114,3 +114,15 @@ def protect_banking_body(mapper, connection, target):
 
 
 event.listen(BuyingBanking, "before_delete", immutable)
+
+
+class BuyingDelivery(Base):
+    __tablename__ = "pb_demo_deliveries"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    pb_case_id: Mapped[str] = mapped_column(ForeignKey("policy_buying_cases.id"), unique=True)
+    body: Mapped[dict] = mapped_column(SecretJSON)
+    created_at: Mapped[str] = mapped_column(String(40), default=stamp)
+
+
+event.listen(BuyingDelivery, "before_update", immutable)
+event.listen(BuyingDelivery, "before_delete", immutable)
