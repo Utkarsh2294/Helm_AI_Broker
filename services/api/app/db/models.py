@@ -183,3 +183,4 @@ for table in (Snapshot, Approval, Activity, Publication):
 from app.db import platform as platform_models  # noqa: E402,F401
 from app.db import assistant as assistant_models  # noqa: E402,F401
 from app.db import copilot as copilot_models  # noqa: E402,F401
+from app.db import policy_buying as policy_buying_models  # noqa: E402,F401
