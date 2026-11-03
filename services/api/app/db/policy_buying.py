@@ -46,3 +46,25 @@ class BuyingDocument(Base):
 
 event.listen(BuyingDocument, "before_update", immutable)
 event.listen(BuyingDocument, "before_delete", immutable)
+
+
+class BuyingUpdate(Base):
+    __tablename__ = "pb_update_feed"
+    __table_args__ = (UniqueConstraint("pb_case_id", "seq"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    pb_case_id: Mapped[str] = mapped_column(ForeignKey("policy_buying_cases.id"), index=True)
+    seq: Mapped[int] = mapped_column()
+    update_type: Mapped[str] = mapped_column(String(70))
+    body: Mapped[dict] = mapped_column(SecretJSON)
+    created_at: Mapped[str] = mapped_column(String(40), default=stamp)
+
+
+class BuyingRead(Base):
+    __tablename__ = "pb_read_positions"
+    pb_case_id: Mapped[str] = mapped_column(ForeignKey("policy_buying_cases.id"), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    seq: Mapped[int] = mapped_column(default=0)
+
+
+event.listen(BuyingUpdate, "before_update", immutable)
+event.listen(BuyingUpdate, "before_delete", immutable)
