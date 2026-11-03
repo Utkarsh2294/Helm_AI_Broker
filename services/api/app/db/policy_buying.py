@@ -103,3 +103,14 @@ class BuyingBanking(Base):
     body: Mapped[dict] = mapped_column(SecretJSON)
     revealed_at: Mapped[str | None] = mapped_column(String(40))
     created_at: Mapped[str] = mapped_column(String(40), default=stamp)
+
+
+@event.listens_for(BuyingBanking, "before_update")
+def protect_banking_body(mapper, connection, target):
+    from sqlalchemy import inspect
+
+    if inspect(target).attrs.body.history.has_changes():
+        immutable(mapper, connection, target)
+
+
+event.listen(BuyingBanking, "before_delete", immutable)

@@ -86,6 +86,8 @@ def buying_detail(case_id: str, request: Request, db=Depends(database, scope="fu
         },
         "baseline_acknowledged": bool(buying.body.get("baseline_acknowledged")),
         "consumer_query": buying.body.get("consumer_query"),
+        "banking_received": bool(buying.body.get("banking_received")),
+        "banking_verified": bool(buying.body.get("banking_verified")),
         "documents": [
             {
                 "id": row.id,
@@ -235,6 +237,37 @@ class ConsumerResponse(DocumentAction):
 
 class DeclarationSignature(DocumentAction):
     confirm_signature: Literal[True]
+
+
+@router.post("/policy-buying/cases/{case_id}/banking/reveal")
+def banking_reveal(
+    case_id: str, body: BuyingAction, request: Request, db=Depends(database, scope="function")
+):
+    from app.auth.mfa import load_challenge
+    from app.buying_banking import reveal_banking
+    from fastapi.responses import JSONResponse
+
+    user, session, _, buying = action_context(db, case_id, request, body.expected_version)
+    proof = load_challenge(db, request.headers.get("X-Step-Up", ""), "step-up")
+    if proof.user_id != user.id or proof.body.get("session_id") != session.id or not user.can_approve:
+        raise DomainError("Fresh broker verification for this session is required", 403)
+    proof.consumed = True
+    return JSONResponse(
+        reveal_banking(db, buying, f"broker:{user.id}"), headers={"Cache-Control": "no-store"}
+    )
+
+
+@router.post("/policy-buying/cases/{case_id}/banking/verify")
+def banking_verify(
+    case_id: str, body: BuyingAction, request: Request, db=Depends(database, scope="function")
+):
+    from app.buying_banking import verify_banking
+
+    user, _, _, buying = action_context(db, case_id, request, body.expected_version)
+    if not user.can_approve:
+        raise DomainError("Broker approval authority is required", 403)
+    verify_banking(db, buying, f"broker:{user.id}")
+    return {"verified": True, "account_ending": "1234", "demo": True}
 
 
 @router.post("/policy-buying/cases/{case_id}/banking/complete")

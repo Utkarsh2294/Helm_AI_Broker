@@ -7,6 +7,54 @@ from app.buying_review import set_document_state, current_document
 from app.buying_templates import WATERMARK, section
 from app.buying_updates import record_update
 from app.schemas import DomainError
+from app.db.models import stamp
+from app.policy_buying import next_buying_stage
+
+
+def banking_record(db, buying):
+    row = db.scalar(
+        select(BuyingBanking)
+        .where(BuyingBanking.request_document_id == buying.body.get("banking_request_id"))
+        .with_for_update()
+    )
+    if not row or not buying.body.get("banking_received") or buying.stage != "AWAITING_BANKING_DETAILS":
+        raise DomainError("No current banking response is awaiting verification")
+    return row
+
+
+def reveal_banking(db, buying, actor):
+    row = banking_record(db, buying)
+    if row.revealed_at:
+        raise DomainError("This fictional account has already been revealed once; use its masked summary")
+    row.revealed_at = stamp()
+    record_update(
+        db,
+        buying,
+        "banking_revealed",
+        "Broker used the one-time fictional banking verification screen",
+        actor,
+    )
+    return row.body
+
+
+def verify_banking(db, buying, actor):
+    row = banking_record(db, buying)
+    if not row.revealed_at:
+        raise DomainError("Use the one-time verification screen before confirming banking")
+    buying.body = {**buying.body, "banking_verified": True}
+    buying.stage = next_buying_stage(buying.stage, "banking_verified")
+    buying.pending_response = False
+    from app.buying_documents import current_documents
+
+    summary = current_documents(db, buying.id)["banking_summary"]
+    set_document_state(buying, "banking_summary", summary, "confirmed")
+    record_update(
+        db,
+        buying,
+        "banking_verified",
+        "Broker verified the fictional annual payment setup; no bank was contacted",
+        actor,
+    )
 
 
 def request_banking(db, buying):

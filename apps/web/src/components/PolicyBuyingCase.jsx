@@ -7,6 +7,7 @@ import BuyingFeed from './BuyingFeed';
 import BuyingDocumentActions from './BuyingDocumentActions';
 import BuyingConsumerResponse from './BuyingConsumerResponse';
 import BuyingUnderwriting from './BuyingUnderwriting';
+import BuyingBanking from './BuyingBanking';
 import { useState } from 'react';
 
 export default function PolicyBuyingCase({ caseId, user }) {
@@ -88,7 +89,8 @@ export default function PolicyBuyingCase({ caseId, user }) {
               </li>
             ))}
           </ol>
-          {item.documents.length ? (
+        <BuyingBanking item={item} onChanged={() => query.refetch()} />
+        {item.documents.length ? (
             item.documents.map((document) => (
               <article
                 className="pb-document"
