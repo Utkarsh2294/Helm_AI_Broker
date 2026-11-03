@@ -28,6 +28,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { api } from '../api';
+import { caseIdFromPath } from '../case-route';
 import { useSessionStore } from '../session-store';
 
 const workspaceChips = [
@@ -1141,9 +1142,7 @@ export function AssistantDock() {
   const location = useLocation(),
     navigate = useNavigate(),
     origin = useRef(null);
-  const caseId = location.pathname.startsWith('/case/')
-    ? decodeURIComponent(location.pathname.slice(6))
-    : null;
+  const caseId = caseIdFromPath(location.pathname);
   useEffect(() => {
     function show(event) {
       origin.current = document.activeElement;

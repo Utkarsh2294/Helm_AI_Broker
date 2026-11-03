@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api, money } from '../api';
 import { buyingStages, stageLabels } from './PolicyBuying';
+import BuyingFeed from './BuyingFeed';
 
 export default function PolicyBuyingCase({ caseId }) {
   const heading = useRef(null);
@@ -103,6 +104,7 @@ export default function PolicyBuyingCase({ caseId }) {
             <p role="status">The demo agent is preparing the document drafts.</p>
           )}
         </section>
+        <BuyingFeed item={item} onRead={() => query.refetch()} />
       </div>
     </>
   );

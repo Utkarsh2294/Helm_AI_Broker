@@ -5,6 +5,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Toaster, toast } from 'sonner';
 import { Bell, Check, ArrowUpRight, X } from 'lucide-react';
 import { api } from '../api';
+import { caseIdFromPath } from '../case-route';
 import { useSessionStore } from '../session-store';
 import { createPortal } from 'react-dom';
 import usePanelHost from '../hooks/usePanelHost';
@@ -49,9 +50,7 @@ export function NotificationProvider({ children }) {
       const item = JSON.parse(event.data);
       refresh();
       if (!item.actionable || item.read_at) return;
-      const activeCase = path.current.startsWith('/case/')
-        ? decodeURIComponent(path.current.slice(6))
-        : null;
+      const activeCase = caseIdFromPath(path.current);
       if (activeCase && activeCase !== item.case_id) return;
       const now = Date.now();
       batch.current = batch.current.filter((row) => now - row.at < 120000);

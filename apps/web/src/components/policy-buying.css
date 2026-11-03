@@ -37,9 +37,28 @@
 }
 .pb-workspace {
   display: grid;
-  grid-template-columns: minmax(180px, 0.7fr) minmax(0, 2fr);
+  grid-template-columns: minmax(160px, 0.7fr) minmax(0, 2fr) minmax(190px, 0.9fr);
   gap: 1.5rem;
   align-items: start;
+}
+.pb-feed {
+  list-style: none;
+  padding: 0;
+}
+.pb-feed li {
+  border-top: 1px solid var(--line);
+  padding: 0.8rem 0;
+}
+.pb-feed p {
+  margin: 0.3rem 0;
+}
+.pb-updates .button {
+  margin: 0.3rem 0;
+}
+@media (max-width: 1200px) {
+  .pb-workspace {
+    grid-template-columns: 1fr;
+  }
 }
 .pb-file,
 .pb-working,

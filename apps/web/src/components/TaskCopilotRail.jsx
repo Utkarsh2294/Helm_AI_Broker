@@ -7,6 +7,7 @@ import { motion, useMotionValue, useMotionTemplate, useReducedMotion } from 'fra
 import { ArrowUpRight, Clock3, ListTodo, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '../api';
+import { caseIdFromPath } from '../case-route';
 import { useSessionStore } from '../session-store';
 import keepPanelFocus from '../hooks/keepPanelFocus';
 import AssistantCitations from './AssistantCitations';
@@ -100,9 +101,7 @@ export default function TaskCopilotRail() {
   const trigger = useRef(null),
     host = usePanelHost(true),
     reduced = useReducedMotion();
-  const caseId = location.pathname.startsWith('/case/')
-    ? decodeURIComponent(location.pathname.slice(6))
-    : null;
+  const caseId = caseIdFromPath(location.pathname);
   const { data, error, refetch } = useQuery({
     queryKey: ['tasks', user.id, onlyCase ? caseId : null],
     queryFn: () =>
