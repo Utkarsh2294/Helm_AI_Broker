@@ -48,6 +48,10 @@ def verify_banking(db, buying, actor):
 
     summary = current_documents(db, buying.id)["banking_summary"]
     set_document_state(buying, "banking_summary", summary, "confirmed")
+    from app.buying_submission import prepare_package
+    from app.db.models import Case
+
+    prepare_package(db, db.get(Case, buying.case_id), buying)
     record_update(
         db,
         buying,

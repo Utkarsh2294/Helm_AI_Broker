@@ -88,6 +88,8 @@ def buying_detail(case_id: str, request: Request, db=Depends(database, scope="fu
         "consumer_query": buying.body.get("consumer_query"),
         "banking_received": bool(buying.body.get("banking_received")),
         "banking_verified": bool(buying.body.get("banking_verified")),
+        "submission_reviewed": buying.body.get("submission_reviewed") == buying.body.get("package_hash")
+        and bool(buying.body.get("package_hash")),
         "documents": [
             {
                 "id": row.id,
@@ -237,6 +239,19 @@ class ConsumerResponse(DocumentAction):
 
 class DeclarationSignature(DocumentAction):
     confirm_signature: Literal[True]
+
+
+@router.post("/policy-buying/cases/{case_id}/submission/review")
+def submission_review(
+    case_id: str, body: DocumentAction, request: Request, db=Depends(database, scope="function")
+):
+    from app.buying_submission import review_package
+
+    user, _, case, buying = action_context(db, case_id, request, body.expected_version)
+    if not user.can_approve:
+        raise DomainError("Broker approval authority is required", 403)
+    review_package(db, case, buying, body.document_id, f"broker:{user.id}")
+    return {"reviewed": True}
 
 
 @router.post("/policy-buying/cases/{case_id}/banking/reveal")
