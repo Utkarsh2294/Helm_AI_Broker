@@ -2,6 +2,7 @@
 
 from typing import Literal
 from fastapi import APIRouter, Depends, Request, Query
+from fastapi.responses import Response
 from sqlalchemy import select, func
 from pydantic import Field
 from app import service
@@ -12,6 +13,7 @@ from app.buying_service import require_demo, published_choices, select_quote
 from app.buying_service import load_buying
 from app.db.models import Case
 from app.db.policy_buying import BuyingCase, BuyingUpdate, BuyingRead
+from app.db.policy_buying import BuyingDocument
 from app.buying_documents import current_documents, document_versions
 from app.buying_updates import mark_read
 from app.case_access import visible_cases
@@ -120,6 +122,25 @@ class ReadPosition(Model):
     seq: int = Field(ge=0)
 
 
+@router.get("/policy-buying/cases/{case_id}/documents/{document_id}.pdf")
+def document_pdf(case_id: str, document_id: str, request: Request, db=Depends(database, scope="function")):
+    from app.buying_pdf import build_pdf
+
+    identity(db, request)
+    _, buying = load_buying(db, case_id)
+    document = db.get(BuyingDocument, document_id)
+    if not document or document.pb_case_id != buying.id:
+        raise DomainError("Buying document not found", 404)
+    return Response(
+        build_pdf(document.content, document.doc_type),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="demo-{document.doc_type}-v{document.version}.pdf"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
 @router.post("/policy-buying/cases/{case_id}/read")
 def buying_read(case_id: str, body: ReadPosition, request: Request, db=Depends(database, scope="function")):
     user, _ = identity(db, request)
@@ -134,6 +155,20 @@ def broker(user):
 
 class BuyingAction(Model):
     expected_version: int = Field(ge=1, strict=True)
+
+
+class DocumentAction(BuyingAction):
+    document_id: str = Field(min_length=1, max_length=36)
+
+
+class Section(Model):
+    heading: str = Field(min_length=1, max_length=200)
+    text: str = Field(min_length=1, max_length=2000)
+
+
+class DocumentEdit(DocumentAction):
+    sections: list[Section] = Field(default_factory=list, max_length=20)
+    instruction: str = Field(default="", max_length=2200)
 
 
 def action_context(db, case_id, request, expected_version):
@@ -152,6 +187,38 @@ def baseline(case_id: str, body: BuyingAction, request: Request, db=Depends(data
     user, _, _, buying = action_context(db, case_id, request, body.expected_version)
     acknowledge_baseline(db, buying, f"broker:{user.id}")
     return {"acknowledged": True}
+
+
+@router.post("/policy-buying/cases/{case_id}/documents/{kind}/edit")
+def edit_document(
+    case_id: str, kind: str, body: DocumentEdit, request: Request, db=Depends(database, scope="function")
+):
+    from app.buying_review import revise_document
+
+    user, _, _, buying = action_context(db, case_id, request, body.expected_version)
+    document = revise_document(
+        db,
+        buying,
+        kind,
+        body.document_id,
+        [row.model_dump() for row in body.sections],
+        body.instruction,
+        f"broker:{user.id}",
+    )
+    return {"document_id": document.id, "version": document.version}
+
+
+@router.post("/policy-buying/cases/{case_id}/documents/{kind}/send")
+def approve_send(
+    case_id: str, kind: str, body: DocumentAction, request: Request, db=Depends(database, scope="function")
+):
+    from app.buying_review import send_document
+
+    user, _, _, buying = action_context(db, case_id, request, body.expected_version)
+    if not user.can_approve:
+        raise DomainError("Broker approval authority is required", 403)
+    send_document(db, buying, kind, body.document_id, f"broker:{user.id}")
+    return {"sent": True, "demo": True}
 
 
 class QuoteSelection(Model):

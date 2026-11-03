@@ -52,6 +52,9 @@
 .pb-feed p {
   margin: 0.3rem 0;
 }
+.pb-edit-block { display: block; margin: 1rem 0; font-weight: 600; }
+.pb-doc-actions textarea { display: block; width: 100%; min-height: 100px; margin: .5rem 0; }
+.pb-doc-actions .button { margin: .3rem .3rem .3rem 0; }
 .pb-updates .button {
   margin: 0.3rem 0;
 }

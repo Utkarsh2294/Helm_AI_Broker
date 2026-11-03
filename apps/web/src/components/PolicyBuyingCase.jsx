@@ -4,9 +4,10 @@ import { Link } from 'react-router-dom';
 import { api, money } from '../api';
 import { buyingStages, stageLabels } from './PolicyBuying';
 import BuyingFeed from './BuyingFeed';
+import BuyingDocumentActions from './BuyingDocumentActions';
 import { useState } from 'react';
 
-export default function PolicyBuyingCase({ caseId }) {
+export default function PolicyBuyingCase({ caseId, user }) {
   const heading = useRef(null);
   const [actionError, setActionError] = useState('');
   const query = useQuery({
@@ -96,12 +97,14 @@ export default function PolicyBuyingCase({ caseId }) {
                 <p>
                   Version {document.version} · {document.status}
                 </p>
+                  <a className="button small" href={`/api/v1/policy-buying/cases/${caseId}/documents/${document.id}.pdf`} download>Download demo PDF</a>
                 {document.content.sections?.map((section) => (
                   <div key={section.heading}>
                     <h4>{section.heading}</h4>
                     <p>{section.text}</p>
                   </div>
                 ))}
+                  <BuyingDocumentActions item={item} document={document} user={user} onChanged={() => query.refetch()} />
               </article>
             ))
           ) : (
