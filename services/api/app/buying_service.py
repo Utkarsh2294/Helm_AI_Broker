@@ -16,6 +16,14 @@ def require_demo():
         raise DomainError("Policy buying is available only with fictional demo partners", 403)
 
 
+def load_buying(db, case_id):
+    case = service.get_case(db, case_id)
+    buying = db.scalar(select(BuyingCase).where(BuyingCase.case_id == case.id).with_for_update())
+    if not buying:
+        raise DomainError("Policy-buying case not found", 404)
+    return case, buying
+
+
 def published_choices(db, case):
     pack = latest(db, case.id, "pack")
     publication = db.scalar(select(Publication).where(Publication.case_id == case.id))
