@@ -1,0 +1,53 @@
+.pb-demo {
+  padding: 1rem;
+  border: 1px solid var(--line);
+  background: var(--soft);
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+}
+.pb-pipeline {
+  padding: 1.5rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.pb-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.pb-list li {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr auto;
+  gap: 1.5rem;
+  align-items: center;
+  padding: 1.5rem 0;
+  border-top: 1px solid var(--line);
+}
+.pb-list li > div {
+  min-width: 0;
+}
+.pb-client {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  color: var(--ink);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.pb-list p {
+  margin: 0.5rem 0;
+}
+.pb-list progress {
+  display: block;
+  width: 100%;
+  height: 8px;
+  accent-color: var(--ink);
+  margin: 0.75rem 0;
+}
+@media (max-width: 760px) {
+  .pb-list li {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}

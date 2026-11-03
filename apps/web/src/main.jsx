@@ -9,6 +9,7 @@ import {
   LogOut,
   LayoutDashboard,
   ListOrdered,
+  FileCheck2,
   Workflow,
   Building2,
   ChartNoAxesCombined,
@@ -24,6 +25,7 @@ import './design/semantic.css';
 import './design/light.css';
 const SecuritySettings = lazy(() => import('./security-settings'));
 const BrokerInsights = lazy(() => import('./components/BrokerInsights'));
+const PolicyBuying = lazy(() => import('./components/PolicyBuying'));
 import { Settings } from 'lucide-react';
 import { MotionConfig } from 'framer-motion';
 import { BrowserRouter, Navigate, useLocation, useNavigate } from 'react-router-dom';
@@ -57,6 +59,7 @@ export function Brand({ light = false }) {
 const navigation = [
   ['workspace', 'Workspace', LayoutDashboard],
   ['priority', 'Priority queue', ListOrdered],
+  ['buying', 'Policy Buying', FileCheck2],
   ['partners', 'Partners', Building2],
   ['learning', 'Learning & insights', ChartNoAxesCombined],
   ['insights', 'Broker insights', ChartNoAxesCombined],
@@ -72,6 +75,7 @@ function App() {
   const routes = {
     workspace: '/queue',
     priority: '/priority-queue',
+    buying: '/policy-buying',
     partners: '/partners',
     learning: '/learning',
     security: '/security',
@@ -81,9 +85,12 @@ function App() {
   };
   const page =
     Object.keys(routes).find((key) => routes[key] === location.pathname) ||
-    (location.pathname.startsWith('/case/') && location.state?.returnQueuePath === '/priority-queue'
-      ? 'priority'
-      : 'workspace');
+    (location.pathname.startsWith('/policy-buying/')
+      ? 'buying'
+      : location.pathname.startsWith('/case/') &&
+          location.state?.returnQueuePath === '/priority-queue'
+        ? 'priority'
+        : 'workspace');
   const setPage = (key) => navigate(routes[key] || '/queue');
   const [guide, setGuide] = useState(false);
   const [logoutError, setLogoutError] = useState('');
@@ -224,6 +231,8 @@ function App() {
               <AssistantReview />
             ) : page === 'insights' ? (
               <BrokerInsights />
+            ) : page === 'buying' ? (
+              <PolicyBuying user={user} />
             ) : page === 'notifications' ? (
               <NotificationInbox />
             ) : page === 'security' ? (
