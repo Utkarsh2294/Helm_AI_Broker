@@ -237,6 +237,17 @@ class DeclarationSignature(DocumentAction):
     confirm_signature: Literal[True]
 
 
+@router.post("/policy-buying/cases/{case_id}/declaration/approve")
+def declaration_approve(
+    case_id: str, body: DocumentAction, request: Request, db=Depends(database, scope="function")
+):
+    from app.buying_underwriting import approve_declaration
+
+    user, session, case, buying = action_context(db, case_id, request, body.expected_version)
+    approve_declaration(db, case, buying, body.document_id, user, session)
+    return {"approved": True}
+
+
 @router.get("/policy-buying/cases/{case_id}/medical-response")
 def medical_response(case_id: str, request: Request, db=Depends(database, scope="function")):
     from app.medical_access import require_medical_access

@@ -6,6 +6,7 @@ import { buyingStages, stageLabels } from './PolicyBuying';
 import BuyingFeed from './BuyingFeed';
 import BuyingDocumentActions from './BuyingDocumentActions';
 import BuyingConsumerResponse from './BuyingConsumerResponse';
+import BuyingUnderwriting from './BuyingUnderwriting';
 import { useState } from 'react';
 
 export default function PolicyBuyingCase({ caseId, user }) {
@@ -107,6 +108,7 @@ export default function PolicyBuyingCase({ caseId, user }) {
                 ))}
                   <BuyingDocumentActions item={item} document={document} user={user} onChanged={() => query.refetch()} />
                   <BuyingConsumerResponse item={item} document={document} onChanged={() => query.refetch()} />
+                  <BuyingUnderwriting item={item} document={document} user={user} onChanged={() => query.refetch()} />
               </article>
             ))
           ) : (

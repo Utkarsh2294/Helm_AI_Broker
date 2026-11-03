@@ -4,6 +4,38 @@ from app.db.models import stamp
 from app.buying_review import current_document, set_document_state
 from app.buying_updates import record_update
 from app.schemas import DomainError
+from app.policy_buying import next_buying_stage
+
+
+def approve_declaration(db, case, buying, document_id, user, session):
+    kind = "moratorium_declaration" if buying.underwriting_basis == "moratorium" else "fmu_questionnaire"
+    document = current_document(db, buying, kind, document_id)
+    response = buying.body.get("declaration_response") or {}
+    statuses = buying.body["documents"]
+    if not user.can_approve:
+        raise DomainError("Broker approval authority is required", 403)
+    if (
+        buying.stage != "UNDERWRITING_IN_PROGRESS"
+        or response.get("document_id") != document.id
+        or statuses.get(kind, {}).get("status") != "returned"
+        or any(statuses.get(key, {}).get("status") != "confirmed" for key in ("ipid", "toba"))
+    ):
+        raise DomainError("Current IPID, TOBA and explicitly completed declaration are required")
+    if buying.underwriting_basis == "fmu":
+        from app.medical_access import require_medical_access
+
+        require_medical_access(db, case, user, session)
+    set_document_state(buying, kind, document, "confirmed")
+    buying.body = {**buying.body, "declaration_approved": stamp()}
+    buying.stage = next_buying_stage(buying.stage, "underwriting_approved")
+    buying.pending_response = False
+    record_update(
+        db,
+        buying,
+        "declaration_approved",
+        "Broker signed off the current consumer underwriting declaration",
+        f"broker:{user.id}",
+    )
 
 
 def complete_declaration(db, buying, document_id, actor):
