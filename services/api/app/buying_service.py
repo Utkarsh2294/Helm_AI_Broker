@@ -127,7 +127,7 @@ def select_quote(db, case_id, plan_id, pack_hash, session_id, user):
 
 def prepare_initial(db, buying):
     from app.buying_documents import add_document, current_documents
-    from app.buying_templates import ipid, illustrative_start
+    from app.buying_templates import ipid, illustrative_start, toba
     from app.policy_buying import next_buying_stage
 
     if "ipid" in current_documents(db, buying.id):
@@ -136,4 +136,8 @@ def prepare_initial(db, buying):
     document = add_document(db, buying, "ipid", ipid(buying))
     buying.body = {**buying.body, "documents": {"ipid": {"id": document.id, "status": "draft"}}}
     buying.stage = next_buying_stage(buying.stage, "ipid_generated")
+    terms = add_document(db, buying, "toba", toba())
+    from app.buying_review import set_document_state
+
+    set_document_state(buying, "toba", terms, "draft")
     record_update(db, buying, "ipid_generated", "Local demo agent prepared the IPID for broker review")

@@ -36,3 +36,13 @@ def test_ipid_export_has_two_pages_and_every_page_is_watermarked(tmp_path):
         assert len(document) == 2
         assert all(WATERMARK in page.get_text() for page in document)
         assert all(heading in "".join(page.get_text() for page in document) for heading in IPID_HEADINGS)
+
+
+def test_toba_is_fictional_and_has_no_internal_commission_percentage():
+    from app.buying_templates import toba
+    import json
+
+    text = json.dumps(toba())
+    assert "eight weeks" in text and "six months" in text
+    assert "DEMO-NOT-REGISTERED" in text
+    assert "commissionPct" not in text and "%" not in text
