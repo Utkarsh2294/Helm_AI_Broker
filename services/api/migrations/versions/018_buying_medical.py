@@ -1,7 +1,7 @@
 """Encrypted, append-only seeded FMU answers."""
 
 from alembic import op
-from app.db.policy_buying import BuyingMedicalResponse
+from app.db.policy_buying import BuyingMedicalResponse, drop_empty_table
 
 revision = "018"
 down_revision = "017"
@@ -23,4 +23,4 @@ def upgrade():
 
 
 def downgrade():
-    raise RuntimeError("Medical response evidence must be preserved")
+    drop_empty_table(op.get_bind(), BuyingMedicalResponse)

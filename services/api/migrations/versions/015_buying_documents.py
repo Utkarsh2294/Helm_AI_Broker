@@ -1,7 +1,7 @@
 """Append-only, encrypted buying document versions."""
 
 from alembic import op
-from app.db.policy_buying import BuyingDocument
+from app.db.policy_buying import BuyingDocument, drop_empty_table
 
 revision = "015"
 down_revision = "014"
@@ -27,4 +27,4 @@ def upgrade():
 
 
 def downgrade():
-    raise RuntimeError("Buying document evidence must be preserved; restore a tested backup")
+    drop_empty_table(op.get_bind(), BuyingDocument)

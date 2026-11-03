@@ -1,7 +1,7 @@
 """Per-case append-only update feed and broker read positions."""
 
 from alembic import op
-from app.db.policy_buying import BuyingRead, BuyingUpdate
+from app.db.policy_buying import BuyingRead, BuyingUpdate, drop_empty_table
 
 revision = "016"
 down_revision = "015"
@@ -24,4 +24,6 @@ def upgrade():
 
 
 def downgrade():
-    raise RuntimeError("Policy-buying communication evidence must be preserved")
+    connection = op.get_bind()
+    drop_empty_table(connection, BuyingRead)
+    drop_empty_table(connection, BuyingUpdate)

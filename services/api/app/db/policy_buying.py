@@ -5,6 +5,14 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.models import Base, SecretJSON, uid, stamp, immutable
 
 
+def drop_empty_table(connection, model):
+    from sqlalchemy import select, func
+
+    if connection.scalar(select(func.count()).select_from(model)):
+        raise RuntimeError(f"{model.__tablename__} contains user or evidence records; preserve a backup")
+    model.__table__.drop(connection, checkfirst=True)
+
+
 class BuyingCase(Base):
     __tablename__ = "policy_buying_cases"
     __table_args__ = (

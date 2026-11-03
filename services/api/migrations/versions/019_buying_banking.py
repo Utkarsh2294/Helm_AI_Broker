@@ -1,7 +1,7 @@
 """AES-256-GCM encrypted demo banking responses."""
 
 from alembic import op
-from app.db.policy_buying import BuyingBanking
+from app.db.policy_buying import BuyingBanking, drop_empty_table
 
 revision = "019"
 down_revision = "018"
@@ -13,4 +13,4 @@ def upgrade():
 
 
 def downgrade():
-    raise RuntimeError("Banking response evidence must be preserved")
+    drop_empty_table(op.get_bind(), BuyingBanking)

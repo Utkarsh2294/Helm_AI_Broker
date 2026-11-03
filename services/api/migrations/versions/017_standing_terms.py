@@ -1,7 +1,7 @@
 """Standing per-consumer demo terms acknowledgements."""
 
 from alembic import op
-from app.db.policy_buying import BuyingAgreement
+from app.db.policy_buying import BuyingAgreement, drop_empty_table
 
 revision = "017"
 down_revision = "016"
@@ -23,4 +23,4 @@ def upgrade():
 
 
 def downgrade():
-    raise RuntimeError("Standing agreement evidence must be preserved")
+    drop_empty_table(op.get_bind(), BuyingAgreement)

@@ -1,7 +1,7 @@
 """Local-only confirmation messages, committed with demo issuance."""
 
 from alembic import op
-from app.db.policy_buying import BuyingDelivery
+from app.db.policy_buying import BuyingDelivery, drop_empty_table
 
 revision = "021"
 down_revision = "020"
@@ -23,4 +23,4 @@ def upgrade():
 
 
 def downgrade():
-    raise RuntimeError("Demo delivery evidence must be preserved")
+    drop_empty_table(op.get_bind(), BuyingDelivery)

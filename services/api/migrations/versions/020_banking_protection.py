@@ -25,4 +25,12 @@ def upgrade():
 
 
 def downgrade():
-    raise RuntimeError("Do not remove banking evidence protections")
+    from sqlalchemy import select, func
+    from app.db.policy_buying import BuyingBanking
+
+    connection = op.get_bind()
+    if connection.scalar(select(func.count()).select_from(BuyingBanking)):
+        raise RuntimeError("Banking table contains user or evidence records; preserve its protections")
+    for name in ("pb_banking_no_body_update", "pb_banking_no_delete"):
+        suffix = " ON pb_banking_details" if connection.dialect.name == "postgresql" else ""
+        op.execute(f"DROP TRIGGER IF EXISTS {name}{suffix}")
