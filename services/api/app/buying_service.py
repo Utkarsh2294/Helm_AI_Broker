@@ -106,6 +106,13 @@ def select_quote(db, case_id, plan_id, pack_hash, session_id, user):
             "selected_at": stamp(),
             "session_fingerprint": hashlib.sha256(session_id.encode()).hexdigest(),
             "fictional": True,
+            "consumer_key": hashlib.sha256(
+                (
+                    "consumer:" + str(case.profile["consumer_reference"])
+                    if case.profile.get("consumer_reference")
+                    else "case:" + case.id
+                ).encode()
+            ).hexdigest(),
             "documents": {},
             "payment_frequency": "annual",
         },

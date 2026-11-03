@@ -28,6 +28,24 @@ def consumer_response(db, buying, kind, document_id, decision, note, actor):
         set_document_state(buying, kind, document, "confirmed")
         if kind == "ipid":
             buying.stage = next_buying_stage(buying.stage, "ipid_confirmed")
+            from app.buying_agreements import accepted
+
+            terms = current_documents(db, buying.id).get("toba")
+            prior = accepted(db, buying, terms) if terms else None
+            if prior:
+                set_document_state(buying, "toba", terms, "confirmed")
+                buying.body = {**buying.body, "standing_toba_acceptance": prior.id}
+                record_update(
+                    db,
+                    buying,
+                    "standing_toba_reused",
+                    "Unchanged standing terms were already acknowledged by this demo consumer; no new signature was inferred",
+                    actor,
+                )
+        elif kind == "toba":
+            from app.buying_agreements import record_acceptance
+
+            record_acceptance(db, buying, document)
         buying.pending_response = False
         buying.body = {**buying.body, "consumer_query": None}
         message = f"Demo consumer acknowledged the current {kind.upper()} version"

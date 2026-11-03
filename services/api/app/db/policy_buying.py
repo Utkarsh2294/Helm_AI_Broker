@@ -68,3 +68,17 @@ class BuyingRead(Base):
 
 event.listen(BuyingUpdate, "before_update", immutable)
 event.listen(BuyingUpdate, "before_delete", immutable)
+
+
+class BuyingAgreement(Base):
+    __tablename__ = "pb_standing_agreements"
+    __table_args__ = (UniqueConstraint("consumer_key", "document_hash"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    consumer_key: Mapped[str] = mapped_column(String(64), index=True)
+    document_hash: Mapped[str] = mapped_column(String(64))
+    document_id: Mapped[str] = mapped_column(ForeignKey("pb_documents.id"))
+    accepted_at: Mapped[str] = mapped_column(String(40), default=stamp)
+
+
+event.listen(BuyingAgreement, "before_update", immutable)
+event.listen(BuyingAgreement, "before_delete", immutable)
