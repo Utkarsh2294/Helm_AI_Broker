@@ -10,6 +10,38 @@ from app.policy_buying import BuyingStage, next_buying_stage
 EDITABLE = {"ipid", "toba", "moratorium_declaration", "fmu_questionnaire"}
 
 
+def consumer_response(db, buying, kind, document_id, decision, note, actor):
+    document = current_document(db, buying, kind, document_id)
+    if kind not in {"ipid", "toba"}:
+        raise DomainError("Use the separate signed underwriting completion action", 422)
+    if buying.body.get("documents", {}).get(kind, {}).get("status") != "sent":
+        raise DomainError("Only a sent document can receive a consumer response")
+    if decision == "change":
+        if kind != "ipid" or not note.strip():
+            raise DomainError("The consumer can query the IPID; TOBA is the broker's statement", 422)
+        buying.stage = next_buying_stage(buying.stage, "ipid_change_requested")
+        set_document_state(buying, kind, document, "change_requested")
+        buying.body = {**buying.body, "consumer_query": note.strip()}
+        buying.pending_response = True
+        message = "Demo consumer requested an IPID correction; broker review is required"
+    else:
+        set_document_state(buying, kind, document, "confirmed")
+        if kind == "ipid":
+            buying.stage = next_buying_stage(buying.stage, "ipid_confirmed")
+        buying.pending_response = False
+        buying.body = {**buying.body, "consumer_query": None}
+        message = f"Demo consumer acknowledged the current {kind.upper()} version"
+    record_update(
+        db,
+        buying,
+        "consumer_responded",
+        message,
+        actor,
+        document_id=document.id,
+        document_version=document.version,
+    )
+
+
 def set_document_state(buying, kind, document, status):
     buying.body = {
         **buying.body,

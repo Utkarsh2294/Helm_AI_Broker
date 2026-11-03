@@ -85,6 +85,7 @@ def buying_detail(case_id: str, request: Request, db=Depends(database, scope="fu
             key: case.profile.get(key) for key in ("name", "date_of_birth", "email", "phone", "postcode")
         },
         "baseline_acknowledged": bool(buying.body.get("baseline_acknowledged")),
+        "consumer_query": buying.body.get("consumer_query"),
         "documents": [
             {
                 "id": row.id,
@@ -225,6 +226,24 @@ class QuoteSelection(Model):
     selected_plan_id: str = Field(min_length=1, max_length=200)
     pack_hash: str = Field(min_length=64, max_length=64)
     confirm_selection: Literal[True]
+
+
+class ConsumerResponse(DocumentAction):
+    decision: Literal["confirm", "change"]
+    note: str = Field(default="", max_length=2000)
+
+
+@router.post("/policy-buying/cases/{case_id}/documents/{kind}/respond")
+def simulate_response(
+    case_id: str, kind: str, body: ConsumerResponse, request: Request, db=Depends(database, scope="function")
+):
+    from app.buying_review import consumer_response
+
+    user, _, _, buying = action_context(db, case_id, request, body.expected_version)
+    consumer_response(
+        db, buying, kind, body.document_id, body.decision, body.note, f"demo-consumer:{user.id}"
+    )
+    return {"recorded": True, "demo": True}
 
 
 @router.get("/policy-buying/choices/{case_id}")

@@ -5,6 +5,7 @@ import { api, money } from '../api';
 import { buyingStages, stageLabels } from './PolicyBuying';
 import BuyingFeed from './BuyingFeed';
 import BuyingDocumentActions from './BuyingDocumentActions';
+import BuyingConsumerResponse from './BuyingConsumerResponse';
 import { useState } from 'react';
 
 export default function PolicyBuyingCase({ caseId, user }) {
@@ -105,6 +106,7 @@ export default function PolicyBuyingCase({ caseId, user }) {
                   </div>
                 ))}
                   <BuyingDocumentActions item={item} document={document} user={user} onChanged={() => query.refetch()} />
+                  <BuyingConsumerResponse item={item} document={document} onChanged={() => query.refetch()} />
               </article>
             ))
           ) : (
