@@ -111,6 +111,8 @@ def select_quote(db, case_id, plan_id, pack_hash, session_id, user):
         },
     )
     db.add(buying)
+    if case.assigned_to is None:
+        case.assigned_to = user.id
     db.flush()
     record_update(
         db,
@@ -119,4 +121,19 @@ def select_quote(db, case_id, plan_id, pack_hash, session_id, user):
         "Demo consumer explicitly selected one published quote",
         f"demo-consumer:{user.id}",
     )
+    prepare_initial(db, buying)
     return buying
+
+
+def prepare_initial(db, buying):
+    from app.buying_documents import add_document, current_documents
+    from app.buying_templates import ipid, illustrative_start
+    from app.policy_buying import next_buying_stage
+
+    if "ipid" in current_documents(db, buying.id):
+        return
+    buying.body = {**buying.body, "illustrative_start": illustrative_start()}
+    document = add_document(db, buying, "ipid", ipid(buying))
+    buying.body = {**buying.body, "documents": {"ipid": {"id": document.id, "status": "draft"}}}
+    buying.stage = next_buying_stage(buying.stage, "ipid_generated")
+    record_update(db, buying, "ipid_generated", "Local demo agent prepared the IPID for broker review")
