@@ -11,6 +11,7 @@ EDITABLE = {"ipid", "toba", "moratorium_declaration", "fmu_questionnaire"}
 
 
 def consumer_response(db, buying, kind, document_id, decision, note, actor):
+    standing_reused = False
     document = current_document(db, buying, kind, document_id)
     if kind not in {"ipid", "toba"}:
         raise DomainError("Use the separate signed underwriting completion action", 422)
@@ -35,13 +36,7 @@ def consumer_response(db, buying, kind, document_id, decision, note, actor):
             if prior:
                 set_document_state(buying, "toba", terms, "confirmed")
                 buying.body = {**buying.body, "standing_toba_acceptance": prior.id}
-                record_update(
-                    db,
-                    buying,
-                    "standing_toba_reused",
-                    "Unchanged standing terms were already acknowledged by this demo consumer; no new signature was inferred",
-                    actor,
-                )
+                standing_reused = True
         elif kind == "toba":
             from app.buying_agreements import record_acceptance
 
@@ -58,6 +53,14 @@ def consumer_response(db, buying, kind, document_id, decision, note, actor):
         document_id=document.id,
         document_version=document.version,
     )
+    if standing_reused:
+        record_update(
+            db,
+            buying,
+            "standing_toba_reused",
+            "Unchanged standing terms were already acknowledged by this demo consumer; no new signature was inferred",
+            actor,
+        )
 
 
 def set_document_state(buying, kind, document, status):

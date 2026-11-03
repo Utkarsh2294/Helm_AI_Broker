@@ -51,7 +51,6 @@ def verify_banking(db, buying, actor):
     from app.buying_submission import prepare_package
     from app.db.models import Case
 
-    prepare_package(db, db.get(Case, buying.case_id), buying)
     record_update(
         db,
         buying,
@@ -59,6 +58,7 @@ def verify_banking(db, buying, actor):
         "Broker verified the fictional annual payment setup; no bank was contacted",
         actor,
     )
+    prepare_package(db, db.get(Case, buying.case_id), buying)
 
 
 def request_banking(db, buying):

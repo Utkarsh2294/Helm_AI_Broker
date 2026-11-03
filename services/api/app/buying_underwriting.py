@@ -30,7 +30,6 @@ def approve_declaration(db, case, buying, document_id, user, session):
     buying.stage = next_buying_stage(buying.stage, "underwriting_approved")
     from app.buying_banking import request_banking
 
-    request_banking(db, buying)
     buying.pending_response = False
     record_update(
         db,
@@ -39,6 +38,7 @@ def approve_declaration(db, case, buying, document_id, user, session):
         "Broker signed off the current consumer underwriting declaration",
         f"broker:{user.id}",
     )
+    request_banking(db, buying)
 
 
 def complete_declaration(db, buying, document_id, actor):
