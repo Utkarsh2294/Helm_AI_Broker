@@ -35,6 +35,8 @@ export function NotificationProvider({ children }) {
       queryClient.invalidateQueries({ queryKey: ['tasks'] }),
       queryClient.invalidateQueries({ queryKey: ['priority-summary'] }),
       queryClient.invalidateQueries({ queryKey: ['cases'] }),
+      queryClient.invalidateQueries({ queryKey: ['policy-buying'] }),
+      queryClient.invalidateQueries({ queryKey: ['buying-case'] }),
     ]);
   async function openNotification(item) {
     await api(`/notifications/${item.id}/read`, { method: 'POST' });
