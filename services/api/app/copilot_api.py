@@ -37,13 +37,14 @@ def senior(user):
 
 
 def metric_scope(user, broker_id=None, model=CaseMetric):
+    owner = model.assigned_to if model is Case else model.broker_id
     if broker_id and broker_id != user.id:
         if not senior(user):
             raise DomainError(
                 "Senior broker or administrator access is required for another broker's metrics", 403
             )
-        return True if broker_id == "all" else model.broker_id == broker_id
-    return or_(model.broker_id == user.id, model.broker_id.is_(None))
+        return True if broker_id == "all" else owner == broker_id
+    return or_(owner == user.id, owner.is_(None))
 
 
 def notification_scope(user):

@@ -46,6 +46,29 @@ def next_action(case):
 
 
 def workspace_data(db, case, user):
+    from app.db.policy_buying import BuyingCase
+
+    buying = db.scalar(select(BuyingCase).where(BuyingCase.case_id == case.id))
+    buying_context = None
+    if buying:
+        actions = {
+            "IPID_DRAFTING": "Review and send the current IPID draft.",
+            "AWAITING_IPID_CONFIRMATION": "Await the demo consumer's IPID confirmation or simulate a response.",
+            "UNDERWRITING_IN_PROGRESS": "Review TOBA and the underwriting declaration; the broker must approve the completed response.",
+            "AWAITING_BANKING_DETAILS": "Collect and verify the fictional annual payment setup.",
+            "SUBMISSION_PACKAGE_READY": "Review the complete current package, then explicitly send to the mock insurer.",
+            "POLICY_ISSUED": "The demo policy is issued; view its number and local confirmation in Closed Cases.",
+        }
+        buying_context = {
+            "stage": buying.stage,
+            "selected_plan": buying.body["plan"]["name"],
+            "underwriting_basis": buying.underwriting_basis,
+            "next_action": actions.get(
+                buying.stage, "The local demo agent is preparing the next buying step."
+            ),
+            "documents": {key: value["status"] for key, value in buying.body.get("documents", {}).items()},
+            "policy_number": buying.policy_number,
+        }
     data = safe_case(service.detail(db, case), user)
     rows = db.scalars(select(Snapshot).where(Snapshot.case_id == case.id).order_by(Snapshot.version)).all()
     last = {row.kind: row for row in rows}
@@ -163,7 +186,8 @@ def workspace_data(db, case, user):
     result = {
         "case_id": case.id,
         "state": case.state,
-        "next_action": next_action(case),
+        "next_action": buying_context["next_action"] if buying_context else next_action(case),
+        "policy_buying": buying_context,
         "agent_work": agent_work,
         "chain_valid": verify_chain(
             db.scalars(select(Activity).where(Activity.case_id == case.id).order_by(Activity.seq)).all()
@@ -294,6 +318,35 @@ def saved_answer(body, request, db):
     file = context["client_file"]
     sources = []
     answer = context["next_action"]
+    buying = context.get("policy_buying")
+    if buying and any(
+        word in query
+        for word in (
+            "buying",
+            "ipid",
+            "toba",
+            "underwriting",
+            "banking",
+            "submission",
+            "fmu",
+            "next",
+            "progress",
+        )
+    ):
+        return {
+            "answer": f"Policy Buying: {buying['stage'].replace('_', ' ').lower()}. Selected plan: {buying['selected_plan']}. {buying['next_action']} Recorded document states: "
+            + "; ".join(f"{kind.replace('_', ' ')}: {status}" for kind, status in buying["documents"].items())
+            + ". This is a fictional demo. Completed medical answers and raw banking details are excluded from assistant context.",
+            "sources": [
+                {
+                    "label": "Current Policy Buying stage and document confirmations",
+                    "view": "journey",
+                    "case_id": case.id,
+                }
+            ],
+            "confidence": "HIGH",
+            "actions_performed": [],
+        }
     if any(word in query for word in ("medical", "diagnos", "condition", "disease", "patient history")):
         answer = (
             file["medical_notice"]

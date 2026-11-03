@@ -12,7 +12,7 @@ def task_cards(db, user, broker_id=None, include_snoozed=False, case_id=None):
     from app.copilot_api import metric_scope
     from app.copilot_projection import priority_score
 
-    scope = metric_scope(user, broker_id, model=type("CaseOwner", (), {"broker_id": Case.assigned_to}))
+    scope = metric_scope(user, broker_id, model=Case)
     rows = db.execute(
         select(BuyingCase, Case)
         .join(Case, Case.id == BuyingCase.case_id)
